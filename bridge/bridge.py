@@ -11,6 +11,7 @@ ALLOWED_ORIGINS = {
     "https://doinglio.revalsoftia.chatgpt.site",
     "https://doinglio.revalsoftia.com.ar",
     "https://apqgrwudkfytwikrsivd.supabase.co",
+    "https://duiliomf.github.io",
     "null",
 }
 
@@ -35,8 +36,9 @@ def cors(resp):
         resp.headers["Access-Control-Allow-Origin"] = origin
     resp.headers["Vary"] = "Origin"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     resp.headers["Access-Control-Allow-Private-Network"] = "true"
+    resp.headers["Access-Control-Max-Age"] = "600"
     return resp
 
 @app.after_request
@@ -58,7 +60,7 @@ def driver_name():
 
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "18"})
+    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "19"})
 
 @app.post("/api/connect")
 def connect():
