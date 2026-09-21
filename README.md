@@ -1,6 +1,6 @@
 # Capitán Rodolfo
 
-[![Probar Capitán Rodolfo v18](https://img.shields.io/badge/▶%20PROBAR-Capitán%20Rodolfo%20v18-ff6b35?style=for-the-badge)](https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-v18/)
+[![Abrir sitio publicado](https://img.shields.io/badge/▶%20ABRIR-Sitio%20publicado%20v14-ff6b35?style=for-the-badge)](https://capitan-rodolfo.revalsoftia.chatgpt.site/)
 
 Centro de control visual de DoingLio para estaciones de servicio.
 
@@ -11,11 +11,10 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - Rama principal: `main`.
 - Tarjeta operativa: https://trello.com/c/M87mZT1d
 - Conexión SQL local: `DUILIO\\SQLEXPRESS` mediante bridge en `127.0.0.1:8787`.
-- URL de prueba v18: https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-v18/
-- URL de Sites: https://capitan-rodolfo.revalsoftia.chatgpt.site/ (puede seguir mostrando una versión anterior).
+- URL publicada actual: https://capitan-rodolfo.revalsoftia.chatgpt.site/ (**sigue mostrando v14**).
 - Dominio objetivo: https://rodolfo.doinglio.com.ar
 
-> La **v18 está versionada en GitHub**, pero el sitio público puede seguir mostrando una versión anterior hasta que Sites publique este build.
+> La **v18 está versionada en GitHub**, pero todavía **no está publicada en web**. El intento temporal con Supabase Edge Functions no sirve como hosting HTML porque el dominio compartido entrega HTML como texto.
 
 ## Flujo v18
 
