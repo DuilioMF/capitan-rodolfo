@@ -284,22 +284,13 @@ document.getElementById('connect').onclick=async()=>{
 };
 async function loadTables(database,el){
  try{
-  selectedDatabase=database; goMap.classList.remove('show');
+  selectedDatabase=database;
   [...document.querySelectorAll('#dbs .item')].forEach(x=>x.classList.remove('active'));el.classList.add('active');
-  tables.innerHTML='<div class="table">Cargando…</div>';
-  dispatches.innerHTML='<div class="muted">Cargando despachos abiertos…</div>';
+  tables.innerHTML='<div class="table">Validando base…</div>';
   const d=await api('/api/tables',{sessionId,database});
-  tables.innerHTML='';
-  d.tables.forEach(x=>{const t=document.createElement('div');t.className='table';t.textContent=x.schema+'.'+x.name;tables.appendChild(t)});
-  if(!d.tables.length) tables.innerHTML='<div class="table">No hay tablas visibles</div>';
-
-  const dp=await api('/api/dispatches',{sessionId,database});
-  renderDispatches(dp);
   status('Base '+database+' validada · entrando a Capitán Rodolfo…','ok');
-  goMap.classList.add('show');
-  setTimeout(()=>{ location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(database); },500);
+  setTimeout(()=>{ location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(database); },350);
  }catch(e){
-  dispatches.innerHTML='<div class="bad">Error al leer despachos: '+e.message+'</div>';
   status('Error: '+e.message,'bad')
  }
 }
