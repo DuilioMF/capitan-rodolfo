@@ -513,7 +513,18 @@ try {
 .receiptStatus{margin-top:12px;border:1px solid #29495e;border-radius:11px;padding:10px;color:#a8c6d8;font-size:12px}.receiptStatus.ok{border-color:#247450;color:#8df0b8}.receiptStatus.bad{border-color:#7c3131;color:#ffb2b2}
 .receiptPreview{margin-top:12px;border:1px solid #29495e;border-radius:12px;padding:10px;display:none}.receiptPreview.show{display:block}.receiptPreview img{max-width:100%;max-height:260px;display:block;margin:auto;border-radius:8px}.receiptPreview .pdf{padding:18px;text-align:center;color:#ffb06a;font-weight:900}
 .revalLogin{display:none;margin-top:14px;padding:14px;border:1px solid #67482c;border-radius:12px;background:#1b1510}.revalLogin.show{display:block}.revalLogin input{width:100%;margin-top:7px;padding:11px;border-radius:9px;border:1px solid #3b4650;background:#091018;color:#fff}.revalLogin button{width:100%;margin-top:10px;padding:11px;border:0;border-radius:9px;background:#ff7138;font-weight:900;cursor:pointer}
-.receiptResult{display:none;margin-top:14px;border:1px solid #247450;border-radius:12px;padding:14px;background:#071713}.receiptResult.show{display:block}.receiptResult h3{margin:0 0 10px;color:#8df0b8}.receiptResultGrid{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:12px}.receiptResultGrid span{color:#83a7bb}.receiptResultGrid b{color:#fff;overflow-wrap:anywhere}
+.receiptResult{display:none;margin-top:14px}.receiptResult.show{display:block}
+.invoice-paper{background:#fff;color:#1c2330;border-radius:14px;overflow:hidden;box-shadow:0 16px 50px #0008;border:1px solid #dfe5ea;font-family:Segoe UI,Arial,sans-serif}
+.invoice-head{display:flex;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid #e4e8ec;background:linear-gradient(135deg,#fbfcfd,#f1f5f7)}
+.invoice-head span{font-size:10px;letter-spacing:1.6px;color:#718092;font-weight:900}.invoice-head h3{margin:5px 0 3px;color:#17202b;font-size:19px}.invoice-head p{margin:0;color:#667483;font-size:11px}
+.invoice-type{text-align:right}.invoice-type b{display:block;color:#ff5a3d;font-size:16px}.invoice-type small{display:block;margin-top:5px;color:#667483}
+.invoice-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#e6eaee}.invoice-meta>div{background:#fff;padding:11px 14px}.invoice-meta span,.invoice-footer span,.document-flow span{display:block;color:#788797;font-size:9px;text-transform:uppercase;letter-spacing:1px}.invoice-meta b{display:block;margin-top:3px;font-size:12px}
+.document-flow{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #e5e9ed}.document-flow b{display:block;margin:4px 0;font-size:12px}.document-flow small{display:block;color:#778491;font-size:10px}.flow-arrow{font-size:22px;color:#ff5a3d;font-weight:900}
+.invoice-lines{padding:14px 18px}.invoice-line{display:grid;grid-template-columns:1fr 70px 95px 95px;gap:8px;padding:7px 0;border-bottom:1px solid #edf0f2;font-size:10px}.invoice-line-head{font-weight:900;color:#718092;text-transform:uppercase;letter-spacing:.7px}.invoice-line span:not(:first-child){text-align:right}
+.invoice-totals{padding:10px 18px 14px;margin-left:auto;width:min(360px,100%)}.invoice-totals>div{display:flex;justify-content:space-between;gap:16px;padding:5px 0;color:#566473;font-size:11px}.invoice-grand{margin-top:5px;padding-top:10px!important;border-top:2px solid #1d2630;color:#111!important;font-size:15px!important}.invoice-grand b{color:#ff5a3d;font-size:18px}
+.invoice-footer{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 18px;background:#f5f7f8;border-top:1px solid #e5e9ed}.invoice-footer b{display:block;color:#273443;margin-top:3px;font-size:10px}
+.invoice-empty{padding:16px;color:#667483;text-align:center;font-size:11px}
+@media(max-width:650px){.invoice-line{grid-template-columns:1fr 48px 70px 75px;font-size:9px}.invoice-head{padding:14px}.invoice-meta{grid-template-columns:1fr}.invoice-footer{grid-template-columns:1fr}}
 .receiptFly{position:fixed;z-index:90;width:180px;padding:10px;border:2px solid #ff7138;border-radius:12px;background:#fff;color:#111;font-weight:900;font-size:11px;box-shadow:0 12px 30px #0008;pointer-events:none;transition:transform .78s cubic-bezier(.2,.8,.2,1),opacity .78s ease;transform-origin:center}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
 @media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot,.dispatchHotspot,.truckHotspot{display:none}.pumpCountBadge{position:static;display:inline-block;margin:8px 0}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
@@ -770,17 +781,89 @@ try {
     return d.access_token;
   }
 
+  function normalizeKey(value){
+    return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  }
+  function findValue(source,names,depth){
+    depth=depth||0;
+    if(!source||typeof source!=='object'||depth>7) return undefined;
+    const wanted=names.map(normalizeKey);
+    for(const key of Object.keys(source)){
+      const value=source[key];
+      if(wanted.includes(normalizeKey(key)) && value!==null && value!=='' && typeof value!=='object') return value;
+    }
+    for(const value of Object.values(source)){
+      const found=findValue(value,names,depth+1);
+      if(found!==undefined) return found;
+    }
+  }
+  function findItems(source,depth){
+    depth=depth||0;
+    if(!source||typeof source!=='object'||depth>7) return [];
+    for(const key of Object.keys(source)){
+      const value=source[key];
+      if(['items','item','detalle','detalles','lineas','conceptos','productos'].includes(normalizeKey(key)) && Array.isArray(value)) return value;
+    }
+    for(const value of Object.values(source)){
+      const found=findItems(value,depth+1);
+      if(found.length) return found;
+    }
+    return [];
+  }
+  function docText(data,names,fallback){
+    const v=findValue(data,names,0);
+    return v===undefined?(fallback===undefined?'-':fallback):String(v);
+  }
+  function docMoney(data,names){
+    const value=findValue(data,names,0);
+    const raw=String(value==null?'':value).trim();
+    const number=Number(raw.replace(/\.(?=\d{3}(?:\D|$))/g,'').replace(',','.').replace(/[^0-9.-]/g,''));
+    if(!Number.isFinite(number)||!raw) return '-';
+    const currency=docText(data,['moneda'],'ARS')==='USD'?'USD':'ARS';
+    try{return new Intl.NumberFormat('es-AR',{style:'currency',currency:currency,maximumFractionDigits:2}).format(number)}
+    catch(_){return raw}
+  }
   function renderReceiptResult(data){
-    const pairs=[
-      ['Tipo',data.tipo_documento||data.tipo_comprobante||''],
-      ['Proveedor / Emisor',data.proveedor||data.emisor||''],
-      ['CUIT',data.proveedor_cuit||data.emisor_cuit||''],
-      ['Comprobante',data.numero_comprobante||data.numero_operacion||''],
-      ['Fecha',data.fecha||''],
-      ['Total',data.total||data.importe||''],
-      ['Medio de pago',data.medio_pago||'']
-    ];
-    receiptResultBody.innerHTML=pairs.map(function(x){return '<span>'+escHtml(x[0])+'</span><b>'+escHtml(x[1]||'-')+'</b>'}).join('');
+    const type=docText(data,['tipo_documento','tipoDocumento','tipo_comprobante','tipoComprobante'],'COMPROBANTE').toUpperCase();
+    const items=findItems(data,0);
+    const isTransfer=type.includes('TRANSFER');
+    const isReceipt=type.includes('RECIB');
+    const issuer=isTransfer?docText(data,['plataforma'],'Transferencia'):docText(data,['proveedor','emisor','origen_nombre'],type);
+    const headerSub=isTransfer
+      ? 'Operacion: '+docText(data,['numero_operacion','codigo_identificacion'])
+      : 'CUIT: '+docText(data,['proveedor_cuit','emisor_cuit','cuit']);
+    let html='<div class="invoice-paper">';
+    html+='<div class="invoice-head"><div><span>COMPROBANTE PROCESADO</span><h3>'+escHtml(issuer)+'</h3><p>'+escHtml(headerSub)+'</p></div>';
+    html+='<div class="invoice-type"><b>'+escHtml(type)+'</b><small>'+escHtml(docText(data,['numero_comprobante','numero_operacion','numero','nro']))+'</small></div></div>';
+    html+='<div class="invoice-meta"><div><span>Fecha</span><b>'+escHtml(docText(data,['fecha','fecha_emision']))+'</b></div><div><span>Hora</span><b>'+escHtml(docText(data,['hora']))+'</b></div><div><span>Moneda</span><b>'+escHtml(docText(data,['moneda'],'ARS'))+'</b></div></div>';
+    if(isTransfer){
+      html+='<div class="document-flow"><div><span>ORIGEN</span><b>'+escHtml(docText(data,['origen_nombre','emisor']))+'</b><small>'+escHtml(docText(data,['origen_cuit','emisor_cuit']))+'</small><small>'+escHtml(docText(data,['origen_cuenta']))+'</small></div><div class="flow-arrow">&rarr;</div><div><span>DESTINO</span><b>'+escHtml(docText(data,['destino_nombre','receptor']))+'</b><small>'+escHtml(docText(data,['destino_cuit','receptor_cuit']))+'</small><small>'+escHtml(docText(data,['destino_cuenta']))+'</small></div></div>';
+    }else if(isReceipt){
+      html+='<div class="document-flow"><div><span>RECIBIDO DE</span><b>'+escHtml(docText(data,['emisor','origen_nombre','cliente']))+'</b><small>'+escHtml(docText(data,['emisor_cuit','origen_cuit','cliente_cuit']))+'</small></div><div class="flow-arrow">&rarr;</div><div><span>RECIBIDO POR</span><b>'+escHtml(docText(data,['receptor','destino_nombre','proveedor']))+'</b><small>'+escHtml(docText(data,['receptor_cuit','destino_cuit','proveedor_cuit']))+'</small></div></div>';
+    }
+    if(items.length){
+      html+='<div class="invoice-lines"><div class="invoice-line invoice-line-head"><span>Detalle</span><span>Cant.</span><span>Precio</span><span>Importe</span></div>';
+      items.slice(0,10).forEach(function(item){
+        html+='<div class="invoice-line"><span>'+escHtml(docText(item,['descripcion','nombre','producto','detalle'],'Item'))+'</span><span>'+escHtml(docText(item,['cantidad','quantity','canti'],'1'))+'</span><span>'+escHtml(docMoney(item,['precio_unitario','precio','price']))+'</span><span>'+escHtml(docMoney(item,['importe','total','subtotal']))+'</span></div>';
+      });
+      html+='</div>';
+    }
+    html+='<div class="invoice-totals">';
+    if(!isTransfer&&!isReceipt){
+      html+='<div><span>Subtotal</span><b>'+escHtml(docMoney(data,['subtotal','neto','importe_neto']))+'</b></div>';
+      html+='<div><span>IVA</span><b>'+escHtml(docMoney(data,['total_iva','iva','importe_iva']))+'</b></div>';
+      html+='<div><span>Impuestos / percepciones</span><b>'+escHtml(docMoney(data,['percepciones','impuestos','otros_impuestos']))+'</b></div>';
+    }
+    const totalLabel=isTransfer?'IMPORTE TRANSFERIDO':(isReceipt?'IMPORTE RECIBIDO':'TOTAL');
+    html+='<div class="invoice-grand"><span>'+totalLabel+'</span><b>'+escHtml(docMoney(data,['importe','total','importe_total','monto_total']))+'</b></div></div>';
+    html+='<div class="invoice-footer">';
+    if(isTransfer||isReceipt){
+      html+='<span>Medio<b>'+escHtml(docText(data,['medio_pago','plataforma']))+'</b></span><span>Motivo<b>'+escHtml(docText(data,['motivo','observaciones']))+'</b></span>';
+    }else{
+      html+='<span>CAE<b>'+escHtml(docText(data,['cae']))+'</b></span><span>Vencimiento CAE<b>'+escHtml(docText(data,['cae_vencimiento','vencimiento_cae']))+'</b></span>';
+    }
+    html+='</div></div>';
+    receiptResultBody.innerHTML=html;
     receiptResult.classList.add('show');
   }
 
