@@ -57,7 +57,7 @@ def driver_name():
 
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "15"})
+    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "16"})
 
 @app.post("/api/connect")
 def connect():
