@@ -19,7 +19,7 @@ button{width:100%;margin-top:15px;border:0;border-radius:12px;padding:13px;backg
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a class="back" href="index.html">← Volver a Inicio</a><span class="version">Capitán Rodolfo v14</span></div>
+  <div class="top"><a class="back" href="index.html">← Volver a Inicio</a><span class="version">Capitán Rodolfo v15</span></div>
   <div class="grid">
     <section class="card">
       <h1>Conexión SQL</h1>
@@ -54,6 +54,18 @@ const savedServer=localStorage.getItem('rodolfo.sql.server');
 const savedUser=localStorage.getItem('rodolfo.sql.user');
 if(savedServer)document.getElementById('server').value=savedServer;
 if(savedUser)document.getElementById('user').value=savedUser;
+
+async function checkBridge(){
+  try{
+    const r=await fetch(BRIDGE+'/health',{cache:'no-store'});
+    const j=await r.json();
+    if(j.ok) status('Bridge local listo · v'+j.version,'ok');
+  }catch(e){
+    status('Bridge local apagado. Abrí bridge\\iniciar_bridge.bat antes de conectar.','');
+  }
+}
+checkBridge();
+
 async function api(path,body){
   const r=await fetch(BRIDGE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const j=await r.json().catch(()=>({}));
@@ -70,11 +82,14 @@ document.getElementById('connect').onclick=async()=>{
     sessionId=data.sessionId;
     status('Conectado a '+data.server,'ok');
     dbs.innerHTML='';
+    const lastDb=localStorage.getItem('rodolfo.sql.database');
+    let auto=null;
     data.databases.forEach((name,i)=>{
       const el=document.createElement('button');el.className='item';el.textContent=name;
       el.onclick=()=>loadTables(name,el);dbs.appendChild(el);
-      if(i===0)setTimeout(()=>el.click(),40);
+      if(name===lastDb || (!auto && i===0)) auto=el;
     });
+    if(auto)setTimeout(()=>auto.click(),40);
   }catch(e){
     sessionId=null;dbs.innerHTML='<div class="item empty">Sin bases</div>';tables.innerHTML='<div class="table empty">Sin tablas</div>';
     status('No se pudo conectar. Verificá que iniciar_bridge.bat esté abierto. '+e.message,'bad');
@@ -85,6 +100,7 @@ async function loadTables(database,el){
     [...document.querySelectorAll('#dbs .item')].forEach(x=>x.classList.remove('active'));el.classList.add('active');
     tables.innerHTML='<div class="table empty">Cargando…</div>';
     const data=await api('/api/tables',{sessionId,database});
+    localStorage.setItem('rodolfo.sql.database',database);
     tables.innerHTML='';
     data.tables.forEach(x=>{const d=document.createElement('div');d.className='table';d.textContent=x.schema+'.'+x.name;tables.appendChild(d)});
     if(!data.tables.length)tables.innerHTML='<div class="table empty">No hay tablas visibles</div>';
