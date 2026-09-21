@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "29"
+$Version = "30"
 $Sessions = @{}
 $ActiveSessionId = $null
 $AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
@@ -218,7 +218,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v29</span></div>
+<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v30</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
@@ -232,7 +232,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v29 listo.</div>
+<div id="status" class="status">Conector local v30 listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
 <div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contrasena se guarda cifrada por Windows para tu usuario.</div>
 </section>
@@ -479,11 +479,14 @@ try {
 .detailCard{position:absolute;z-index:6;background:#07131df7;border:2px solid #ff7138;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px #000b;display:none}.detailCard.show{display:block}
 #tankDetail{left:28%;top:52%;width:28%}#saleOnPump{left:50.3%;top:30%;width:20%;border-color:#34f5a5}
 .detailTitle{font-size:11px;letter-spacing:1.5px;color:#89a9bd;margin-bottom:8px}.detailGrid{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:12px}.detailGrid b{color:#fff}.detailGrid span{color:#8fb3c9}.detailClose{position:absolute;right:8px;top:7px;border:0;background:transparent;color:#fff;cursor:pointer;font-size:16px}
+.paymentBtn{width:100%;margin-top:12px;border:0;border-radius:10px;padding:10px 12px;background:linear-gradient(135deg,#ff7138,#ff9d2e);color:#101010;font-weight:900;cursor:pointer}
+#paymentPanel{left:50.3%;top:54%;width:20%;border-color:#ff7138}
+.paymentPending{color:#ffb06a;font-size:12px;line-height:1.5}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
 @media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
 </style></head>
 <body>
-<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v29</span></header>
+<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v30</span></header>
 <main class="stage">
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitan Rodolfo">
@@ -510,6 +513,13 @@ try {
       <button class="detailClose" type="button" data-close="saleOnPump">x</button>
       <div id="salePumpTitle" class="detailTitle">VENTA EN SURTIDOR</div>
       <div id="salePumpBody" class="detailGrid"></div>
+      <button id="viewPaymentBtn" class="paymentBtn" type="button">VER PAGO</button>
+    </section>
+    <section id="paymentPanel" class="detailCard">
+      <button class="detailClose" type="button" data-close="paymentPanel">x</button>
+      <div class="detailTitle">PAGO DE LA VENTA</div>
+      <div id="paymentBody" class="detailGrid"></div>
+      <div class="paymentPending">Consulta de pago pendiente de definir. No se muestran datos inventados.</div>
     </section>
   </div>
 </main>
@@ -525,6 +535,10 @@ try {
   const saleCard=document.getElementById('saleOnPump');
   const saleBody=document.getElementById('salePumpBody');
   const saleTitle=document.getElementById('salePumpTitle');
+  const viewPaymentBtn=document.getElementById('viewPaymentBtn');
+  const paymentPanel=document.getElementById('paymentPanel');
+  const paymentBody=document.getElementById('paymentBody');
+  let selectedSale=null;
 
   if(tankHotspot){
     tankHotspot.addEventListener('click',()=>{ tankPanel.style.display=(tankPanel.style.display==='none')?'block':'none'; });
@@ -549,6 +563,16 @@ try {
   document.querySelectorAll('.salePick').forEach(btn=>{
     btn.addEventListener('click',()=>{
       document.querySelectorAll('.salePick').forEach(x=>x.classList.remove('active')); btn.classList.add('active');
+      selectedSale={
+        venta:btn.dataset.venta,
+        surtidor:btn.dataset.surtidor,
+        manguera:btn.dataset.manguera,
+        producto:btn.dataset.producto,
+        litros:btn.dataset.litros,
+        ppu:btn.dataset.ppu,
+        pesos:btn.dataset.pesos,
+        hora:btn.dataset.hora
+      };
       saleTitle.textContent='VENTA #'+btn.dataset.venta+' - SURTIDOR '+btn.dataset.surtidor;
       saleBody.innerHTML=
         '<span>Venta</span><b>#'+btn.dataset.venta+'</b>'+
@@ -562,6 +586,17 @@ try {
       saleCard.classList.add('show');
     });
   });
+
+  if(viewPaymentBtn){
+    viewPaymentBtn.addEventListener('click',()=>{
+      if(!selectedSale) return;
+      paymentBody.innerHTML=
+        '<span>Venta</span><b>#'+selectedSale.venta+'</b>'+
+        '<span>Surtidor</span><b>'+selectedSale.surtidor+'</b>'+
+        '<span>Importe</span><b>$ '+selectedSale.pesos+'</b>';
+      paymentPanel.classList.add('show');
+    });
+  }
 
   document.querySelectorAll('[data-close]').forEach(btn=>{
     btn.addEventListener('click',()=>document.getElementById(btn.dataset.close).classList.remove('show'));
