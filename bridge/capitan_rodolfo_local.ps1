@@ -487,7 +487,7 @@ try {
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitan Rodolfo">
     <button id="tankHotspot" class="tankHotspot" type="button">TANQUES ($tankCount)</button>
-    <section id="tankPanel" class="tankOverlay">
+    <section id="tankPanel" class="tankOverlay" style="display:none">
       <div class="tankTitle"><span>TANQUES REALES</span><strong>$tankCount</strong></div>
       <div class="tankList">$tankCards</div>
     </section>
