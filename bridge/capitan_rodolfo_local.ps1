@@ -97,7 +97,7 @@ function Save-SqlProfile {
     $enc = ""
     if($Auth -eq "sql" -and -not [string]::IsNullOrWhiteSpace($Password)){
         $enc = ConvertTo-SecureString $Password -AsPlainText -Force | ConvertFrom-SecureString
-    } elseif(Test-Path $ProfilePath) {
+    } elseif($Auth -eq "sql" -and (Test-Path $ProfilePath)) {
         try { $old = Get-Content $ProfilePath -Raw | ConvertFrom-Json; $enc = [string]$old.password } catch {}
     }
     $obj = [ordered]@{
@@ -149,7 +149,9 @@ function Ensure-ActiveSession {
             $sess = $Sessions[$script:ActiveSessionId]
             if($sess.connection.State -eq [System.Data.ConnectionState]::Open){
                 $p = Load-SqlProfile
-                return @{sessionId=$script:ActiveSessionId;server=$sess.server;auth=$sess.auth;user=$sess.user;databases=$sess.databases;database=if($p){[string]$p.database}else{""}}
+                $db = ""
+                if($p){ $db = [string]$p.database }
+                return @{sessionId=$script:ActiveSessionId;server=$sess.server;auth=$sess.auth;user=$sess.user;databases=$sess.databases;database=$db}
             }
         } catch {}
     }
@@ -159,7 +161,7 @@ function Ensure-ActiveSession {
     $pw = Unprotect-ProfilePassword $p
     try {
         $state = Open-SqlSession -Server ([string]$p.server) -Auth ([string]$p.auth) -User ([string]$p.user) -Password $pw
-        $state.database = [string]$p.database
+        $state["database"] = [string]$p.database
         return $state
     } catch {
         return $null
