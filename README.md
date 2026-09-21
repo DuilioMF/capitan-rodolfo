@@ -6,12 +6,12 @@ Centro de control visual de DoingLio para estaciones de servicio.
 
 ## Estado verificable
 
-- Versión actual en GitHub: **v16**.
+- Versión actual en GitHub: **v17**.
 - Repositorio: `DuilioMF/capitan-rodolfo`.
 - Rama principal: `main`.
 - Tarjeta operativa: https://trello.com/c/M87mZT1d
 - Conexión SQL local: `DUILIO\\SQLEXPRESS` mediante bridge en `127.0.0.1:8787`.
-- URL web de prueba v16: https://capitan-rodolfo.revalsoftia.chatgpt.site/
+- URL web actual: https://capitan-rodolfo.revalsoftia.chatgpt.site/
 - Dominio objetivo: https://rodolfo.doinglio.com.ar
 
 > La v16 está versionada en GitHub. La publicación definitiva en el dominio objetivo todavía requiere verificación final desde tu PC.
@@ -25,9 +25,9 @@ Centro de control visual de DoingLio para estaciones de servicio.
 
 ## Proyecto
 
-- `index.html`: tablero visual.
-- `conexion-sql.html`: conexión, selección de base y listado de tablas.
-- `dist/`: versión publicable.
+- `index.html`: pantalla inicial DoingLio.
+- `conexion-sql.html`: conexión obligatoria, selección de base y listado de tablas.
+- `mapa-vivo.html`: pantalla visual habilitada solo después de validar SQL.\n- `dist/`: versión publicable.
 - `bridge/`: bridge Python local para SQL Server.
 - `connector-node/`: conector alternativo conservado para trazabilidad.
 
@@ -41,4 +41,4 @@ Centro de control visual de DoingLio para estaciones de servicio.
 
 - **v14**: primera publicación verificada por Sites.
 - **v15**: evolución visual de estación viva.
-- **v16**: corrección del acceso al bridge local, prueba `127.0.0.1` / `localhost`, diagnóstico mejorado y botón 👁 / 🙈 en contraseña.
+- **v17**: corrección del acceso al bridge local, prueba `127.0.0.1` / `localhost`, diagnóstico mejorado y botón 👁 / 🙈 en contraseña.
