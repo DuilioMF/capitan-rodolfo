@@ -10,6 +10,7 @@ ALLOWED_ORIGINS = {
     "https://doinglio.com.ar",
     "https://doinglio.revalsoftia.chatgpt.site",
     "https://doinglio.revalsoftia.com.ar",
+    "https://apqgrwudkfytwikrsivd.supabase.co",
     "null",
 }
 
