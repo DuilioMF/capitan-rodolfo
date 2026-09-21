@@ -1,4 +1,4 @@
-# Capitán Rodolfo v14
+# Capitán Rodolfo v15
 
 Aplicación de DoingLio para estaciones de servicio.
 
@@ -10,8 +10,8 @@ Cambios de esta versión:
 
 - La página inicial ya **no muestra ni pide conexión SQL**.
 - La conexión quedó en **Configuración de datos** (`conexion-sql.html`).
-- Se agregó versionado visible: **v14**.
-- Se agregó `rodolfo.doinglio.com.ar` como origen autorizado.
+- Versionado visible actualizado a **v15**.
+- Se conserva `rodolfo.doinglio.com.ar` y se admiten los previews propios de DoingLio/Revalsoft IA para evitar `Failed to fetch`.
 - Se recuerdan servidor y usuario SQL en el equipo; la contraseña nunca se guarda.
 - Servidor sugerido: `DUILIO\SQLEXPRESS`.
 - El bridge local usa `Encrypt=yes;TrustServerCertificate=yes`.
