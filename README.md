@@ -4,6 +4,12 @@
 
 Centro de control visual de DoingLio para estaciones de servicio.
 
+## Arranque rápido SQL
+
+Descargá y ejecutá `INICIAR_CAPITAN_RODOLFO.bat`. El launcher actualiza el bridge desde GitHub, lo inicia en `127.0.0.1:8787` y abre la pantalla de conexión SQL automáticamente.
+
+[Descargar INICIAR_CAPITAN_RODOLFO.bat](https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/INICIAR_CAPITAN_RODOLFO.bat)
+
 ## Estado verificable
 
 - Versión actual en GitHub: **v19**.
