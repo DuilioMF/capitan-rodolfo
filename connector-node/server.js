@@ -3,6 +3,7 @@ const sql = require("mssql");
 
 const app = express();
 const allowedOrigins = new Set([
+  "https://capitan-rodolfo.revalsoftia.chatgpt.site",
   "https://rodolfo.doinglio.com.ar",
   "https://doinglio.com.ar",
   "https://doinglio.revalsoftia.chatgpt.site",
