@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "22"
+$Version = "23"
 $Sessions = @{}
 
 function Send-Response {
@@ -105,32 +105,56 @@ input,select{width:100%;background:#0f0f12;border:1px solid #3a3a41;color:white;
 button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;background:linear-gradient(135deg,#ff7a00,#ff9630);font-weight:900;cursor:pointer}
 .status{margin-top:14px;padding:11px;border:1px solid var(--line);border-radius:11px;color:var(--muted);font-size:13px}.ok{color:#86e8b2;border-color:#235f43}.bad{color:#ffaaaa;border-color:#6b2a2a}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}.list{display:grid;gap:8px;max-height:520px;overflow:auto}.item,.table{border:1px solid #34343b;background:#121216;color:#eee;padding:10px;border-radius:10px}.item{cursor:pointer}.item:hover,.item.active{border-color:var(--orange);background:#21170f}
-.note{margin-top:15px;font-size:12px;color:var(--muted)}@media(max-width:900px){.grid,.cols{grid-template-columns:1fr}}
+.note{margin-top:15px;font-size:12px;color:var(--muted)}
+.heroTop{display:flex;align-items:center;justify-content:space-between;gap:18px}
+.rodolfoMini{position:relative;width:118px;height:108px;flex:0 0 118px}
+.rCap{position:absolute;left:22px;top:2px;width:76px;height:34px;background:var(--orange);border:4px solid #111116;border-radius:50% 50% 12% 12%;z-index:3}
+.rCap:after{content:"";position:absolute;right:-28px;bottom:-3px;width:48px;height:11px;background:var(--orange);border:4px solid #111116;border-radius:50%}
+.rHead{position:absolute;left:35px;top:28px;width:58px;height:64px;background:#f0aa78;border:4px solid #111116;border-radius:44% 44% 46% 46%}
+.rEye{position:absolute;top:51px;width:6px;height:8px;background:#111;border-radius:50%;z-index:4}.rEye.l{left:52px}.rEye.r{left:74px}
+.rMust{position:absolute;left:49px;top:70px;width:32px;height:10px;background:#19191d;border-radius:50%;z-index:4}
+.rBody{position:absolute;left:28px;bottom:0;width:72px;height:32px;background:#2b2b33;border:4px solid #111116;border-radius:14px 14px 8px 8px}
+.rTie{position:absolute;left:60px;bottom:2px;width:12px;height:30px;background:var(--orange);clip-path:polygon(35% 0,65% 0,85% 75%,50% 100%,15% 75%);z-index:4}
+.dispatchCard{margin-top:18px;background:#17171bf2;border:1px solid var(--line);border-radius:20px;padding:20px}
+.dispatchHead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.dispatchHead h2{margin:0}.query{font-size:11px;color:#ffb06a}
+.tableWrap{overflow:auto;max-height:420px;border:1px solid #34343b;border-radius:12px}.dataGrid{border-collapse:collapse;width:100%;font-size:12px;min-width:720px}.dataGrid th,.dataGrid td{padding:9px 10px;border-bottom:1px solid #2b2b31;border-right:1px solid #24242a;text-align:left;white-space:nowrap}.dataGrid th{position:sticky;top:0;background:#21170f;color:#ffb06a;z-index:1}.dataGrid td{background:#111116}
+.continueMap{display:none;margin-top:14px;background:linear-gradient(135deg,#2dd9ff,#34f5a5);color:#061116}.continueMap.show{display:block}
+@media(max-width:900px){.grid,.cols{grid-template-columns:1fr}.rodolfoMini{transform:scale(.9);transform-origin:right center}}
 </style>
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v22</span></div>
+<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v23</span></div>
 <div class="grid">
 <section class="card">
-<h1>Conexión SQL</h1>
-<div class="muted">Esta pantalla corre dentro de tu PC. No depende de CORS ni del acceso a red local del navegador.</div>
+<div class="heroTop">
+<div><h1>Conexión SQL</h1><div class="muted">Esta pantalla corre dentro de tu PC. No depende de CORS ni del acceso a red local del navegador.</div></div>
+<div class="rodolfoMini" aria-label="Capitán Rodolfo">
+  <div class="rCap"></div><div class="rHead"></div><div class="rEye l"></div><div class="rEye r"></div><div class="rMust"></div><div class="rBody"></div><div class="rTie"></div>
+</div>
+</div>
 <label>Servidor / instancia</label><input id="server" value="$DefaultServer">
 <label>Autenticación</label>
 <select id="auth"><option value="sql">Usuario y contraseña SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v22 listo.</div>
+<div id="status" class="status">Conector local v23 listo.</div>
+<button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo →</button>
 <div class="note">La contraseña solo se usa para abrir la conexión SQL y no se guarda en esta página.</div>
 </section>
 <section class="card">
 <div class="cols"><div><h3>Bases</h3><div id="dbs" class="list"><div class="item">Conectate para ver bases</div></div></div><div><h3>Tablas</h3><div id="tables" class="list"><div class="table">Seleccioná una base</div></div></div></div>
 </section>
 </div>
+<section class="dispatchCard">
+  <div class="dispatchHead"><h2>Despachos abiertos</h2><span class="query">SELECT * FROM depachos WHERE estadovta = 0</span></div>
+  <div id="dispatches" class="muted">Seleccioná una base para ver los despachos.</div>
+</section>
 </div>
 <script>
 let sessionId=null;
-const s=document.getElementById('status'), dbs=document.getElementById('dbs'), tables=document.getElementById('tables');
+const s=document.getElementById('status'), dbs=document.getElementById('dbs'), tables=document.getElementById('tables'), dispatches=document.getElementById('dispatches'), goMap=document.getElementById('goMap');
+let selectedDatabase=null;
 function status(m,k=''){s.textContent=m;s.className='status '+k}
 document.getElementById('auth').onchange=e=>document.getElementById('sqlCreds').style.display=e.target.value==='windows'?'none':'block';
 async function api(path,body){
@@ -147,13 +171,36 @@ document.getElementById('connect').onclick=async()=>{
 };
 async function loadTables(database,el){
  try{
-  [...document.querySelectorAll('#dbs .item')].forEach(x=>x.classList.remove('active'));el.classList.add('active');tables.innerHTML='<div class="table">Cargando…</div>';
-  const d=await api('/api/tables',{sessionId,database});tables.innerHTML='';
+  selectedDatabase=database; goMap.classList.remove('show');
+  [...document.querySelectorAll('#dbs .item')].forEach(x=>x.classList.remove('active'));el.classList.add('active');
+  tables.innerHTML='<div class="table">Cargando…</div>';
+  dispatches.innerHTML='<div class="muted">Cargando despachos abiertos…</div>';
+  const d=await api('/api/tables',{sessionId,database});
+  tables.innerHTML='';
   d.tables.forEach(x=>{const t=document.createElement('div');t.className='table';t.textContent=x.schema+'.'+x.name;tables.appendChild(t)});
-  status('Base '+database+' validada · '+d.tables.length+' tablas · entrando al Mapa Vivo…','ok');
-  setTimeout(()=>{ location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(database); },900);
- }catch(e){status('Error: '+e.message,'bad')}
+  if(!d.tables.length) tables.innerHTML='<div class="table">No hay tablas visibles</div>';
+
+  const dp=await api('/api/dispatches',{sessionId,database});
+  renderDispatches(dp);
+  status('Base '+database+' validada · '+d.tables.length+' tablas · '+dp.rows.length+' despachos abiertos','ok');
+  goMap.classList.add('show');
+ }catch(e){
+  dispatches.innerHTML='<div class="bad">Error al leer despachos: '+e.message+'</div>';
+  status('Error: '+e.message,'bad')
+ }
 }
+function renderDispatches(data){
+ dispatches.innerHTML='';
+ if(!data.rows||!data.rows.length){dispatches.innerHTML='<div class="muted">No hay despachos con estadovta = 0.</div>';return}
+ const wrap=document.createElement('div');wrap.className='tableWrap';
+ const table=document.createElement('table');table.className='dataGrid';
+ const thead=document.createElement('thead'),trh=document.createElement('tr');
+ data.columns.forEach(c=>{const th=document.createElement('th');th.textContent=c;trh.appendChild(th)});thead.appendChild(trh);table.appendChild(thead);
+ const tbody=document.createElement('tbody');
+ data.rows.forEach(row=>{const tr=document.createElement('tr');data.columns.forEach(c=>{const td=document.createElement('td');const v=row[c];td.textContent=(v===null||v===undefined)?'':String(v);tr.appendChild(td)});tbody.appendChild(tr)});
+ table.appendChild(tbody);wrap.appendChild(table);dispatches.appendChild(wrap);
+}
+goMap.onclick=()=>{if(sessionId&&selectedDatabase) location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(selectedDatabase)};
 </script>
 </body></html>
 "@
@@ -196,7 +243,7 @@ try {
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:#07111a;border-bottom:1px solid var(--line);position:sticky;top:0}.left{display:flex;align-items:center;gap:12px}.badge{background:#11212c;border:1px solid #2b5267;border-radius:999px;padding:7px 11px;font-size:12px}.ok{color:var(--green)}.back{color:var(--orange);text-decoration:none;font-weight:800}.ver{color:#061116;background:var(--orange);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:900}.stage{padding:14px}.stage img{display:block;width:100%;height:auto;border:1px solid #173244;border-radius:18px;background:#050b12}.note{padding:0 18px 18px;color:var(--muted);font-size:13px}
 </style></head>
 <body>
-<header class="top"><div class="left"><a class="back" href="/">← SQL</a><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v22</span></header>
+<header class="top"><div class="left"><a class="back" href="/">← SQL</a><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v23</span></header>
 <main class="stage"><img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitán Rodolfo"></main>
 <div class="note">Conexión SQL validada localmente. Los valores visuales siguen siendo de maqueta hasta conectar las tablas y campos reales.</div>
 </body></html>
