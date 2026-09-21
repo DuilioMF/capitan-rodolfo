@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
-title Capitan Rodolfo v23
+title Capitan Rodolfo v24
 
 set "APPROOT=%LOCALAPPDATA%\CapitanRodolfo"
 set "LOCALPS=%APPROOT%\capitan_rodolfo_local.ps1"
@@ -13,7 +13,7 @@ color 0E
 cls
 echo.
 echo ============================================================
-echo                  CAPITAN RODOLFO v23
+echo                  CAPITAN RODOLFO v24
 echo ============================================================
 echo.
 echo   Preparando conector SQL local...
@@ -26,7 +26,7 @@ schtasks /End /TN "%TASKNAME%" >nul 2>nul
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":8787 .*LISTENING"') do taskkill /PID %%P /F >nul 2>nul
 timeout /t 1 >nul
 
-echo   [2/4] Descargando conector v23...
+echo   [2/4] Descargando conector v24...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-WebRequest -UseBasicParsing '%REMOTE%' -OutFile '%LOCALPS%'; exit 0 } catch { Write-Host $_.Exception.Message; exit 1 }"
 if errorlevel 1 goto :fatal
 
@@ -35,11 +35,11 @@ schtasks /Delete /F /TN "%TASKNAME%" >nul 2>nul
 schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%TASKNAME%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%LOCALPS%\"" >nul 2>nul
 
 echo   [4/4] Iniciando...
-start "Capitan Rodolfo Local v23" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%LOCALPS%"
+start "Capitan Rodolfo Local v24" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%LOCALPS%"
 
 set "OK=0"
 for /L %%I in (1,1,20) do (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-RestMethod -Uri '%HEALTH%' -TimeoutSec 1; if($r.version -eq '22'){exit 0}else{exit 1} } catch { exit 1 }"
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-RestMethod -Uri '%HEALTH%' -TimeoutSec 1; if($r.version -eq '24'){exit 0}else{exit 1} } catch { exit 1 }"
   if not errorlevel 1 (
     set "OK=1"
     goto :ready
@@ -50,7 +50,7 @@ for /L %%I in (1,1,20) do (
 :ready
 if "!OK!"=="1" (
   echo.
-  echo   Conector local v23 OK.
+  echo   Conector local v24 OK.
   echo   Abriendo conexion SQL...
   start "" "%LOCALURL%"
   timeout /t 2 >nul
@@ -61,7 +61,7 @@ if "!OK!"=="1" (
 color 0C
 echo.
 echo ============================================================
-echo   No se pudo iniciar el conector local v23.
+echo   No se pudo iniciar el conector local v24.
 echo ============================================================
 echo.
 echo   Mandame esta pantalla.
