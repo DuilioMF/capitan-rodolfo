@@ -5,6 +5,7 @@ app = Flask(__name__)
 sessions = {}
 
 ALLOWED_ORIGINS = {
+    "https://capitan-rodolfo.revalsoftia.chatgpt.site",
     "https://rodolfo.doinglio.com.ar",
     "https://doinglio.com.ar",
     "https://doinglio.revalsoftia.chatgpt.site",
@@ -41,7 +42,7 @@ def driver_name():
 
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "14"})
+    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "15"})
 
 @app.post("/api/connect")
 def connect():

@@ -1,4 +1,4 @@
-# Capitán Rodolfo v14
+# Capitán Rodolfo v15
 
 Aplicación de DoingLio para estaciones de servicio.
 
@@ -8,6 +8,9 @@ Aplicación de DoingLio para estaciones de servicio.
 
 Cambios de esta versión:
 
+- Se incorporó **Estación Viva**: recorrido energético animado, activación secuencial del circuito, niveles de tanques, surtidor, auto, cobro y KPIs en movimiento.
+- Se respetan las preferencias de movimiento reducido del dispositivo.
+- Se autorizó el dominio publicado de Capitán Rodolfo en el bridge local y se mejoró el diagnóstico de conexión.
 - La página inicial ya **no muestra ni pide conexión SQL**.
 - La conexión quedó en **Configuración de datos** (`conexion-sql.html`).
 - Se agregó versionado visible: **v14**.
