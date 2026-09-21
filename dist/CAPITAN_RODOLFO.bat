@@ -1,45 +1,56 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
-title Capitan Rodolfo v31
 
 set "APPROOT=%LOCALAPPDATA%\CapitanRodolfo"
 set "LOCALPS=%APPROOT%\capitan_rodolfo_local.ps1"
+set "VERSION_FILE=%APPROOT%\VERSION"
+set "VERSION_REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/VERSION"
 set "REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/bridge/capitan_rodolfo_local.ps1"
 set "HEALTH=http://127.0.0.1:8787/health"
 set "LOCALURL=http://127.0.0.1:8787/"
 set "TASKNAME=CapitanRodolfoLocal"
 
-color 0E
-cls
+if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
+
 echo.
 echo ============================================================
-echo                  CAPITAN RODOLFO v31
+echo                  CAPITAN RODOLFO
 echo ============================================================
 echo.
 echo   Preparando conector SQL local...
 echo.
 
-if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
+echo   [1/5] Leyendo version actual...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $v=(New-Object Net.WebClient).DownloadString('%VERSION_REMOTE%').Trim(); if(-not $v){throw 'VERSION vacia'}; [IO.File]::WriteAllText('%VERSION_FILE%',$v,[Text.Encoding]::ASCII); exit 0 } catch { Write-Host $_.Exception.Message; exit 1 }"
+if errorlevel 1 goto :fatal
 
-echo   [1/4] Cerrando conectores anteriores...
+set "APP_VERSION="
+for /f "usebackq delims=" %%V in ("%VERSION_FILE%") do if not defined APP_VERSION set "APP_VERSION=%%V"
+if not defined APP_VERSION goto :fatal
+
+title Capitan Rodolfo v!APP_VERSION!
+echo   Version objetivo: v!APP_VERSION!
+echo.
+
+echo   [2/5] Cerrando conectores anteriores...
 schtasks /End /TN "%TASKNAME%" >nul 2>nul
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":8787 .*LISTENING"') do taskkill /PID %%P /F >nul 2>nul
 timeout /t 1 >nul
 
-echo   [2/4] Descargando conector v31...
+echo   [3/5] Descargando conector...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $wc=New-Object Net.WebClient; $b=$wc.DownloadData('%REMOTE%'); if($b.Length -ge 3 -and $b[0] -eq 239 -and $b[1] -eq 187 -and $b[2] -eq 191){ [IO.File]::WriteAllBytes('%LOCALPS%',$b) } else { $bom=[byte[]](239,187,191); [IO.File]::WriteAllBytes('%LOCALPS%',$bom+$b) }; exit 0 } catch { Write-Host $_.Exception.Message; exit 1 }"
 if errorlevel 1 goto :fatal
 
-echo   [3/4] Configurando arranque automatico...
+echo   [4/5] Configurando arranque automatico...
 schtasks /Delete /F /TN "%TASKNAME%" >nul 2>nul
 schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%TASKNAME%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%LOCALPS%\"" >nul 2>nul
 
-echo   [4/4] Iniciando...
-start "Capitan Rodolfo Local v31" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%LOCALPS%"
+echo   [5/5] Iniciando conector v!APP_VERSION!...
+start "Capitan Rodolfo Local" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%LOCALPS%"
 
 set "OK=0"
 for /L %%I in (1,1,20) do (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-RestMethod -Uri '%HEALTH%' -TimeoutSec 1; if($r.version -eq '31'){exit 0}else{exit 1} } catch { exit 1 }"
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-RestMethod -Uri '%HEALTH%' -TimeoutSec 1; if([string]$r.version -eq '!APP_VERSION!'){exit 0}else{exit 1} } catch { exit 1 }"
   if not errorlevel 1 (
     set "OK=1"
     goto :ready
@@ -50,8 +61,8 @@ for /L %%I in (1,1,20) do (
 :ready
 if "!OK!"=="1" (
   echo.
-  echo   Conector local v31 OK.
-  echo   Abriendo conexion SQL...
+  echo   Conector local v!APP_VERSION! OK.
+  echo   Abriendo Capitan Rodolfo...
   start "" "%LOCALURL%"
   timeout /t 2 >nul
   exit /b 0
@@ -61,7 +72,7 @@ if "!OK!"=="1" (
 color 0C
 echo.
 echo ============================================================
-echo   No se pudo iniciar el conector local v31.
+echo   No se pudo iniciar o actualizar Capitan Rodolfo.
 echo ============================================================
 echo.
 echo   Mandame esta pantalla.
