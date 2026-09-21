@@ -363,12 +363,39 @@ try {
 
           $cn = $sess.connection
           $cn.ChangeDatabase($database)
+
+          $dispatchIdColumn = $null
+          $idMetaCmd = $cn.CreateCommand()
+          $idMetaCmd.CommandText = @"
+SELECT TOP 1 c.name
+FROM sys.columns c
+WHERE c.object_id = OBJECT_ID('dbo.Despachos')
+  AND (
+    LOWER(REPLACE(c.name,'_','')) IN ('iddespacho','iddespcho')
+    OR LOWER(c.name) LIKE '%id%desp%'
+    OR LOWER(c.name) LIKE '%desp%id%'
+  )
+ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
+              WHEN LOWER(REPLACE(c.name,'_',''))='iddespcho' THEN 1
+              ELSE 2 END, c.column_id;
+"@
+          $dispatchIdValue = $idMetaCmd.ExecuteScalar()
+          if($null -ne $dispatchIdValue -and $dispatchIdValue -isnot [DBNull]){
+            $dispatchIdColumn = [string]$dispatchIdValue
+          }
+
+          $dispatchIdSelect = "NULL AS id_despacho"
+          if(-not [string]::IsNullOrWhiteSpace($dispatchIdColumn)){
+            $dispatchIdSelect = "d.[" + $dispatchIdColumn.Replace("]","]]") + "] AS id_despacho"
+          }
+
           $cmd = $cn.CreateCommand()
-          $cmd.CommandText = "SELECT id_sale venta, surtidor, manguera, d.codart, p.descriimpresion, Litros, PPU, pesos, d.Ultime fecha, Ultime as hora FROM Despachos d INNER JOIN prod p ON d.codart = p.codart;"
+          $cmd.CommandText = "SELECT " + $dispatchIdSelect + ", id_sale venta, surtidor, manguera, d.codart, p.descriimpresion, Litros, PPU, pesos, d.Ultime fecha, Ultime as hora FROM Despachos d INNER JOIN prod p ON d.codart = p.codart;"
           $reader = $cmd.ExecuteReader()
           $dispatchRows = New-Object System.Collections.Generic.List[object]
           while($reader.Read()){
             $dispatchRows.Add([pscustomobject]@{
+              id_despacho = if($reader["id_despacho"] -is [DBNull]){""}else{[string]$reader["id_despacho"]}
               venta = if($reader["venta"] -is [DBNull]){""}else{[string]$reader["venta"]}
               surtidor = if($reader["surtidor"] -is [DBNull]){""}else{[string]$reader["surtidor"]}
               manguera = if($reader["manguera"] -is [DBNull]){""}else{[string]$reader["manguera"]}
@@ -459,6 +486,7 @@ try {
           $safeDb = [System.Net.WebUtility]::HtmlEncode($database)
           $cards = ""
           foreach($d in $dispatchRows){
+            $idDespacho = [System.Net.WebUtility]::HtmlEncode([string]$d.id_despacho)
             $venta = [System.Net.WebUtility]::HtmlEncode([string]$d.venta)
             $surt = [System.Net.WebUtility]::HtmlEncode([string]$d.surtidor)
             $mang = [System.Net.WebUtility]::HtmlEncode([string]$d.manguera)
@@ -467,7 +495,7 @@ try {
             $ppu = [System.Net.WebUtility]::HtmlEncode([string]$d.ppu)
             $pes = [System.Net.WebUtility]::HtmlEncode([string]$d.pesos)
             $hora = [System.Net.WebUtility]::HtmlEncode([string]$d.hora)
-            $cards += "<button type='button' class='dispatchRow salePick' data-venta='$venta' data-surtidor='$surt' data-manguera='$mang' data-producto='$prod' data-litros='$lit' data-ppu='$ppu' data-pesos='$pes' data-hora='$hora'><b>#$venta</b><span>Surt. $surt - Mang. $mang</span><span class='product'>$prod</span><span>$lit L - PPU $ppu - <strong>&#36;$pes</strong></span><small>$hora</small></button>"
+            $cards += "<button type='button' class='dispatchRow salePick' data-id-despacho='$idDespacho' data-venta='$venta' data-surtidor='$surt' data-manguera='$mang' data-producto='$prod' data-litros='$lit' data-ppu='$ppu' data-pesos='$pes' data-hora='$hora'><b>#$venta</b><span>Surt. $surt - Mang. $mang</span><span class='product'>$prod</span><span>$lit L - PPU $ppu - <strong>&#36;$pes</strong></span><small>$hora</small></button>"
           }
           if([string]::IsNullOrWhiteSpace($cards)){
             $cards = "<div class='empty'>Sin despachos para mostrar.</div>"
@@ -686,6 +714,7 @@ try {
     btn.addEventListener('click',()=>{
       document.querySelectorAll('.salePick').forEach(x=>x.classList.remove('active')); btn.classList.add('active');
       selectedSale={
+        idDespacho:btn.dataset.idDespacho||'',
         venta:btn.dataset.venta,
         surtidor:btn.dataset.surtidor,
         manguera:btn.dataset.manguera,
@@ -710,13 +739,52 @@ try {
   });
 
   if(viewPaymentBtn){
-    viewPaymentBtn.addEventListener('click',()=>{
+    viewPaymentBtn.addEventListener('click',async()=>{
       if(!selectedSale) return;
+      paymentPanel.classList.add('show');
       paymentBody.innerHTML=
         '<span>Venta</span><b>#'+selectedSale.venta+'</b>'+
         '<span>Surtidor</span><b>'+selectedSale.surtidor+'</b>'+
-        '<span>Importe</span><b>$ '+selectedSale.pesos+'</b>';
-      paymentPanel.classList.add('show');
+        '<span>Importe</span><b>$ '+selectedSale.pesos+'</b>'+
+        '<span>Pago</span><b>Buscando comprobante relacionado...</b>';
+      try{
+        const r=await fetch('/api/payment',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({sessionId:'$sid',database:'$safeDb',idDespacho:selectedSale.idDespacho,venta:selectedSale.venta})
+        });
+        const d=await r.json();
+        if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
+        if(!d.resolved){
+          paymentBody.innerHTML=
+            '<span>Venta</span><b>#'+selectedSale.venta+'</b>'+
+            '<span>id_despacho</span><b>'+escHtml(selectedSale.idDespacho||'NO DETECTADO')+'</b>'+
+            '<span>Relacion</span><b>No pude resolver automaticamente el comprobante.</b>'+
+            '<span>Columnas encontradas</span><b>'+escHtml((d.columns||[]).join(', '))+'</b>'+
+            '<span>Detalle</span><b>'+escHtml(d.reason||'Sin detalle')+'</b>';
+          return;
+        }
+        const p=d.payment||{};
+        const c=d.comprobante||{};
+        paymentBody.innerHTML=
+          '<span>Comprobante</span><b>'+escHtml((c.letra||'')+' '+(c.sucursal||'')+'-'+(c.numero||''))+'</b>'+
+          '<span>Mercado Pago</span><b>$ '+escHtml(p.MercadoPago||0)+'</b>'+
+          '<span>App YPF</span><b>$ '+escHtml(p.AppYPF||0)+'</b>'+
+          '<span>Shell Box</span><b>$ '+escHtml(p.ShellBox||0)+'</b>'+
+          '<span>App Puma</span><b>$ '+escHtml(p.AppPuma||0)+'</b>'+
+          '<span>Clover</span><b>$ '+escHtml(p.Clover||0)+'</b>'+
+          '<span>PayWay</span><b>$ '+escHtml(p.PayWay||0)+'</b>'+
+          '<span>Cheques</span><b>$ '+escHtml(p.Cheques||0)+'</b>'+
+          '<span>Efectivo</span><b>$ '+escHtml(p.Efectivo||0)+'</b>'+
+          '<span>Total</span><b>$ '+escHtml(p.TOTAL||selectedSale.pesos||0)+'</b>'+
+          '<span>Vendedor</span><b>'+escHtml(p.Vendedor||'-')+'</b>';
+        const pending=document.querySelector('#paymentPanel .paymentPending');
+        if(pending) pending.textContent='Forma de pago obtenida desde RelacionCptsDespachos y la logica de PA_VentasFormasPago.';
+      }catch(e){
+        paymentBody.innerHTML=
+          '<span>Venta</span><b>#'+selectedSale.venta+'</b>'+
+          '<span>Error</span><b>'+escHtml(e.message||'No se pudo obtener la forma de pago')+'</b>';
+      }
     });
   }
 
@@ -1045,6 +1113,201 @@ ORDER BY s.name,t.name;
           $p = Load-SqlProfile
           if($p){ Save-SqlProfile -Server ([string]$p.server) -Auth ([string]$p.auth) -User ([string]$p.user) -Password "" -Database $database }
           Send-Json $stream 200 @{database=$database;tables=$rows}
+        } catch {
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/payment'){
+        try {
+          $data = $req.Body | ConvertFrom-Json
+          $sid = [string]$data.sessionId
+          $database = [string]$data.database
+          $idDespacho = [string]$data.idDespacho
+          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesion vencida. Volver a conectar.'}; continue }
+          $sess = $Sessions[$sid]
+          if($sess.databases -notcontains $database){ Send-Json $stream 403 @{error='Base no autorizada.'}; continue }
+          $cn = $sess.connection
+          $cn.ChangeDatabase($database)
+
+          $metaCmd = $cn.CreateCommand()
+          $metaCmd.CommandText = "SELECT c.name FROM sys.columns c WHERE c.object_id=OBJECT_ID('dbo.RelacionCptsDespachos') ORDER BY c.column_id;"
+          $mr = $metaCmd.ExecuteReader()
+          $relationColumns = @()
+          while($mr.Read()){ $relationColumns += [string]$mr.GetString(0) }
+          $mr.Close()
+          if($relationColumns.Count -eq 0){
+            Send-Json $stream 200 @{resolved=$false;reason='No existe dbo.RelacionCptsDespachos o no tiene columnas visibles.';columns=@()}
+            continue
+          }
+
+          function Normalize-LocalName([string]$name){
+            return ($name.ToLowerInvariant() -replace '[^a-z0-9]','')
+          }
+          function Pick-RelationColumn($columns,[string[]]$exact,[string[]]$contains){
+            foreach($e in $exact){
+              foreach($c in $columns){ if((Normalize-LocalName $c) -eq $e){ return $c } }
+            }
+            foreach($needle in $contains){
+              foreach($c in $columns){ if((Normalize-LocalName $c).Contains($needle)){ return $c } }
+            }
+            return $null
+          }
+
+          $dispatchCol = Pick-RelationColumn $relationColumns @('iddespacho','iddespcho') @('iddesp','despachoid','despacho')
+          if([string]::IsNullOrWhiteSpace($dispatchCol)){
+            Send-Json $stream 200 @{resolved=$false;reason='No pude identificar la columna que relaciona con Despachos.';columns=$relationColumns}
+            continue
+          }
+          if([string]::IsNullOrWhiteSpace($idDespacho)){
+            Send-Json $stream 200 @{resolved=$false;reason='El registro de Despachos no expuso su ID interno.';columns=$relationColumns}
+            continue
+          }
+
+          $relCmd = $cn.CreateCommand()
+          $relCmd.CommandText = "SELECT TOP 1 * FROM dbo.RelacionCptsDespachos WHERE ["+$dispatchCol.Replace("]","]]")+"] = @id;"
+          $null = $relCmd.Parameters.Add("@id",[System.Data.SqlDbType]::VarChar,100)
+          $relCmd.Parameters["@id"].Value = $idDespacho
+          $rr = $relCmd.ExecuteReader()
+          if(-not $rr.Read()){
+            $rr.Close()
+            Send-Json $stream 200 @{resolved=$false;reason='No encontre una fila en RelacionCptsDespachos para id_despacho='+$idDespacho;columns=$relationColumns}
+            continue
+          }
+          $rel = @{}
+          for($i=0;$i -lt $rr.FieldCount;$i++){
+            $name=[string]$rr.GetName($i)
+            $val=$rr.GetValue($i)
+            if($val -is [DBNull]){ $val=$null }
+            $rel[$name]=$val
+          }
+          $rr.Close()
+
+          $letterCol = Pick-RelationColumn $relationColumns @('letra','letter') @('letracomp','letracpte')
+          $branchCol = Pick-RelationColumn $relationColumns @('sucursal','pos') @('sucursalcomp','poscomp')
+          $numberCol = Pick-RelationColumn $relationColumns @('ncompro','numero','nrocompro','nrocomprobante','invoicenumber') @('ncompro','numerocomp','nrocomp','invoice')
+          $typeCol = Pick-RelationColumn $relationColumns @('tipo','type','tipocpte','tipocomprobante') @('tipocomp','tipocpte')
+
+          $letra = if($letterCol){[string]$rel[$letterCol]}else{''}
+          $sucursal = if($branchCol){[string]$rel[$branchCol]}else{''}
+          $numero = if($numberCol){[string]$rel[$numberCol]}else{''}
+          $tipo = if($typeCol){[string]$rel[$typeCol]}else{''}
+
+          if([string]::IsNullOrWhiteSpace($sucursal) -or [string]::IsNullOrWhiteSpace($numero)){
+            Send-Json $stream 200 @{resolved=$false;reason='Encontre la relacion, pero no pude identificar sucursal/numero de comprobante.';columns=$relationColumns;relation=$rel}
+            continue
+          }
+
+          $isTicket = (($tipo.ToUpperInvariant()).Contains('TICKET') -or $letra.ToUpperInvariant() -eq 'T')
+          $payCmd = $cn.CreateCommand()
+
+          if($isTicket){
+            $payCmd.CommandText = @"
+SELECT TOP 1
+ 'T' AS letra,
+ MT.sucursal,
+ MT.Numero AS NCOMPRO,
+ MT.turno AS Turno,
+ ISNULL(ROUND(MP_O.amount,2),0) AS MercadoPago,
+ ISNULL(ROUND(ypf_P.amount,2),0) AS AppYPF,
+ ISNULL(ROUND(SH_P.TotalAmount,2),0) AS ShellBox,
+ ISNULL(ROUND(PU_P.TotalTransaction-PU_P.Discounts,2),0) AS AppPuma,
+ ISNULL(ROUND(C_P.Amount,2),0) AS Clover,
+ ISNULL(ROUND(ISNULL(T.IMPORTETAR,0)-ISNULL(T.Extraccion,0),2),0) AS PayWay,
+ CAST(0 AS decimal(18,2)) AS Cheques,
+ ROUND(MT.TOTAL-(
+   ISNULL(ROUND(C_P.Amount,2),0)+ISNULL(ROUND(MP_O.amount,2),0)+ISNULL(ROUND(ypf_P.amount,2),0)+
+   ISNULL(ROUND(ISNULL(T.IMPORTETAR,0)-ISNULL(T.Extraccion,0),2),0)+
+   ISNULL(ROUND(SH_P.TotalAmount,2),0)+ISNULL(ROUND(PU_P.TotalTransaction,2),0)
+ ),2) AS Efectivo,
+ MT.TOTAL,
+ ISNULL(CAST(MT.Vendedor AS VARCHAR(8)),'0')+' - '+ISNULL(MV.RAZONSOC,'SIN VENDEDOR') AS Vendedor
+FROM (
+ SELECT Sucursal,Numero,turno,SUM(TOTAL) TOTAL,VENDEDOR
+ FROM Maetic
+ WHERE Sucursal=@Sucursal AND Numero=@Numero
+ GROUP BY Sucursal,Numero,turno,VENDEDOR
+) MT
+LEFT JOIN MP_OrdenPagoComprobante MP_C ON MT.SUCURSAL=MP_C.Sucursal AND MT.NUMERO=MP_C.Numero AND MP_C.Tipo='TICKET'
+LEFT JOIN MP_OrdenPago MP_O ON MP_C.ID_OrdenPago=MP_O.ID
+LEFT JOIN YPF_PaymentIntentionComprobante ypf_C ON MT.SUCURSAL=ypf_C.Sucursal AND MT.NUMERO=ypf_C.Numero AND ypf_C.Tipo='TICKET'
+LEFT JOIN YPF_PaymentIntention ypf_P ON ypf_P.ID=ypf_C.ID_PaymentIntention
+LEFT JOIN Shell_PayOrderComprobante SH_C ON MT.SUCURSAL=SH_C.Sucursal AND MT.NUMERO=SH_C.Numero AND SH_C.Tipo='TICKET'
+LEFT JOIN Shell_PayOrder SH_P ON SH_C.PayOrderId=SH_P.ID
+LEFT JOIN PUMA_PaymentComprobante PU_C ON MT.SUCURSAL=PU_C.Sucursal AND MT.NUMERO=PU_C.Numero AND PU_C.Tipo='TICKET'
+LEFT JOIN PUMA_Payment PU_P ON PU_C.PaymentId=PU_P.ID
+LEFT JOIN Tarjet T ON T.Letra='T' AND MT.SUCURSAL=T.Sucursal AND MT.NUMERO=T.NFACT
+LEFT JOIN Clover_PaymentInvoices C_PI ON MT.SUCURSAL=C_PI.Pos AND MT.NUMERO=C_PI.InvoiceNumber AND C_PI.Type='TICKET'
+LEFT JOIN Clover_Payments C_P ON C_P.Id=C_PI.CloverPaymentId
+LEFT JOIN Maeven MV ON MV.VENDEDOR=MT.VENDEDOR;
+"@
+          } else {
+            if([string]::IsNullOrWhiteSpace($letra)){
+              Send-Json $stream 200 @{resolved=$false;reason='Encontre sucursal y numero, pero falta letra/tipo para distinguir factura de ticket.';columns=$relationColumns;relation=$rel}
+              continue
+            }
+            $payCmd.CommandText = @"
+SELECT TOP 1
+ M.letra,M.sucursal,M.NCOMPRO,M.turno AS Turno,
+ ISNULL(ROUND(MP_O.amount,2),0.00) AS MercadoPago,
+ ISNULL(ROUND(ypf_P.amount,2),0) AS AppYPF,
+ ISNULL(ROUND(SH_P.TotalAmount,2),0) AS ShellBox,
+ ISNULL(ROUND(PU_P.TotalTransaction-PU_P.Discounts,2),0) AS AppPuma,
+ ISNULL(ROUND(C_P.Amount,2),0) AS Clover,
+ ISNULL(ROUND(ISNULL(T.IMPORTETAR,0)-ISNULL(T.Extraccion,0),2),0) AS PayWay,
+ M.cheques AS Cheques,
+ CASE M.CONDVTA WHEN 2 THEN 0 ELSE
+ ROUND((M.TOTAL-(
+   ISNULL(ROUND(C_P.Amount,2),0)+ISNULL(ROUND(MP_O.amount,2),0)+ISNULL(ROUND(ypf_P.amount,2),0)+
+   ISNULL(ROUND(ISNULL(T.IMPORTETAR,0)-ISNULL(T.Extraccion,0),2),0)+
+   ISNULL(ROUND(SH_P.TotalAmount,2),0)+ISNULL(ROUND(PU_P.TotalTransaction,2),0)
+ )),2) END AS Efectivo,
+ M.TOTAL,
+ ISNULL(CAST(M.Vendedor AS VARCHAR(8)),'0')+' - '+ISNULL(MV.RAZONSOC,'SIN VENDEDOR') AS Vendedor
+FROM Maefac M
+LEFT JOIN MP_OrdenPagoComprobante MP_C ON M.LETRA=MP_C.Letra AND M.SUCURSAL=MP_C.Sucursal AND M.NCOMPRO=MP_C.Numero
+LEFT JOIN MP_OrdenPago MP_O ON MP_C.ID_OrdenPago=MP_O.ID
+LEFT JOIN YPF_PaymentIntentionComprobante ypf_C ON M.LETRA=ypf_C.Letra AND M.SUCURSAL=ypf_C.Sucursal AND M.NCOMPRO=ypf_C.Numero
+LEFT JOIN YPF_PaymentIntention ypf_P ON ypf_P.ID=ypf_C.ID_PaymentIntention
+LEFT JOIN Tarjet T ON M.LETRA=T.Letra AND M.SUCURSAL=T.Sucursal AND M.NCOMPRO=T.NFACT
+LEFT JOIN Shell_PayOrderComprobante SH_C ON M.LETRA=SH_C.Letra AND M.SUCURSAL=SH_C.Sucursal AND M.NCOMPRO=SH_C.Numero
+LEFT JOIN Shell_PayOrder SH_P ON SH_C.PayOrderId=SH_P.ID
+LEFT JOIN PUMA_PaymentComprobante PU_C ON M.LETRA=PU_C.Letra AND M.SUCURSAL=PU_C.Sucursal AND M.NCOMPRO=PU_C.Numero
+LEFT JOIN PUMA_Payment PU_P ON PU_C.PaymentId=PU_P.ID
+LEFT JOIN Clover_PaymentInvoices C_PI ON M.SUCURSAL=C_PI.Pos AND M.NCOMPRO=C_PI.InvoiceNumber AND C_PI.Letter=M.LETRA
+LEFT JOIN Clover_Payments C_P ON C_P.Id=C_PI.CloverPaymentId
+LEFT JOIN Maeven MV ON MV.VENDEDOR=M.VENDEDOR
+WHERE M.LETRA=@Letra AND M.SUCURSAL=@Sucursal AND M.NCOMPRO=@Numero;
+"@
+            $null=$payCmd.Parameters.Add("@Letra",[System.Data.SqlDbType]::VarChar,10)
+            $payCmd.Parameters["@Letra"].Value=$letra
+          }
+
+          $null=$payCmd.Parameters.Add("@Sucursal",[System.Data.SqlDbType]::VarChar,30)
+          $payCmd.Parameters["@Sucursal"].Value=$sucursal
+          $null=$payCmd.Parameters.Add("@Numero",[System.Data.SqlDbType]::VarChar,50)
+          $payCmd.Parameters["@Numero"].Value=$numero
+
+          $pr=$payCmd.ExecuteReader()
+          if(-not $pr.Read()){
+            $pr.Close()
+            Send-Json $stream 200 @{resolved=$false;reason='La relacion existe, pero no encontre el comprobante en Maefac/Maetic.';columns=$relationColumns;relation=$rel}
+            continue
+          }
+          $payment=@{}
+          for($i=0;$i -lt $pr.FieldCount;$i++){
+            $name=[string]$pr.GetName($i)
+            $val=$pr.GetValue($i)
+            if($val -is [DBNull]){$val=0}
+            $payment[$name]=$val
+          }
+          $pr.Close()
+          Send-Json $stream 200 @{
+            resolved=$true
+            dispatchColumn=$dispatchCol
+            relation=$rel
+            comprobante=@{letra=$letra;sucursal=$sucursal;numero=$numero;tipo=$tipo}
+            payment=$payment
+          }
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
         }
