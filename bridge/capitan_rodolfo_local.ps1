@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "24"
+$Version = "25"
 $Sessions = @{}
 $ActiveSessionId = $null
 $AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
@@ -39,6 +39,19 @@ function Send-Json {
     param($Stream, [int]$StatusCode, $Object)
     $json = $Object | ConvertTo-Json -Depth 6 -Compress
     Send-Response -Stream $Stream -StatusCode $StatusCode -ContentType "application/json; charset=utf-8" -Body $json
+}
+
+function Send-Redirect {
+    param([System.Net.Sockets.NetworkStream]$Stream,[string]$Location)
+    $nl = [Environment]::NewLine
+    $headers = "HTTP/1.1 302 Found" + $nl +
+      "Location: $Location" + $nl +
+      "Cache-Control: no-store" + $nl +
+      "Content-Length: 0" + $nl +
+      "Connection: close" + $nl + $nl
+    $bytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
+    $Stream.Write($bytes,0,$bytes.Length)
+    $Stream.Flush()
 }
 
 function Read-Request {
@@ -205,7 +218,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v24</span></div>
+<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v25</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
@@ -219,7 +232,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <select id="auth"><option value="sql">Usuario y contraseña SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v24 listo.</div>
+<div id="status" class="status">Conector local v25 listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo →</button>
 <div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contraseña se guarda cifrada por Windows para tu usuario.</div>
 </section>
@@ -282,8 +295,9 @@ async function loadTables(database,el){
 
   const dp=await api('/api/dispatches',{sessionId,database});
   renderDispatches(dp);
-  status('Base '+database+' validada · '+d.tables.length+' tablas · '+dp.rows.length+' despachos abiertos','ok');
+  status('Base '+database+' validada · entrando a Capitán Rodolfo…','ok');
   goMap.classList.add('show');
+  setTimeout(()=>{ location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(database); },500);
  }catch(e){
   dispatches.innerHTML='<div class="bad">Error al leer despachos: '+e.message+'</div>';
   status('Error: '+e.message,'bad')
@@ -332,7 +346,13 @@ try {
         }
       }
       elseif($req.Method -eq 'GET' -and ($pathOnly -eq '/' -or $pathOnly -eq '/index.html')){
-        Send-Response $stream 200 "text/html; charset=utf-8" (Get-HomeHtml)
+        $state = Ensure-ActiveSession
+        if($state -and -not [string]::IsNullOrWhiteSpace([string]$state.database)){
+          $target = "/mapa-vivo?sessionId=$([uri]::EscapeDataString([string]$state.sessionId))&database=$([uri]::EscapeDataString([string]$state.database))"
+          Send-Redirect $stream $target
+        } else {
+          Send-Response $stream 200 "text/html; charset=utf-8" (Get-HomeHtml)
+        }
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/mapa-vivo'){
         try {
@@ -342,24 +362,82 @@ try {
           if(-not $Sessions.ContainsKey($sid)){ throw "Sesión SQL no válida." }
           $sess = $Sessions[$sid]
           if($sess.databases -notcontains $database){ throw "Base no autorizada." }
+
+          $cn = $sess.connection
+          $cn.ChangeDatabase($database)
+          $cmd = $cn.CreateCommand()
+          $cmd.CommandText = "SELECT id_sale venta, surtidor, manguera, d.codart, p.descriimpresion, Litros, PPU, pesos, d.Ultime fecha, Ultime as hora FROM Despachos d INNER JOIN prod p ON d.codart = p.codart;"
+          $reader = $cmd.ExecuteReader()
+          $dispatchRows = New-Object System.Collections.Generic.List[object]
+          while($reader.Read()){
+            $dispatchRows.Add([pscustomobject]@{
+              venta = if($reader["venta"] -is [DBNull]){""}else{[string]$reader["venta"]}
+              surtidor = if($reader["surtidor"] -is [DBNull]){""}else{[string]$reader["surtidor"]}
+              manguera = if($reader["manguera"] -is [DBNull]){""}else{[string]$reader["manguera"]}
+              codart = if($reader["codart"] -is [DBNull]){""}else{[string]$reader["codart"]}
+              producto = if($reader["descriimpresion"] -is [DBNull]){""}else{[string]$reader["descriimpresion"]}
+              litros = if($reader["Litros"] -is [DBNull]){""}else{[string]$reader["Litros"]}
+              ppu = if($reader["PPU"] -is [DBNull]){""}else{[string]$reader["PPU"]}
+              pesos = if($reader["pesos"] -is [DBNull]){""}else{[string]$reader["pesos"]}
+              fecha = if($reader["fecha"] -is [DBNull]){""}else{([DateTime]$reader["fecha"]).ToString("dd/MM/yyyy HH:mm:ss")}
+              hora = if($reader["hora"] -is [DBNull]){""}else{([DateTime]$reader["hora"]).ToString("HH:mm:ss")}
+            })
+          }
+          $reader.Close()
+
           $safeDb = [System.Net.WebUtility]::HtmlEncode($database)
+          $cards = ""
+          foreach($d in $dispatchRows){
+            $venta = [System.Net.WebUtility]::HtmlEncode([string]$d.venta)
+            $surt = [System.Net.WebUtility]::HtmlEncode([string]$d.surtidor)
+            $mang = [System.Net.WebUtility]::HtmlEncode([string]$d.manguera)
+            $prod = [System.Net.WebUtility]::HtmlEncode([string]$d.producto)
+            $lit = [System.Net.WebUtility]::HtmlEncode([string]$d.litros)
+            $ppu = [System.Net.WebUtility]::HtmlEncode([string]$d.ppu)
+            $pes = [System.Net.WebUtility]::HtmlEncode([string]$d.pesos)
+            $hora = [System.Net.WebUtility]::HtmlEncode([string]$d.hora)
+            $cards += "<div class='dispatchRow'><b>#$venta</b><span>Surt. $surt · Mang. $mang</span><span class='product'>$prod</span><span>$lit L · PPU $ppu · <strong>$$pes</strong></span><small>$hora</small></div>"
+          }
+          if([string]::IsNullOrWhiteSpace($cards)){
+            $cards = "<div class='empty'>Sin despachos para mostrar.</div>"
+          }
+          $dispatchCount = $dispatchRows.Count
+
           $html = @"
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mapa Vivo · Capitán Rodolfo</title>
 <style>
 :root{--bg:#050b12;--panel:#09141e;--line:#254154;--orange:#ff7138;--cyan:#2dd9ff;--green:#34f5a5;--text:#eaf6ff;--muted:#7ea2bb}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:#07111a;border-bottom:1px solid var(--line);position:sticky;top:0}.left{display:flex;align-items:center;gap:12px}.badge{background:#11212c;border:1px solid #2b5267;border-radius:999px;padding:7px 11px;font-size:12px}.ok{color:var(--green)}.back{color:var(--orange);text-decoration:none;font-weight:800}.ver{color:#061116;background:var(--orange);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:900}.stage{padding:14px}.stage img{display:block;width:100%;height:auto;border:1px solid #173244;border-radius:18px;background:#050b12}.note{padding:0 18px 18px;color:var(--muted);font-size:13px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:#07111a;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.left{display:flex;align-items:center;gap:12px}.badge{background:#11212c;border:1px solid #2b5267;border-radius:999px;padding:7px 11px;font-size:12px}.ok{color:var(--green)}.ver{color:#061116;background:var(--orange);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:900}
+.stage{padding:14px}.mapWrap{position:relative;max-width:1600px;margin:auto}.mapWrap>img{display:block;width:100%;height:auto;border:1px solid #173244;border-radius:18px;background:#050b12}
+.dispatchOverlay{position:absolute;left:64.4%;top:60.4%;width:31.3%;height:18.5%;background:#07131df7;border:2px solid #2dd9ff;border-radius:18px;padding:12px 14px;overflow:hidden;box-shadow:0 8px 24px #0009}
+.dispatchTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;font-size:12px;letter-spacing:2px;color:#89a9bd}.dispatchTitle strong{color:#eaf6ff;letter-spacing:0}
+.dispatchList{height:calc(100% - 28px);overflow:auto;padding-right:5px}.dispatchRow{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;border-bottom:1px solid #173244;padding:6px 0;font-size:11px;white-space:nowrap}.dispatchRow b{color:#34f5a5}.dispatchRow .product{overflow:hidden;text-overflow:ellipsis}.dispatchRow strong{color:#ffb06a}.dispatchRow small{color:#7ea2bb}.empty{color:#7ea2bb;padding:14px 0}
+.tankBadge{position:absolute;left:26.7%;top:22%;background:#09141ef2;border:1px solid #254154;border-radius:999px;padding:7px 11px;font-size:12px;color:#7ea2bb}.tankBadge b{color:#eaf6ff}
+.note{padding:0 18px 18px;color:var(--muted);font-size:13px}
+@media(max-width:900px){.dispatchOverlay{position:static;width:auto;height:280px;margin-top:12px}.tankBadge{position:static;display:inline-block;margin:10px 0}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}}
 </style></head>
 <body>
-<header class="top"><div class="left"><a class="back" href="/">← SQL</a><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v24</span></header>
-<main class="stage"><img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitán Rodolfo"></main>
-<div class="note">Conexión SQL validada localmente. Los valores visuales siguen siendo de maqueta hasta conectar las tablas y campos reales.</div>
+<header class="top"><div class="left"><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v25</span></header>
+<main class="stage">
+  <div class="mapWrap">
+    <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitán Rodolfo">
+    <div class="tankBadge">Tanques: <b>pendiente consulta</b></div>
+    <section class="dispatchOverlay">
+      <div class="dispatchTitle"><span>DESPACHOS REALES</span><strong>$dispatchCount</strong></div>
+      <div class="dispatchList">$cards</div>
+    </section>
+  </div>
+</main>
+<div class="note">Los despachos ya vienen de SQL. La cantidad de tanques queda pendiente únicamente de la consulta de tanques.</div>
 </body></html>
 "@
           Send-Response $stream 200 "text/html; charset=utf-8" $html
         } catch {
-          Send-Response $stream 401 "text/html; charset=utf-8" "<h2>Sesión SQL no válida</h2><p>$([System.Net.WebUtility]::HtmlEncode($_.Exception.Message))</p><p><a href='/'>Volver a SQL</a></p>"
+          Send-Response $stream 401 "text/html; charset=utf-8" "<h2>Sesión SQL no válida</h2><p>$([System.Net.WebUtility]::HtmlEncode($_.Exception.Message))</p><p>Volvé a abrir Capitán Rodolfo para reconectar.</p>"
         }
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/connect'){
@@ -419,7 +497,7 @@ ORDER BY s.name,t.name;
           $cn = $sess.connection
           $cn.ChangeDatabase($database)
           $cmd = $cn.CreateCommand()
-          $cmd.CommandText = "SELECT * FROM Despachos WHERE estadovta = 0;"
+          $cmd.CommandText = "SELECT id_sale venta, surtidor, manguera, d.codart, p.descriimpresion, Litros, PPU, pesos, d.Ultime fecha, Ultime as hora FROM Despachos d INNER JOIN prod p ON d.codart = p.codart;"
           $reader = $cmd.ExecuteReader()
 
           $cols = @()
