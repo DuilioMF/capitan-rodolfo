@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "26"
+$Version = "27"
 $Sessions = @{}
 $ActiveSessionId = $null
 $AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
@@ -218,7 +218,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v26</span></div>
+<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v27</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
@@ -232,7 +232,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <select id="auth"><option value="sql">Usuario y contraseña SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v26 listo.</div>
+<div id="status" class="status">Conector local v27 listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo →</button>
 <div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contraseña se guarda cifrada por Windows para tu usuario.</div>
 </section>
@@ -391,6 +391,33 @@ try {
           $tankReader.Close()
           $tankCount = $tankRows.Count
 
+          $hoseCmd = $cn.CreateCommand()
+          $hoseCmd.CommandText = "SELECT s.N_TANQUE, t.DENOMINACION, s.MANGUERA, p.DESCRIIMPRESION FROM Surtan s INNER JOIN Tanque t ON s.N_TANQUE = t.N_TANQUE INNER JOIN prod p ON s.CODART = p.Codart;"
+          $hoseReader = $hoseCmd.ExecuteReader()
+          $hoseRows = New-Object System.Collections.Generic.List[object]
+          while($hoseReader.Read()){
+            $hoseRows.Add([pscustomobject]@{
+              tanque = if($hoseReader["N_TANQUE"] -is [DBNull]){""}else{[string]$hoseReader["N_TANQUE"]}
+              denominacion = if($hoseReader["DENOMINACION"] -is [DBNull]){""}else{[string]$hoseReader["DENOMINACION"]}
+              manguera = if($hoseReader["MANGUERA"] -is [DBNull]){""}else{[string]$hoseReader["MANGUERA"]}
+              producto = if($hoseReader["DESCRIIMPRESION"] -is [DBNull]){""}else{[string]$hoseReader["DESCRIIMPRESION"]}
+            })
+          }
+          $hoseReader.Close()
+          $hoseCount = $hoseRows.Count
+
+          $hoseCards = ""
+          foreach($h in $hoseRows){
+            $ht = [System.Net.WebUtility]::HtmlEncode([string]$h.tanque)
+            $hd = [System.Net.WebUtility]::HtmlEncode([string]$h.denominacion)
+            $hm = [System.Net.WebUtility]::HtmlEncode([string]$h.manguera)
+            $hp = [System.Net.WebUtility]::HtmlEncode([string]$h.producto)
+            $hoseCards += "<div class='hoseRow'><b>T$ht</b><span class='arrow'>→</span><strong>M$hm</strong><span class='hoseProduct'>$hp</span><small>$hd</small></div>"
+          }
+          if([string]::IsNullOrWhiteSpace($hoseCards)){
+            $hoseCards = "<div class='empty'>Sin relaciones tanque/manguera para mostrar.</div>"
+          }
+
           $tankCards = ""
           foreach($t in $tankRows){
             $tn = [System.Net.WebUtility]::HtmlEncode([string]$t.numero)
@@ -437,11 +464,14 @@ try {
 .tankOverlay{position:absolute;left:26.3%;top:19.5%;width:19.5%;max-height:35%;background:#09141ef2;border:2px solid #ff7138;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .tankTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:11px;letter-spacing:2px;color:#89a9bd}.tankTitle strong{color:#eaf6ff;letter-spacing:0}
 .tankList{max-height:210px;overflow:auto;padding-right:4px}.tankRow{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.tankRow b{color:#ff9d2e}.tankName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankProduct{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankRow strong{color:#2dd9ff}
+.hoseOverlay{position:absolute;left:46%;top:18%;width:17%;max-height:31%;background:#07131df2;border:2px solid #34f5a5;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
+.hoseTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:10px;letter-spacing:1.5px;color:#89a9bd}.hoseTitle strong{color:#eaf6ff;letter-spacing:0}
+.hoseList{max-height:180px;overflow:auto;padding-right:4px}.hoseRow{display:grid;grid-template-columns:auto auto auto 1fr;gap:5px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.hoseRow b{color:#ff9d2e}.hoseRow strong{color:#34f5a5}.hoseRow .arrow{color:#2dd9ff}.hoseProduct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hoseRow small{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
-@media(max-width:900px){.dispatchOverlay,.tankOverlay{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}}
+@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}}
 </style></head>
 <body>
-<header class="top"><div class="left"><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v26</span></header>
+<header class="top"><div class="left"><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v27</span></header>
 <main class="stage">
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitán Rodolfo">
@@ -449,13 +479,17 @@ try {
       <div class="tankTitle"><span>TANQUES REALES</span><strong>$tankCount</strong></div>
       <div class="tankList">$tankCards</div>
     </section>
+    <section class="hoseOverlay">
+      <div class="hoseTitle"><span>TANQUE → MANGUERA</span><strong>$hoseCount</strong></div>
+      <div class="hoseList">$hoseCards</div>
+    </section>
     <section class="dispatchOverlay">
       <div class="dispatchTitle"><span>DESPACHOS REALES</span><strong>$dispatchCount</strong></div>
       <div class="dispatchList">$cards</div>
     </section>
   </div>
 </main>
-<div class="note">Despachos y tanques cargados directamente desde SQL.</div>
+<div class="note">Tanques, relación tanque → manguera y despachos cargados directamente desde SQL.</div>
 </body></html>
 "@
           Send-Response $stream 200 "text/html; charset=utf-8" $html
