@@ -14,20 +14,21 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - URL web actual: https://capitan-rodolfo.revalsoftia.chatgpt.site/
 - Dominio objetivo: https://rodolfo.doinglio.com.ar
 
-> La v16 está versionada en GitHub. La publicación definitiva en el dominio objetivo todavía requiere verificación final desde tu PC.
+> La v17 está versionada en GitHub. Falta verificar que Sites haya publicado esta misma versión en el dominio web.
 
-## Cómo abrir
+## Flujo v17
 
-1. Entrá a este repositorio.
-2. Arriba del README vas a ver el botón **ABRIR CAPITÁN RODOLFO**.
-3. Para usar SQL Server local, primero ejecutá `bridge/iniciar_bridge.bat`.
-4. Después entrá en **Configuración de datos** y probá el bridge.
+1. **DoingLio** — pantalla inicial.
+2. **Conexión SQL** — servidor, usuario, contraseña, selección de base y validación de tablas.
+3. **Mapa Vivo** — se habilita únicamente cuando existe una sesión SQL válida y una base seleccionada.
 
 ## Proyecto
 
 - `index.html`: pantalla inicial DoingLio.
 - `conexion-sql.html`: conexión obligatoria, selección de base y listado de tablas.
-- `mapa-vivo.html`: pantalla visual habilitada solo después de validar SQL.\n- `dist/`: versión publicable.
+- `mapa-vivo.html`: pantalla visual habilitada solo después de validar SQL.
+- `assets/capitan-rodolfo-mapa-vivo.svg`: diseño del mapa vivo aprobado por Duilio.
+- `dist/`: versión publicable.
 - `bridge/`: bridge Python local para SQL Server.
 - `connector-node/`: conector alternativo conservado para trazabilidad.
 
@@ -36,9 +37,11 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - No se guardan contraseñas SQL en GitHub.
 - La contraseña no queda escrita en el HTML.
 - El bridge local mantiene SQL Server fuera de exposición directa a Internet.
+- El Mapa Vivo valida la sesión SQL antes de mostrarse.
 
 ## Historial reciente
 
 - **v14**: primera publicación verificada por Sites.
 - **v15**: evolución visual de estación viva.
-- **v17**: corrección del acceso al bridge local, prueba `127.0.0.1` / `localhost`, diagnóstico mejorado y botón 👁 / 🙈 en contraseña.
+- **v16**: corrección del acceso al bridge local, prueba `127.0.0.1` / `localhost`, diagnóstico mejorado y botón 👁 / 🙈 en contraseña.
+- **v17**: flujo obligatorio DoingLio → SQL → base validada → Mapa Vivo.
