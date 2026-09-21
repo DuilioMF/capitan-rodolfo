@@ -108,14 +108,11 @@ document.getElementById('connect').onclick=async()=>{
     document.getElementById('continue').classList.remove('show');
     status('Conectado a '+data.server+' · elegí una base','ok');
     dbs.innerHTML='';
-    const lastDb=localStorage.getItem('rodolfo.sql.database');
-    let auto=null;
-    data.databases.forEach((name,i)=>{
+    data.databases.forEach((name)=>{
       const el=document.createElement('button');el.className='item';el.textContent=name;
       el.onclick=()=>loadTables(name,el);dbs.appendChild(el);
-      if(name===lastDb || (!auto && i===0)) auto=el;
     });
-    if(auto)setTimeout(()=>auto.click(),40);
+    if(data.databases.length===1)setTimeout(()=>dbs.querySelector('.item')?.click(),40);
   }catch(e){
     sessionId=null;dbs.innerHTML='<div class="item empty">Sin bases</div>';tables.innerHTML='<div class="table empty">Sin tablas</div>';
     status('No se pudo conectar. '+e.message+' Si el bridge está abierto, revisá el permiso “Acceso a la red local” del navegador para este sitio.','bad');
