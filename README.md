@@ -1,6 +1,6 @@
 # Capitán Rodolfo
 
-[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-Capitán%20Rodolfo-ff6b35?style=for-the-badge)](https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-live-v16)
+[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-Capitán%20Rodolfo-ff6b35?style=for-the-badge)](https://capitan-rodolfo.revalsoftia.chatgpt.site/)
 
 Centro de control visual de DoingLio para estaciones de servicio.
 
@@ -11,7 +11,7 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - Rama principal: `main`.
 - Tarjeta operativa: https://trello.com/c/M87mZT1d
 - Conexión SQL local: `DUILIO\\SQLEXPRESS` mediante bridge en `127.0.0.1:8787`.
-- URL web de prueba v16: https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-live-v16
+- URL web de prueba v16: https://capitan-rodolfo.revalsoftia.chatgpt.site/
 - Dominio objetivo: https://rodolfo.doinglio.com.ar
 
 > La v16 está versionada en GitHub. La publicación definitiva en el dominio objetivo todavía requiere verificación final desde tu PC.
