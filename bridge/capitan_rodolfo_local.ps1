@@ -150,7 +150,8 @@ async function loadTables(database,el){
   [...document.querySelectorAll('#dbs .item')].forEach(x=>x.classList.remove('active'));el.classList.add('active');tables.innerHTML='<div class="table">Cargando…</div>';
   const d=await api('/api/tables',{sessionId,database});tables.innerHTML='';
   d.tables.forEach(x=>{const t=document.createElement('div');t.className='table';t.textContent=x.schema+'.'+x.name;tables.appendChild(t)});
-  status('Base '+database+' validada · '+d.tables.length+' tablas','ok');
+  status('Base '+database+' validada · '+d.tables.length+' tablas · entrando al Mapa Vivo…','ok');
+  setTimeout(()=>{ location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(database); },900);
  }catch(e){status('Error: '+e.message,'bad')}
 }
 </script>
@@ -176,6 +177,34 @@ try {
       }
       elseif($req.Method -eq 'GET' -and ($pathOnly -eq '/' -or $pathOnly -eq '/index.html')){
         Send-Response $stream 200 "text/html; charset=utf-8" (Get-HomeHtml)
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/mapa-vivo'){
+        try {
+          $query = [System.Web.HttpUtility]::ParseQueryString(([uri]("http://127.0.0.1" + $req.Path)).Query)
+          $sid = [string]$query['sessionId']
+          $database = [string]$query['database']
+          if(-not $Sessions.ContainsKey($sid)){ throw "Sesión SQL no válida." }
+          $sess = $Sessions[$sid]
+          if($sess.databases -notcontains $database){ throw "Base no autorizada." }
+          $safeDb = [System.Net.WebUtility]::HtmlEncode($database)
+          $html = @"
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa Vivo · Capitán Rodolfo</title>
+<style>
+:root{--bg:#050b12;--panel:#09141e;--line:#254154;--orange:#ff7138;--cyan:#2dd9ff;--green:#34f5a5;--text:#eaf6ff;--muted:#7ea2bb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:#07111a;border-bottom:1px solid var(--line);position:sticky;top:0}.left{display:flex;align-items:center;gap:12px}.badge{background:#11212c;border:1px solid #2b5267;border-radius:999px;padding:7px 11px;font-size:12px}.ok{color:var(--green)}.back{color:var(--orange);text-decoration:none;font-weight:800}.ver{color:#061116;background:var(--orange);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:900}.stage{padding:14px}.stage img{display:block;width:100%;height:auto;border:1px solid #173244;border-radius:18px;background:#050b12}.note{padding:0 18px 18px;color:var(--muted);font-size:13px}
+</style></head>
+<body>
+<header class="top"><div class="left"><a class="back" href="/">← SQL</a><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v22</span></header>
+<main class="stage"><img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitán Rodolfo"></main>
+<div class="note">Conexión SQL validada localmente. Los valores visuales siguen siendo de maqueta hasta conectar las tablas y campos reales.</div>
+</body></html>
+"@
+          Send-Response $stream 200 "text/html; charset=utf-8" $html
+        } catch {
+          Send-Response $stream 401 "text/html; charset=utf-8" "<h2>Sesión SQL no válida</h2><p>$([System.Net.WebUtility]::HtmlEncode($_.Exception.Message))</p><p><a href='/'>Volver a SQL</a></p>"
+        }
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/connect'){
         try {
