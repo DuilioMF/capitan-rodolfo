@@ -1,9 +1,9 @@
 @echo off
-title DoingLio SQL Bridge v16
+title DoingLio SQL Bridge v17
 cd /d "%~dp0"
 echo.
 echo ============================================
-echo  DoingLio SQL Bridge v16
+echo  DoingLio SQL Bridge v17
 echo  SQL Server: DUILIO\SQLEXPRESS
 echo ============================================
 echo.
