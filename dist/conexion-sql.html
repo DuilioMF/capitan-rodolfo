@@ -19,7 +19,7 @@ button{width:100%;margin-top:15px;border:0;border-radius:12px;padding:13px;backg
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a class="back" href="index.html">← Volver a Inicio</a><span class="version">Capitán Rodolfo v17</span></div>
+  <div class="top"><a class="back" href="index.html">← Volver a Inicio</a><span class="version">Capitán Rodolfo v18</span></div>
   <div class="grid">
     <section class="card">
       <h1>Conexión SQL</h1>
@@ -133,8 +133,9 @@ async function loadTables(database,el){
     tables.innerHTML='';
     data.tables.forEach(x=>{const d=document.createElement('div');d.className='table';d.textContent=x.schema+'.'+x.name;tables.appendChild(d)});
     if(!data.tables.length)tables.innerHTML='<div class="table empty">No hay tablas visibles</div>';
-    status('SQL conectado · base '+database+' validada · '+data.tables.length+' tablas visibles','ok');
+    status('SQL conectado · base '+database+' validada · '+data.tables.length+' tablas visibles · entrando a Capitán Rodolfo…','ok');
     document.getElementById('continue').classList.add('show');
+    setTimeout(()=>{location.href='mapa-vivo.html'},700);
   }catch(e){tables.innerHTML='<div class="table empty">Error: '+e.message+'</div>'}
 }
 document.getElementById('continue').onclick=()=>{
