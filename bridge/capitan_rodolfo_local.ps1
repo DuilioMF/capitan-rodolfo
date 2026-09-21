@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "25"
+$Version = "26"
 $Sessions = @{}
 $ActiveSessionId = $null
 $AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
@@ -218,7 +218,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v25</span></div>
+<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v26</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
@@ -232,7 +232,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <select id="auth"><option value="sql">Usuario y contraseña SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v25 listo.</div>
+<div id="status" class="status">Conector local v26 listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo →</button>
 <div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contraseña se guarda cifrada por Windows para tu usuario.</div>
 </section>
@@ -376,6 +376,33 @@ try {
           }
           $reader.Close()
 
+          $tankCmd = $cn.CreateCommand()
+          $tankCmd.CommandText = "SELECT t.N_TANQUE, t.DENOMINACION, p.DESCRIIMPRESION, t.CAPACIDAD FROM Tanque t INNER JOIN prod p ON t.CODART = p.codart;"
+          $tankReader = $tankCmd.ExecuteReader()
+          $tankRows = New-Object System.Collections.Generic.List[object]
+          while($tankReader.Read()){
+            $tankRows.Add([pscustomobject]@{
+              numero = if($tankReader["N_TANQUE"] -is [DBNull]){""}else{[string]$tankReader["N_TANQUE"]}
+              denominacion = if($tankReader["DENOMINACION"] -is [DBNull]){""}else{[string]$tankReader["DENOMINACION"]}
+              producto = if($tankReader["DESCRIIMPRESION"] -is [DBNull]){""}else{[string]$tankReader["DESCRIIMPRESION"]}
+              capacidad = if($tankReader["CAPACIDAD"] -is [DBNull]){""}else{[string]$tankReader["CAPACIDAD"]}
+            })
+          }
+          $tankReader.Close()
+          $tankCount = $tankRows.Count
+
+          $tankCards = ""
+          foreach($t in $tankRows){
+            $tn = [System.Net.WebUtility]::HtmlEncode([string]$t.numero)
+            $td = [System.Net.WebUtility]::HtmlEncode([string]$t.denominacion)
+            $tp = [System.Net.WebUtility]::HtmlEncode([string]$t.producto)
+            $tc = [System.Net.WebUtility]::HtmlEncode([string]$t.capacidad)
+            $tankCards += "<div class='tankRow'><b>T$tn</b><span class='tankName'>$td</span><span class='tankProduct'>$tp</span><strong>$tc L</strong></div>"
+          }
+          if([string]::IsNullOrWhiteSpace($tankCards)){
+            $tankCards = "<div class='empty'>Sin tanques para mostrar.</div>"
+          }
+
           $safeDb = [System.Net.WebUtility]::HtmlEncode($database)
           $cards = ""
           foreach($d in $dispatchRows){
@@ -407,23 +434,28 @@ try {
 .dispatchOverlay{position:absolute;left:64.4%;top:60.4%;width:31.3%;height:18.5%;background:#07131df7;border:2px solid #2dd9ff;border-radius:18px;padding:12px 14px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .dispatchTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;font-size:12px;letter-spacing:2px;color:#89a9bd}.dispatchTitle strong{color:#eaf6ff;letter-spacing:0}
 .dispatchList{height:calc(100% - 28px);overflow:auto;padding-right:5px}.dispatchRow{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;border-bottom:1px solid #173244;padding:6px 0;font-size:11px;white-space:nowrap}.dispatchRow b{color:#34f5a5}.dispatchRow .product{overflow:hidden;text-overflow:ellipsis}.dispatchRow strong{color:#ffb06a}.dispatchRow small{color:#7ea2bb}.empty{color:#7ea2bb;padding:14px 0}
-.tankBadge{position:absolute;left:26.7%;top:22%;background:#09141ef2;border:1px solid #254154;border-radius:999px;padding:7px 11px;font-size:12px;color:#7ea2bb}.tankBadge b{color:#eaf6ff}
+.tankOverlay{position:absolute;left:26.3%;top:19.5%;width:19.5%;max-height:35%;background:#09141ef2;border:2px solid #ff7138;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
+.tankTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:11px;letter-spacing:2px;color:#89a9bd}.tankTitle strong{color:#eaf6ff;letter-spacing:0}
+.tankList{max-height:210px;overflow:auto;padding-right:4px}.tankRow{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.tankRow b{color:#ff9d2e}.tankName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankProduct{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankRow strong{color:#2dd9ff}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
-@media(max-width:900px){.dispatchOverlay{position:static;width:auto;height:280px;margin-top:12px}.tankBadge{position:static;display:inline-block;margin:10px 0}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}}
+@media(max-width:900px){.dispatchOverlay,.tankOverlay{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}}
 </style></head>
 <body>
-<header class="top"><div class="left"><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v25</span></header>
+<header class="top"><div class="left"><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v26</span></header>
 <main class="stage">
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitán Rodolfo">
-    <div class="tankBadge">Tanques: <b>pendiente consulta</b></div>
+    <section class="tankOverlay">
+      <div class="tankTitle"><span>TANQUES REALES</span><strong>$tankCount</strong></div>
+      <div class="tankList">$tankCards</div>
+    </section>
     <section class="dispatchOverlay">
       <div class="dispatchTitle"><span>DESPACHOS REALES</span><strong>$dispatchCount</strong></div>
       <div class="dispatchList">$cards</div>
     </section>
   </div>
 </main>
-<div class="note">Los despachos ya vienen de SQL. La cantidad de tanques queda pendiente únicamente de la consulta de tanques.</div>
+<div class="note">Despachos y tanques cargados directamente desde SQL.</div>
 </body></html>
 "@
           Send-Response $stream 200 "text/html; charset=utf-8" $html
