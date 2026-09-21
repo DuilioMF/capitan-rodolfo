@@ -50,3 +50,8 @@ El bridge escucha únicamente en `127.0.0.1:8787`, por lo que no expone SQL Serv
 - Las solicitudes locales declaran targetAddressSpace=local cuando el navegador lo admite.
 - El error diferencia bridge inaccesible de error SQL.
 - La contraseña incorpora el botón 👁 / 🙈 para mostrar u ocultar, igual que RevalSoftIA.
+
+
+## URL de prueba v16
+
+https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-v16
