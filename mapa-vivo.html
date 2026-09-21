@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mapa Vivo · Capitán Rodolfo</title>
+<style>
+:root{--bg:#050b12;--panel:#09141e;--line:#254154;--orange:#ff7138;--cyan:#2dd9ff;--green:#34f5a5;--text:#eaf6ff;--muted:#7ea2bb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}.gate{min-height:100vh;display:grid;place-items:center;padding:24px}.gatebox{width:min(620px,94vw);padding:28px;border:1px solid var(--line);border-radius:22px;background:var(--panel);text-align:center}.gatebox a{display:inline-block;margin-top:18px;color:#061116;background:linear-gradient(135deg,var(--cyan),var(--green));padding:12px 18px;border-radius:12px;text-decoration:none;font-weight:900}
+.app{display:none}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;background:#07111a;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}.left{display:flex;align-items:center;gap:12px}.badge{background:#11212c;border:1px solid #2b5267;border-radius:999px;padding:7px 11px;font-size:12px}.ok{color:var(--green)}.back{color:var(--orange);text-decoration:none;font-weight:800}.ver{color:#061116;background:var(--orange);border-radius:999px;padding:6px 9px;font-size:12px;font-weight:900}
+.stage{padding:14px}.stage img{display:block;width:100%;height:auto;border:1px solid #173244;border-radius:18px;background:#050b12}.note{padding:0 18px 18px;color:var(--muted);font-size:13px}
+</style></head>
+<body>
+<div id="gate" class="gate"><div class="gatebox"><h2>Validando conexión SQL…</h2><p id="gateText">El Mapa Vivo solo se abre con una sesión SQL válida.</p><a id="returnSql" href="conexion-sql.html" style="display:none">Volver a Conexión SQL</a></div></div>
+<div id="app" class="app">
+  <header class="top"><div class="left"><a class="back" href="conexion-sql.html">← SQL</a><span class="badge ok">● SQL conectado</span><span id="dbBadge" class="badge"></span></div><span class="ver">v17</span></header>
+  <main class="stage"><img src="assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de la estación · Capitán Rodolfo"/></main>
+  <div class="note">Conexión validada. Los valores visuales de esta pantalla todavía son de maqueta; los datos reales se conectarán cuando definas tablas y campos.</div>
+</div>
+<script>
+const BRIDGES=['http://127.0.0.1:8787','http://localhost:8787'];
+const sid=sessionStorage.getItem('rodolfo.sql.sessionId');
+const db=sessionStorage.getItem('rodolfo.sql.database');
+const preferred=sessionStorage.getItem('rodolfo.sql.bridge');
+const gate=document.getElementById('gate'),app=document.getElementById('app'),text=document.getElementById('gateText'),ret=document.getElementById('returnSql');
+async function localFetch(url,options={}){const opts={cache:'no-store',...options};opts.targetAddressSpace='local';return fetch(url,opts)}
+async function validate(){
+ if(!sid||!db){text.textContent='No hay una conexión SQL activa ni una base seleccionada.';ret.style.display='inline-block';return}
+ const list=[preferred,...BRIDGES].filter((x,i,a)=>x&&a.indexOf(x)===i);
+ for(const base of list){
+  try{
+   const r=await localFetch(base+'/api/tables',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,database:db})});
+   if(r.ok){document.getElementById('dbBadge').textContent='Base: '+db;gate.style.display='none';app.style.display='block';return}
+  }catch(_){}
+ }
+ sessionStorage.removeItem('rodolfo.sql.sessionId');
+ text.textContent='La sesión SQL ya no es válida o el bridge local no está disponible.';
+ ret.style.display='inline-block';
+}
+validate();
+</script></body></html>
