@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Conexión SQL · Capitán Rodolfo</title>
 <style>
 :root{--bg:#0d0d0f;--card:#17171b;--line:#34343b;--orange:#ff7a00;--text:#f5f5f6;--muted:#aaaab2}
@@ -14,7 +17,7 @@
 </head>
 <body>
 <div class="wrap">
-<div class="top"><a class="back" href="index.html">← Volver</a><span class="ver">Capitán Rodolfo · v31</span></div>
+<div class="top"><a class="back" href="index.html">← Volver</a><span class="ver" data-version-prefix="Capitán Rodolfo · v">Capitán Rodolfo · v…</span></div>
 <section class="card">
 <h1>Conectar SQL</h1>
 <p class="muted">La conexión SQL ahora corre localmente en tu PC, usando el mismo enfoque de <b>System.Data.SqlClient</b> que ya te funcionaba. La página pública no intenta entrar a <code>127.0.0.1</code>, por eso desaparecen CORS, “Acceso a la red local” y <i>Failed to fetch</i>.</p>
@@ -30,4 +33,19 @@
 <div class="note">No se guarda la contraseña SQL en GitHub ni en la página pública.</div>
 </section>
 </div>
+<script>
+(async function(){
+  try{
+    const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error('VERSION '+r.status);
+    const v=(await r.text()).trim();
+    window.CAPITAN_VERSION=v;
+    document.querySelectorAll('[data-version-prefix]').forEach(el=>{
+      el.textContent=(el.dataset.versionPrefix||'')+v;
+    });
+  }catch(e){
+    console.warn('No se pudo leer VERSION',e);
+  }
+})();
+</script>
 </body></html>
