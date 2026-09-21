@@ -379,8 +379,8 @@ try {
               litros = if($reader["Litros"] -is [DBNull]){""}else{[string]$reader["Litros"]}
               ppu = if($reader["PPU"] -is [DBNull]){""}else{[string]$reader["PPU"]}
               pesos = if($reader["pesos"] -is [DBNull]){""}else{[string]$reader["pesos"]}
-              fecha = if($reader["fecha"] -is [DBNull]){""}else{([DateTime]$reader["fecha"]).ToString("dd/MM/yyyy HH:mm:ss")}
-              hora = if($reader["hora"] -is [DBNull]){""}else{([DateTime]$reader["hora"]).ToString("HH:mm:ss")}
+              fecha = if($reader["fecha"] -is [DBNull]){""}elseif($reader["fecha"] -is [DateTime]){([DateTime]$reader["fecha"]).ToString("dd/MM/yyyy HH:mm:ss")}else{[string]$reader["fecha"]}
+              hora = if($reader["hora"] -is [DBNull]){""}elseif($reader["hora"] -is [DateTime]){([DateTime]$reader["hora"]).ToString("HH:mm:ss")}else{[string]$reader["hora"]}
             })
           }
           $reader.Close()
@@ -396,7 +396,7 @@ try {
             $ppu = [System.Net.WebUtility]::HtmlEncode([string]$d.ppu)
             $pes = [System.Net.WebUtility]::HtmlEncode([string]$d.pesos)
             $hora = [System.Net.WebUtility]::HtmlEncode([string]$d.hora)
-            $cards += "<div class='dispatchRow'><b>#$venta</b><span>Surt. $surt · Mang. $mang</span><span class='product'>$prod</span><span>$lit L · PPU $ppu · <strong>$$pes</strong></span><small>$hora</small></div>"
+            $cards += "<div class='dispatchRow'><b>#$venta</b><span>Surt. $surt · Mang. $mang</span><span class='product'>$prod</span><span>$lit L · PPU $ppu · <strong>&#36;$pes</strong></span><small>$hora</small></div>"
           }
           if([string]::IsNullOrWhiteSpace($cards)){
             $cards = "<div class='empty'>Sin despachos para mostrar.</div>"
