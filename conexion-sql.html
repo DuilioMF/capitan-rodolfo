@@ -55,7 +55,12 @@ const savedUser=localStorage.getItem('rodolfo.sql.user');
 if(savedServer)document.getElementById('server').value=savedServer;
 if(savedUser)document.getElementById('user').value=savedUser;
 async function api(path,body){
-  const r=await fetch(BRIDGE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  let r;
+  try{
+    r=await fetch(BRIDGE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }catch{
+    throw new Error('No se pudo llegar al bridge local. Abrí bridge\\iniciar_bridge.bat v15 y dejá la ventana abierta.');
+  }
   const j=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(j.error||('Error HTTP '+r.status));
   return j;
@@ -77,7 +82,7 @@ document.getElementById('connect').onclick=async()=>{
     });
   }catch(e){
     sessionId=null;dbs.innerHTML='<div class="item empty">Sin bases</div>';tables.innerHTML='<div class="table empty">Sin tablas</div>';
-    status('No se pudo conectar. Verificá que iniciar_bridge.bat esté abierto. '+e.message,'bad');
+    status(e.message,'bad');
   }
 };
 async function loadTables(database,el){
