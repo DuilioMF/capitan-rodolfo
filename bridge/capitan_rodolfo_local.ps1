@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "28"
+$Version = "29"
 $Sessions = @{}
 $ActiveSessionId = $null
 $AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
@@ -218,7 +218,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v28</span></div>
+<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v29</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
@@ -232,7 +232,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v28 listo.</div>
+<div id="status" class="status">Conector local v29 listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
 <div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contrasena se guarda cifrada por Windows para tu usuario.</div>
 </section>
@@ -475,14 +475,15 @@ try {
 .hoseTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:10px;letter-spacing:1.5px;color:#89a9bd}.hoseTitle strong{color:#eaf6ff;letter-spacing:0}
 .hoseList{max-height:180px;overflow:auto;padding-right:4px}.hoseRow{display:grid;grid-template-columns:auto auto auto 1fr;gap:5px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.hoseRow b{color:#ff9d2e}.hoseRow strong{color:#34f5a5}.hoseRow .arrow{color:#2dd9ff}.hoseProduct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hoseRow small{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tankHotspot{position:absolute;left:26.2%;top:23.8%;width:18.8%;height:6.5%;border:1px dashed #ff7138;background:#ff713812;color:#ffb06a;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:2px;z-index:3}
+.hoseHotspot{position:absolute;left:46%;top:18%;width:17%;height:6.5%;border:1px dashed #34f5a5;background:#34f5a512;color:#8fffd0;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:1.4px;z-index:3}
 .detailCard{position:absolute;z-index:6;background:#07131df7;border:2px solid #ff7138;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px #000b;display:none}.detailCard.show{display:block}
 #tankDetail{left:28%;top:52%;width:28%}#saleOnPump{left:50.3%;top:30%;width:20%;border-color:#34f5a5}
 .detailTitle{font-size:11px;letter-spacing:1.5px;color:#89a9bd;margin-bottom:8px}.detailGrid{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:12px}.detailGrid b{color:#fff}.detailGrid span{color:#8fb3c9}.detailClose{position:absolute;right:8px;top:7px;border:0;background:transparent;color:#fff;cursor:pointer;font-size:16px}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
-@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
+@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
 </style></head>
 <body>
-<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v28</span></header>
+<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v29</span></header>
 <main class="stage">
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitan Rodolfo">
@@ -491,7 +492,8 @@ try {
       <div class="tankTitle"><span>TANQUES REALES</span><strong>$tankCount</strong></div>
       <div class="tankList">$tankCards</div>
     </section>
-    <section class="hoseOverlay">
+    <button id="hoseHotspot" class="hoseHotspot" type="button">TANQUE &rarr; MANGUERA ($hoseCount)</button>
+    <section id="hosePanel" class="hoseOverlay" style="display:none">
       <div class="hoseTitle"><span>TANQUE &rarr; MANGUERA</span><strong>$hoseCount</strong></div>
       <div class="hoseList">$hoseCards</div>
     </section>
@@ -511,11 +513,13 @@ try {
     </section>
   </div>
 </main>
-<div class="note">Toca TANQUES para verlos. Toca un tanque para ver su ficha. Toca una venta para verla sobre el surtidor correspondiente.</div>
+<div class="note">Toca TANQUES o TANQUE - MANGUERA para abrir cada ventana. Si no los tocas, quedan ocultos. Toca una venta para verla sobre el surtidor correspondiente.</div>
 <script>
 (function(){
   const tankPanel=document.getElementById('tankPanel');
   const tankHotspot=document.getElementById('tankHotspot');
+  const hosePanel=document.getElementById('hosePanel');
+  const hoseHotspot=document.getElementById('hoseHotspot');
   const tankDetail=document.getElementById('tankDetail');
   const tankBody=document.getElementById('tankDetailBody');
   const saleCard=document.getElementById('saleOnPump');
@@ -524,6 +528,9 @@ try {
 
   if(tankHotspot){
     tankHotspot.addEventListener('click',()=>{ tankPanel.style.display=(tankPanel.style.display==='none')?'block':'none'; });
+  }
+  if(hoseHotspot){
+    hoseHotspot.addEventListener('click',()=>{ hosePanel.style.display=(hosePanel.style.display==='none')?'block':'none'; });
   }
 
   document.querySelectorAll('.tankPick').forEach(btn=>{
