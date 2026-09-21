@@ -1,6 +1,6 @@
 # Capitán Rodolfo
 
-[![Abrir sitio publicado](https://img.shields.io/badge/▶%20ABRIR-Sitio%20publicado%20v14-ff6b35?style=for-the-badge)](https://capitan-rodolfo.revalsoftia.chatgpt.site/)
+[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-Capitán%20Rodolfo%20v18-ff6b35?style=for-the-badge)](https://duiliomf.github.io/capitan-rodolfo/)
 
 Centro de control visual de DoingLio para estaciones de servicio.
 
