@@ -11,10 +11,10 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - Rama principal: `main`.
 - Tarjeta operativa: https://trello.com/c/M87mZT1d
 - Conexión SQL local: `DUILIO\\SQLEXPRESS` mediante bridge en `127.0.0.1:8787`.
-- URL web actual: https://capitan-rodolfo.revalsoftia.chatgpt.site/
+- URL web publicada: https://capitan-rodolfo.revalsoftia.chatgpt.site/ (**actualmente muestra v14**).
 - Dominio objetivo: https://rodolfo.doinglio.com.ar
 
-> La v17 está versionada en GitHub. Falta verificar que Sites haya publicado esta misma versión en el dominio web.
+> La **v17 está versionada en GitHub**, pero el sitio público **todavía muestra v14**. Falta publicar v17 en Sites.
 
 ## Flujo v17
 
