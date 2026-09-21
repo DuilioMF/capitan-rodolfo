@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Mapa Vivo · Capitán Rodolfo</title>
 <style>
 :root{--bg:#050b12;--panel:#09141e;--line:#254154;--orange:#ff7138;--cyan:#2dd9ff;--green:#34f5a5;--text:#eaf6ff;--muted:#7ea2bb}
@@ -14,7 +17,7 @@
 <body>
 <div id="gate" class="gate"><div class="gatebox"><h2>Validando conexión SQL…</h2><p id="gateText">El Mapa Vivo solo se abre con una sesión SQL válida.</p><a id="returnSql" href="conexion-sql.html" style="display:none">Volver a Conexión SQL</a></div></div>
 <div id="app" class="app">
-  <header class="top"><div class="left"><a class="back" href="conexion-sql.html">← SQL</a><span class="badge ok">● SQL conectado</span><span id="dbBadge" class="badge"></span></div><span class="ver">v31</span></header>
+  <header class="top"><div class="left"><a class="back" href="conexion-sql.html">← SQL</a><span class="badge ok">● SQL conectado</span><span id="dbBadge" class="badge"></span></div><span class="ver" data-version-prefix="v">v…</span></header>
   <main class="stage"><img src="assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de la estación · Capitán Rodolfo"/></main>
   <div class="note">Conexión validada. Los valores visuales de esta pantalla todavía son de maqueta; los datos reales se conectarán cuando definas tablas y campos.</div>
 </div>
@@ -39,5 +42,20 @@ async function validate(){
  ret.style.display='inline-block';
 }
 validate();
-</script><div class="build-version">Capitán Rodolfo · v31</div>
+</script><div class="build-version" data-version-prefix="Capitán Rodolfo · v">Capitán Rodolfo · v…</div>
+<script>
+(async function(){
+  try{
+    const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error('VERSION '+r.status);
+    const v=(await r.text()).trim();
+    window.CAPITAN_VERSION=v;
+    document.querySelectorAll('[data-version-prefix]').forEach(el=>{
+      el.textContent=(el.dataset.versionPrefix||'')+v;
+    });
+  }catch(e){
+    console.warn('No se pudo leer VERSION',e);
+  }
+})();
+</script>
 </body></html>
