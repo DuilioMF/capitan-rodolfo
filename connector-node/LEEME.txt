@@ -1,0 +1,10 @@
+CONECTOR SQL DE DOINGLIO - CAPITAN RODOLFO
+
+1. Descomprimir esta carpeta en la PC donde funciona SQL Server.
+2. Hacer doble clic en INICIAR_CONECTOR_DOINGLIO.bat.
+3. Dejar abierta la ventana negra.
+4. Abrir DoingLio y entrar en Proyectos > Conectar SQL.
+5. Usar servidor DUILIO\SQLEXPRESS, el usuario SQL y su contraseña.
+
+La contraseña no se guarda. La conexión a SQL usa cifrado obligatorio y
+certificado de servidor de confianza. El conector escucha solamente en esta PC.
