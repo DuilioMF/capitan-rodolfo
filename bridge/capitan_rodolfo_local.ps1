@@ -413,6 +413,18 @@ try {
           $hoseReader.Close()
           $hoseCount = $hoseRows.Count
 
+          $surtidorCountText = "0"
+          try {
+            $surtidorCmd = $cn.CreateCommand()
+            $surtidorCmd.CommandText = "SELECT ISNULL(SUM(CAST(surtido AS decimal(18,2))),0) / 2.0 FROM SURPLA;"
+            $surtidorValue = $surtidorCmd.ExecuteScalar()
+            if($null -ne $surtidorValue -and $surtidorValue -isnot [DBNull]){
+              $surtidorCountText = ([decimal]$surtidorValue).ToString("0.##",[System.Globalization.CultureInfo]::InvariantCulture)
+            }
+          } catch {
+            $surtidorCountText = "?"
+          }
+
           $hoseCards = ""
           foreach($h in $hoseRows){
             $ht = [System.Net.WebUtility]::HtmlEncode([string]$h.tanque)
@@ -491,14 +503,28 @@ try {
 .paymentBtn{width:100%;margin-top:12px;border:0;border-radius:10px;padding:10px 12px;background:linear-gradient(135deg,#ff7138,#ff9d2e);color:#101010;font-weight:900;cursor:pointer}
 #paymentPanel{left:50.3%;top:54%;width:20%;border-color:#ff7138}
 .paymentPending{color:#ffb06a;font-size:12px;line-height:1.5}
+.pumpCountBadge{position:absolute;left:48.7%;top:19.2%;z-index:4;background:#07131de8;border:1px solid #2dd9ff;color:#b9efff;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900;letter-spacing:1px}.pumpCountBadge strong{color:#fff}
+.truckHotspot{position:absolute;left:3.5%;top:34%;width:23%;height:31%;z-index:4;border:1px solid transparent;background:transparent;border-radius:18px;cursor:pointer;color:transparent}.truckHotspot:hover{border-color:#ff7138;background:#ff71380c;box-shadow:0 0 26px #ff713833}.truckHotspot.feed{animation:truckFeedPulse .75s ease}
+@keyframes truckFeedPulse{0%,100%{box-shadow:none}45%{box-shadow:0 0 0 10px #ff713822,0 0 38px #ff713888}}
+.receiptModal{position:fixed;inset:0;z-index:60;display:none;place-items:center;background:#000b;padding:18px}.receiptModal.show{display:grid}
+.receiptBox{width:min(650px,94vw);max-height:90vh;overflow:auto;background:#101820;border:1px solid #2d4759;border-radius:20px;padding:22px;box-shadow:0 30px 80px #000c;position:relative}.receiptBox h2{margin:0 0 8px}.receiptBox p{color:#8fb3c9;line-height:1.5}
+.receiptClose{position:absolute;right:12px;top:10px;width:auto;margin:0;border:0;background:transparent;color:#fff;font-size:22px;cursor:pointer}
+.receiptUpload{display:block;border:1px dashed #ff7138;background:#ff71380d;border-radius:14px;padding:18px;text-align:center;font-weight:900;cursor:pointer}.receiptUpload input{display:none}
+.receiptStatus{margin-top:12px;border:1px solid #29495e;border-radius:11px;padding:10px;color:#a8c6d8;font-size:12px}.receiptStatus.ok{border-color:#247450;color:#8df0b8}.receiptStatus.bad{border-color:#7c3131;color:#ffb2b2}
+.receiptPreview{margin-top:12px;border:1px solid #29495e;border-radius:12px;padding:10px;display:none}.receiptPreview.show{display:block}.receiptPreview img{max-width:100%;max-height:260px;display:block;margin:auto;border-radius:8px}.receiptPreview .pdf{padding:18px;text-align:center;color:#ffb06a;font-weight:900}
+.revalLogin{display:none;margin-top:14px;padding:14px;border:1px solid #67482c;border-radius:12px;background:#1b1510}.revalLogin.show{display:block}.revalLogin input{width:100%;margin-top:7px;padding:11px;border-radius:9px;border:1px solid #3b4650;background:#091018;color:#fff}.revalLogin button{width:100%;margin-top:10px;padding:11px;border:0;border-radius:9px;background:#ff7138;font-weight:900;cursor:pointer}
+.receiptResult{display:none;margin-top:14px;border:1px solid #247450;border-radius:12px;padding:14px;background:#071713}.receiptResult.show{display:block}.receiptResult h3{margin:0 0 10px;color:#8df0b8}.receiptResultGrid{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:12px}.receiptResultGrid span{color:#83a7bb}.receiptResultGrid b{color:#fff;overflow-wrap:anywhere}
+.receiptFly{position:fixed;z-index:90;width:180px;padding:10px;border:2px solid #ff7138;border-radius:12px;background:#fff;color:#111;font-weight:900;font-size:11px;box-shadow:0 12px 30px #0008;pointer-events:none;transition:transform .78s cubic-bezier(.2,.8,.2,1),opacity .78s ease;transform-origin:center}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
-@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot,.dispatchHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
+@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot,.dispatchHotspot,.truckHotspot{display:none}.pumpCountBadge{position:static;display:inline-block;margin:8px 0}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
 </style></head>
 <body>
 <header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v$Version</span></header>
 <main class="stage">
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitan Rodolfo">
+    <button id="truckHotspot" class="truckHotspot" type="button" title="Subir comprobante al camion" aria-label="Subir comprobante al camion">CAMION</button>
+    <div class="pumpCountBadge">SURTIDORES (<strong>$surtidorCountText</strong>)</div>
     <button id="tankHotspot" class="tankHotspot" type="button">TANQUES ($tankCount)</button>
     <section id="tankPanel" class="tankOverlay" style="display:none">
       <div class="tankTitle"><span>TANQUES REALES</span><span><strong>$tankCount</strong> <button id="closeTankPanel" class="parentClose" type="button">x</button></span></div>
@@ -533,6 +559,29 @@ try {
     </section>
   </div>
 </main>
+<div id="receiptModal" class="receiptModal">
+  <section class="receiptBox">
+    <button id="receiptClose" class="receiptClose" type="button">x</button>
+    <h2>Comprobante del camion</h2>
+    <p>Subi una factura, recibo, transferencia, ticket o PDF. El camion recibe el archivo y Revalsoft IA lo analiza con la misma logica de TEST.</p>
+    <label id="receiptUploadLabel" class="receiptUpload">SUBIR COMPROBANTE
+      <input id="receiptFile" type="file" accept="image/*,.pdf">
+    </label>
+    <div id="receiptStatus" class="receiptStatus">Esperando archivo...</div>
+    <div id="receiptPreview" class="receiptPreview"></div>
+    <div id="revalLogin" class="revalLogin">
+      <b>Iniciar sesion Revalsoft IA</b>
+      <div style="font-size:12px;color:#b69c84;margin-top:4px">Se pide solo si este navegador local todavia no tiene una sesion valida.</div>
+      <input id="revalEmail" type="email" autocomplete="username" placeholder="Email">
+      <input id="revalPassword" type="password" autocomplete="current-password" placeholder="Contrasena">
+      <button id="revalLoginBtn" type="button">INGRESAR Y ANALIZAR</button>
+    </div>
+    <div id="receiptResult" class="receiptResult">
+      <h3>Comprobante analizado</h3>
+      <div id="receiptResultBody" class="receiptResultGrid"></div>
+    </div>
+  </section>
+</div>
 <div class="note">Las ventanas padre controlan a sus hijas: al cerrar TANQUES se cierra el detalle; al cerrar VENTAS / DESPACHOS se cierran la venta seleccionada y VER PAGO.</div>
 <script>
 (function(){
@@ -553,6 +602,22 @@ try {
   const viewPaymentBtn=document.getElementById('viewPaymentBtn');
   const paymentPanel=document.getElementById('paymentPanel');
   const paymentBody=document.getElementById('paymentBody');
+  const truckHotspot=document.getElementById('truckHotspot');
+  const receiptModal=document.getElementById('receiptModal');
+  const receiptClose=document.getElementById('receiptClose');
+  const receiptFile=document.getElementById('receiptFile');
+  const receiptUploadLabel=document.getElementById('receiptUploadLabel');
+  const receiptStatus=document.getElementById('receiptStatus');
+  const receiptPreview=document.getElementById('receiptPreview');
+  const revalLogin=document.getElementById('revalLogin');
+  const revalEmail=document.getElementById('revalEmail');
+  const revalPassword=document.getElementById('revalPassword');
+  const revalLoginBtn=document.getElementById('revalLoginBtn');
+  const receiptResult=document.getElementById('receiptResult');
+  const receiptResultBody=document.getElementById('receiptResultBody');
+  const SB_URL='https://apqgrwudkfytwikrsivd.supabase.co';
+  const SB_KEY='sb_publishable_B9NdjnzOKu9BhZGmTM6LGg_wDB3n8lY';
+  let pendingReceipt=null;
   let selectedSale=null;
 
   function closeTankHierarchy(){
@@ -641,6 +706,198 @@ try {
         '<span>Surtidor</span><b>'+selectedSale.surtidor+'</b>'+
         '<span>Importe</span><b>$ '+selectedSale.pesos+'</b>';
       paymentPanel.classList.add('show');
+    });
+  }
+
+  function escHtml(v){
+    return String(v==null?'':v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]});
+  }
+
+  function setReceiptStatus(message,kind){
+    receiptStatus.textContent=message;
+    receiptStatus.className='receiptStatus'+(kind?' '+kind:'');
+  }
+
+  function readAsDataUrl(file){
+    return new Promise(function(resolve,reject){
+      const fr=new FileReader();
+      fr.onload=function(){resolve(fr.result)};
+      fr.onerror=reject;
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function refreshRevalsoftToken(){
+    const refresh=localStorage.getItem('rodolfo.sb.refresh_token');
+    if(!refresh) return null;
+    try{
+      const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SB_KEY},
+        body:JSON.stringify({refresh_token:refresh})
+      });
+      const d=await r.json();
+      if(!r.ok||!d.access_token) return null;
+      localStorage.setItem('rodolfo.sb.access_token',d.access_token);
+      if(d.refresh_token) localStorage.setItem('rodolfo.sb.refresh_token',d.refresh_token);
+      localStorage.setItem('rodolfo.sb.expires_at',String(Date.now()+((d.expires_in||3600)*1000)));
+      return d.access_token;
+    }catch(_){return null}
+  }
+
+  async function getRevalsoftToken(){
+    const token=localStorage.getItem('rodolfo.sb.access_token');
+    const expires=Number(localStorage.getItem('rodolfo.sb.expires_at')||0);
+    if(token && expires>Date.now()+30000) return token;
+    return refreshRevalsoftToken();
+  }
+
+  async function loginRevalsoft(){
+    const email=revalEmail.value.trim();
+    const password=revalPassword.value;
+    if(!email||!password) throw new Error('Completa email y contrasena.');
+    const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({email:email,password:password})
+    });
+    const d=await r.json();
+    if(!r.ok||!d.access_token) throw new Error(d.error_description||d.msg||d.error||'No se pudo iniciar sesion.');
+    localStorage.setItem('rodolfo.sb.access_token',d.access_token);
+    if(d.refresh_token) localStorage.setItem('rodolfo.sb.refresh_token',d.refresh_token);
+    localStorage.setItem('rodolfo.sb.expires_at',String(Date.now()+((d.expires_in||3600)*1000)));
+    revalPassword.value='';
+    return d.access_token;
+  }
+
+  function renderReceiptResult(data){
+    const pairs=[
+      ['Tipo',data.tipo_documento||data.tipo_comprobante||''],
+      ['Proveedor / Emisor',data.proveedor||data.emisor||''],
+      ['CUIT',data.proveedor_cuit||data.emisor_cuit||''],
+      ['Comprobante',data.numero_comprobante||data.numero_operacion||''],
+      ['Fecha',data.fecha||''],
+      ['Total',data.total||data.importe||''],
+      ['Medio de pago',data.medio_pago||'']
+    ];
+    receiptResultBody.innerHTML=pairs.map(function(x){return '<span>'+escHtml(x[0])+'</span><b>'+escHtml(x[1]||'-')+'</b>'}).join('');
+    receiptResult.classList.add('show');
+  }
+
+  async function analyzeReceipt(file){
+    pendingReceipt=file;
+    let token=await getRevalsoftToken();
+    if(!token){
+      revalLogin.classList.add('show');
+      setReceiptStatus('Comprobante recibido por el camion. Inicia sesion Revalsoft IA para analizarlo.','ok');
+      return;
+    }
+    revalLogin.classList.remove('show');
+    setReceiptStatus('Camion recibio el comprobante. Analizando con Revalsoft IA TEST...');
+    const base64=await readAsDataUrl(file);
+    let r=await fetch(SB_URL+'/functions/v1/extract-document-json',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+token},
+      body:JSON.stringify({file_name:file.name,mime_type:file.type||'application/octet-stream',base64:base64})
+    });
+    if(r.status===401){
+      localStorage.removeItem('rodolfo.sb.access_token');
+      token=await refreshRevalsoftToken();
+      if(token){
+        r=await fetch(SB_URL+'/functions/v1/extract-document-json',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+token},
+          body:JSON.stringify({file_name:file.name,mime_type:file.type||'application/octet-stream',base64:base64})
+        });
+      }
+    }
+    const out=await r.json().catch(function(){return {}});
+    if(!r.ok||!out.ok){
+      if(r.status===401){
+        revalLogin.classList.add('show');
+        throw new Error('Sesion Revalsoft IA vencida. Inicia sesion nuevamente.');
+      }
+      throw new Error(out.error||'No se pudo analizar el comprobante.');
+    }
+    renderReceiptResult(out.data||{});
+    setReceiptStatus('Comprobante analizado correctamente.','ok');
+  }
+
+  function animateReceiptToTruck(file){
+    return new Promise(function(resolve){
+      const source=receiptUploadLabel.getBoundingClientRect();
+      const target=truckHotspot.getBoundingClientRect();
+      const fly=document.createElement('div');
+      fly.className='receiptFly';
+      fly.textContent='COMPROBANTE - '+file.name;
+      fly.style.left=(source.left+source.width/2-90)+'px';
+      fly.style.top=(source.top+source.height/2-20)+'px';
+      document.body.appendChild(fly);
+      const dx=(target.left+target.width/2)-(source.left+source.width/2);
+      const dy=(target.top+target.height/2)-(source.top+source.height/2);
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          fly.style.transform='translate('+dx+'px,'+dy+'px) scale(.08) rotate(-10deg)';
+          fly.style.opacity='0';
+          truckHotspot.classList.add('feed');
+        });
+      });
+      setTimeout(function(){
+        fly.remove();
+        truckHotspot.classList.remove('feed');
+        resolve();
+      },820);
+    });
+  }
+
+  if(truckHotspot){
+    truckHotspot.addEventListener('click',function(){
+      receiptModal.classList.add('show');
+      receiptResult.classList.remove('show');
+      setReceiptStatus('Esperando archivo...');
+    });
+  }
+
+  if(receiptClose){
+    receiptClose.addEventListener('click',function(){receiptModal.classList.remove('show')});
+  }
+  receiptModal.addEventListener('click',function(e){if(e.target===receiptModal)receiptModal.classList.remove('show')});
+
+  if(receiptFile){
+    receiptFile.addEventListener('change',async function(){
+      const file=receiptFile.files&&receiptFile.files[0];
+      if(!file) return;
+      pendingReceipt=file;
+      receiptResult.classList.remove('show');
+      receiptPreview.innerHTML='';
+      if(file.type&&file.type.indexOf('image/')===0){
+        const img=document.createElement('img');
+        img.src=URL.createObjectURL(file);
+        img.onload=function(){setTimeout(function(){URL.revokeObjectURL(img.src)},1000)};
+        receiptPreview.appendChild(img);
+      }else{
+        receiptPreview.innerHTML='<div class="pdf">PDF - '+escHtml(file.name)+'</div>';
+      }
+      receiptPreview.classList.add('show');
+      setReceiptStatus(file.name+' - '+(file.size/1024/1024).toFixed(2)+' MB');
+      await animateReceiptToTruck(file);
+      try{await analyzeReceipt(file)}catch(e){setReceiptStatus(e.message||'Error al analizar.','bad')}
+    });
+  }
+
+  if(revalLoginBtn){
+    revalLoginBtn.addEventListener('click',async function(){
+      try{
+        revalLoginBtn.disabled=true;
+        setReceiptStatus('Iniciando sesion Revalsoft IA...');
+        await loginRevalsoft();
+        revalLogin.classList.remove('show');
+        if(pendingReceipt) await analyzeReceipt(pendingReceipt);
+      }catch(e){
+        setReceiptStatus(e.message||'No se pudo iniciar sesion.','bad');
+      }finally{
+        revalLoginBtn.disabled=false;
+      }
     });
   }
 
