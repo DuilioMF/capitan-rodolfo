@@ -4,12 +4,19 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "31"
+$AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
+if(-not (Test-Path $AppDir)){ New-Item -ItemType Directory -Path $AppDir -Force | Out-Null }
+$VersionPath = Join-Path $AppDir "VERSION"
+$Version = "dev"
+try {
+    if(Test-Path $VersionPath){
+        $candidate = (Get-Content $VersionPath -Raw).Trim()
+        if(-not [string]::IsNullOrWhiteSpace($candidate)){ $Version = $candidate }
+    }
+} catch {}
 $Sessions = @{}
 $ActiveSessionId = $null
-$AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
 $ProfilePath = Join-Path $AppDir "sql_profile.json"
-if(-not (Test-Path $AppDir)){ New-Item -ItemType Directory -Path $AppDir -Force | Out-Null }
 
 function Send-Response {
     param(
@@ -218,7 +225,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v31</span></div>
+<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v$Version</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
@@ -232,7 +239,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v31 listo.</div>
+<div id="status" class="status">Conector local v$Version listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
 <div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contrasena se guarda cifrada por Windows para tu usuario.</div>
 </section>
@@ -488,7 +495,7 @@ try {
 @media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot,.dispatchHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
 </style></head>
 <body>
-<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v31</span></header>
+<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v$Version</span></header>
 <main class="stage">
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitan Rodolfo">
