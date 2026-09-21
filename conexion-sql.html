@@ -10,7 +10,7 @@
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 30% 0,#21170f,#0d0d0f 40%);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
 .wrap{width:min(1120px,94vw);margin:28px auto}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}.back{color:var(--orange2);text-decoration:none;font-weight:800}.version{font-size:12px;color:#111;background:var(--orange2);padding:6px 9px;border-radius:999px;font-weight:900}
 .grid{display:grid;grid-template-columns:380px 1fr;gap:18px}.card{background:rgba(23,23,27,.95);border:1px solid var(--line);border-radius:20px;padding:20px}h1{margin:0 0 5px}h2{font-size:16px;margin:0 0 14px}.muted{color:var(--muted);font-size:13px;line-height:1.5}
-label{display:block;font-size:12px;color:var(--muted);margin:13px 0 6px}input{width:100%;background:#0f0f12;border:1px solid #36363d;border-radius:11px;color:#fff;padding:12px 13px;outline:none}input:focus{border-color:var(--orange)}.password{position:relative}.password input{padding-right:50px}.eye{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--text);cursor:pointer;font-size:18px;padding:7px;width:auto;margin:0}.bridge-test{margin-top:9px;background:#202025;color:#fff;border:1px solid #3c3c42}
+label{display:block;font-size:12px;color:var(--muted);margin:13px 0 6px}input{width:100%;background:#0f0f12;border:1px solid #36363d;border-radius:11px;color:#fff;padding:12px 13px;outline:none}input:focus{border-color:var(--orange)}.password{position:relative}.password input{padding-right:50px}.eye{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--text);cursor:pointer;font-size:18px;padding:7px;width:auto;margin:0}.bridge-test{margin-top:9px;background:#202025;color:#fff;border:1px solid #3c3c42}.continue{display:none;margin-top:14px;background:linear-gradient(135deg,#2dd9ff,#34f5a5);color:#061116}.continue.show{display:block}
 button{width:100%;margin-top:15px;border:0;border-radius:12px;padding:13px;background:linear-gradient(135deg,var(--orange),#ff9630);color:#17100a;font-weight:900;cursor:pointer}.status{margin-top:14px;padding:11px;border:1px solid var(--line);border-radius:11px;color:var(--muted);font-size:13px}.status.ok{border-color:#235f43;color:#86e8b2}.status.bad{border-color:#6b2a2a;color:#ffaaaa}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}.list{display:grid;gap:8px;max-height:520px;overflow:auto}.item{border:1px solid #34343b;background:#121216;color:#eee;padding:10px 11px;border-radius:10px;cursor:pointer}.item:hover,.item.active{border-color:var(--orange);background:#21170f}.table{border-left:3px solid #43434b;background:#121216;border-radius:8px;padding:9px 10px;font-size:13px}
 .note{margin-top:16px;font-size:12px;color:var(--muted);line-height:1.5}.empty{opacity:.55}
@@ -19,11 +19,11 @@ button{width:100%;margin-top:15px;border:0;border-radius:12px;padding:13px;backg
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a class="back" href="index.html">← Volver a Inicio</a><span class="version">Capitán Rodolfo v16</span></div>
+  <div class="top"><a class="back" href="index.html">← Volver a Inicio</a><span class="version">Capitán Rodolfo v17</span></div>
   <div class="grid">
     <section class="card">
       <h1>Conexión SQL</h1>
-      <div class="muted">Esta configuración ya no aparece en la página inicial. La conexión se realiza contra el bridge local seguro de DoingLio.</div>
+      <div class="muted">Paso 2 de 3. Primero conectamos SQL Server y elegimos una base. Recién después se habilita el Mapa Vivo.</div>
       <label>Servidor / instancia</label>
       <input id="server" value="DUILIO\SQLEXPRESS" autocomplete="off"/>
       <label>Usuario SQL</label>
@@ -32,7 +32,7 @@ button{width:100%;margin-top:15px;border:0;border-radius:12px;padding:13px;backg
       <div class="password"><input id="password" type="password" autocomplete="current-password"/><button class="eye" type="button" id="passwordEye" aria-label="Mostrar contraseña">👁</button></div>
       <button id="connect">Conectar y ver bases</button>
       <button class="bridge-test" id="testBridge" type="button">Probar bridge local</button>
-      <div id="status" class="status">Bridge local: esperando conexión.</div>
+      <div id="status" class="status">Bridge local: esperando conexión.</div><button id="continue" class="continue" type="button">Continuar al Mapa Vivo →</button>
       <div class="note">La contraseña no queda guardada en el HTML. El bridge usa <b>Encrypt=yes</b> y <b>TrustServerCertificate=yes</b> hacia SQL Server.</div>
     </section>
 
@@ -103,7 +103,10 @@ document.getElementById('connect').onclick=async()=>{
     localStorage.setItem('rodolfo.sql.server',payload.server);
     localStorage.setItem('rodolfo.sql.user',payload.user);
     sessionId=data.sessionId;
-    status('Conectado a '+data.server,'ok');
+    sessionStorage.setItem('rodolfo.sql.sessionId',sessionId);
+    sessionStorage.setItem('rodolfo.sql.bridge',BRIDGE||'');
+    document.getElementById('continue').classList.remove('show');
+    status('Conectado a '+data.server+' · elegí una base','ok');
     dbs.innerHTML='';
     const lastDb=localStorage.getItem('rodolfo.sql.database');
     let auto=null;
@@ -124,11 +127,22 @@ async function loadTables(database,el){
     tables.innerHTML='<div class="table empty">Cargando…</div>';
     const data=await api('/api/tables',{sessionId,database});
     localStorage.setItem('rodolfo.sql.database',database);
+    sessionStorage.setItem('rodolfo.sql.database',database);
+    sessionStorage.setItem('rodolfo.sql.sessionId',sessionId);
+    sessionStorage.setItem('rodolfo.sql.bridge',BRIDGE||'');
     tables.innerHTML='';
     data.tables.forEach(x=>{const d=document.createElement('div');d.className='table';d.textContent=x.schema+'.'+x.name;tables.appendChild(d)});
     if(!data.tables.length)tables.innerHTML='<div class="table empty">No hay tablas visibles</div>';
+    status('SQL conectado · base '+database+' validada · '+data.tables.length+' tablas visibles','ok');
+    document.getElementById('continue').classList.add('show');
   }catch(e){tables.innerHTML='<div class="table empty">Error: '+e.message+'</div>'}
 }
+document.getElementById('continue').onclick=()=>{
+  const sid=sessionStorage.getItem('rodolfo.sql.sessionId');
+  const db=sessionStorage.getItem('rodolfo.sql.database');
+  if(!sid||!db){status('Primero conectá SQL y seleccioná una base.','bad');return}
+  location.href='mapa-vivo.html';
+};
 </script>
 </body>
 </html>
