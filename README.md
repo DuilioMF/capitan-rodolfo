@@ -1,57 +1,44 @@
-# Capitán Rodolfo v16
+# Capitán Rodolfo
 
-Aplicación de DoingLio para estaciones de servicio.
+[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-Capitán%20Rodolfo-ff6b35?style=for-the-badge)](https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-v16)
 
-- Sitio previsto: `https://rodolfo.doinglio.com.ar`
-- Portal principal previsto: `https://doinglio.com.ar`
-- Repositorio: `DuilioMF/capitan-rodolfo`
+Centro de control visual de DoingLio para estaciones de servicio.
 
-Cambios de esta versión:
+## Estado verificable
 
-- La página inicial ya **no muestra ni pide conexión SQL**.
-- La conexión quedó en **Configuración de datos** (`conexion-sql.html`).
-- Versionado visible actualizado a **v16**.
-- Se conserva `rodolfo.doinglio.com.ar` y se admiten los previews propios de DoingLio/Revalsoft IA para evitar `Failed to fetch`.
-- Se recuerdan servidor y usuario SQL en el equipo; la contraseña nunca se guarda.
-- Servidor sugerido: `DUILIO\SQLEXPRESS`.
-- El bridge local usa `Encrypt=yes;TrustServerCertificate=yes`.
-- La contraseña no está escrita en el HTML.
+- Versión actual en GitHub: **v16**.
+- Repositorio: `DuilioMF/capitan-rodolfo`.
+- Rama principal: `main`.
+- Tarjeta operativa: https://trello.com/c/M87mZT1d
+- Conexión SQL local: `DUILIO\\SQLEXPRESS` mediante bridge en `127.0.0.1:8787`.
+- URL web de prueba v16: https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-v16
+- Dominio objetivo: https://rodolfo.doinglio.com.ar
 
-## Probar la conexión real
+> La v16 está versionada en GitHub. La publicación definitiva en el dominio objetivo todavía requiere verificación final desde tu PC.
 
-1. En Windows, abrir `bridge\iniciar_bridge.bat`.
-2. Dejar esa ventana abierta.
-3. Abrir `conexion-sql.html`.
-4. Completar usuario y contraseña SQL.
-5. Presionar **Conectar y ver bases**.
-6. Elegir una base para listar sus tablas.
+## Cómo abrir
 
-El bridge escucha únicamente en `127.0.0.1:8787`, por lo que no expone SQL Server directamente a Internet.
+1. Entrá a este repositorio.
+2. Arriba del README vas a ver el botón **ABRIR CAPITÁN RODOLFO**.
+3. Para usar SQL Server local, primero ejecutá `bridge/iniciar_bridge.bat`.
+4. Después entrá en **Configuración de datos** y probá el bridge.
 
-## Estructura
+## Proyecto
 
-- `index.html`: tablero visual de Capitán Rodolfo.
-- `conexion-sql.html`: configuración, selección de base y listado de tablas.
-- `bridge/`: conector local principal para Windows y SQL Server.
-- `connector-node/`: conector alternativo conservado para trazabilidad; no es el conector que usa actualmente la página.
+- `index.html`: tablero visual.
+- `conexion-sql.html`: conexión, selección de base y listado de tablas.
+- `dist/`: versión publicable.
+- `bridge/`: bridge Python local para SQL Server.
+- `connector-node/`: conector alternativo conservado para trazabilidad.
 
 ## Seguridad
 
-- No se versionan usuarios, contraseñas ni cadenas de conexión.
-- SQL Server permanece detrás del bridge local.
-- La contraseña vive solamente durante la sesión del bridge.
-- Antes de usarlo fuera de una red controlada debe agregarse autenticación entre la página y el bridge.
+- No se guardan contraseñas SQL en GitHub.
+- La contraseña no queda escrita en el HTML.
+- El bridge local mantiene SQL Server fuera de exposición directa a Internet.
 
+## Historial reciente
 
-## v16
-
-- La pantalla SQL prueba automáticamente 127.0.0.1:8787 y localhost:8787.
-- Se agregó el botón **Probar bridge local** para habilitar/verificar el acceso local del navegador.
-- Las solicitudes locales declaran targetAddressSpace=local cuando el navegador lo admite.
-- El error diferencia bridge inaccesible de error SQL.
-- La contraseña incorpora el botón 👁 / 🙈 para mostrar u ocultar, igual que RevalSoftIA.
-
-
-## URL de prueba v16
-
-https://apqgrwudkfytwikrsivd.supabase.co/functions/v1/capitan-rodolfo-v16
+- **v14**: primera publicación verificada por Sites.
+- **v15**: evolución visual de estación viva.
+- **v16**: corrección del acceso al bridge local, prueba `127.0.0.1` / `localhost`, diagnóstico mejorado y botón 👁 / 🙈 en contraseña.
