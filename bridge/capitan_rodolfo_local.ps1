@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "27"
+$Version = "28"
 $Sessions = @{}
 $ActiveSessionId = $null
 $AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
@@ -93,7 +93,7 @@ function New-SqlConnection {
         return New-Object System.Data.SqlClient.SqlConnection($cs)
     }
     if([string]::IsNullOrWhiteSpace($User) -or [string]::IsNullOrWhiteSpace($Password)){
-        throw "Completá usuario y contraseña SQL."
+        throw "Completá usuario y contrasena SQL."
     }
     $secure = ConvertTo-SecureString $Password -AsPlainText -Force
     $secure.MakeReadOnly()
@@ -188,7 +188,7 @@ function Get-HomeHtml {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Capitán Rodolfo · SQL local</title>
+<title>Capitan Rodolfo - SQL local</title>
 <style>
 :root{--bg:#0d0d0f;--card:#17171b;--line:#34343b;--orange:#ff7a00;--text:#f5f5f6;--muted:#aaaab2;--ok:#35d07f;--bad:#ff6b6b}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 30% 0,#21170f,#0d0d0f 42%);color:var(--text);font-family:Segoe UI,Arial,sans-serif;min-height:100vh}
@@ -218,31 +218,31 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio · CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v27</span></div>
+<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v28</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
-<div><h1>Conexión SQL</h1><div class="muted">Esta pantalla corre dentro de tu PC. No depende de CORS ni del acceso a red local del navegador.</div></div>
-<div class="rodolfoMini" aria-label="Capitán Rodolfo">
+<div><h1>Conexion SQL</h1><div class="muted">Esta pantalla corre dentro de tu PC. No depende de CORS ni del acceso a red local del navegador.</div></div>
+<div class="rodolfoMini" aria-label="Capitan Rodolfo">
   <div class="rCap"></div><div class="rHead"></div><div class="rEye l"></div><div class="rEye r"></div><div class="rMust"></div><div class="rBody"></div><div class="rTie"></div>
 </div>
 </div>
 <label>Servidor / instancia</label><input id="server" value="$DefaultServer">
-<label>Autenticación</label>
-<select id="auth"><option value="sql">Usuario y contraseña SQL Server</option><option value="windows">Windows</option></select>
+<label>Autenticacion</label>
+<select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v27 listo.</div>
-<button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo →</button>
-<div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contraseña se guarda cifrada por Windows para tu usuario.</div>
+<div id="status" class="status">Conector local v28 listo.</div>
+<button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
+<div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contrasena se guarda cifrada por Windows para tu usuario.</div>
 </section>
 <section class="card">
-<div class="cols"><div><h3>Bases</h3><div id="dbs" class="list"><div class="item">Conectate para ver bases</div></div></div><div><h3>Tablas</h3><div id="tables" class="list"><div class="table">Seleccioná una base</div></div></div></div>
+<div class="cols"><div><h3>Bases</h3><div id="dbs" class="list"><div class="item">Conectate para ver bases</div></div></div><div><h3>Tablas</h3><div id="tables" class="list"><div class="table">Selecciona una base</div></div></div></div>
 </section>
 </div>
 <section class="dispatchCard">
   <div class="dispatchHead"><h2>Despachos abiertos</h2><span class="query">SELECT * FROM Despachos WHERE estadovta = 0</span></div>
-  <div id="dispatches" class="muted">Seleccioná una base para ver los despachos.</div>
+  <div id="dispatches" class="muted">Selecciona una base para ver los despachos.</div>
 </section>
 </div>
 <script>
@@ -265,7 +265,7 @@ async function restoreConnection(){
   document.getElementById('auth').value=d.auth||'sql';
   document.getElementById('user').value=d.user||'';
   document.getElementById('sqlCreds').style.display=(d.auth==='windows')?'none':'block';
-  status('Conectado automáticamente a '+d.server,'ok');
+  status('Conectado automaticamente a '+d.server,'ok');
   dbs.innerHTML='';
   d.databases.forEach(name=>{
     const b=document.createElement('button');b.className='item';b.textContent=name;b.onclick=()=>loadTables(name,b);dbs.appendChild(b);
@@ -278,7 +278,7 @@ document.getElementById('connect').onclick=async()=>{
  try{
   status('Conectando…');
   const payload={server:document.getElementById('server').value.trim(),auth:document.getElementById('auth').value,user:document.getElementById('user').value.trim(),password:document.getElementById('password').value};
-  const d=await api('/api/connect',payload); sessionId=d.sessionId; status('Conectado a '+d.server+' · elegí una base','ok');
+  const d=await api('/api/connect',payload); sessionId=d.sessionId; status('Conectado a '+d.server+' - elegi una base','ok');
   dbs.innerHTML=''; d.databases.forEach(name=>{const b=document.createElement('button');b.className='item';b.textContent=name;b.onclick=()=>loadTables(name,b);dbs.appendChild(b)});
  }catch(e){status('No se pudo conectar. '+e.message,'bad')}
 };
@@ -288,7 +288,7 @@ async function loadTables(database,el){
   [...document.querySelectorAll('#dbs .item')].forEach(x=>x.classList.remove('active'));el.classList.add('active');
   tables.innerHTML='<div class="table">Validando base…</div>';
   const d=await api('/api/tables',{sessionId,database});
-  status('Base '+database+' validada · entrando a Capitán Rodolfo…','ok');
+  status('Base '+database+' validada - entrando a Capitan Rodolfo…','ok');
   setTimeout(()=>{ location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(database); },350);
  }catch(e){
   status('Error: '+e.message,'bad')
@@ -350,7 +350,7 @@ try {
           $query = [System.Web.HttpUtility]::ParseQueryString(([uri]("http://127.0.0.1" + $req.Path)).Query)
           $sid = [string]$query['sessionId']
           $database = [string]$query['database']
-          if(-not $Sessions.ContainsKey($sid)){ throw "Sesión SQL no válida." }
+          if(-not $Sessions.ContainsKey($sid)){ throw "Sesion SQL no valida." }
           $sess = $Sessions[$sid]
           if($sess.databases -notcontains $database){ throw "Base no autorizada." }
 
@@ -412,7 +412,7 @@ try {
             $hd = [System.Net.WebUtility]::HtmlEncode([string]$h.denominacion)
             $hm = [System.Net.WebUtility]::HtmlEncode([string]$h.manguera)
             $hp = [System.Net.WebUtility]::HtmlEncode([string]$h.producto)
-            $hoseCards += "<div class='hoseRow'><b>T$ht</b><span class='arrow'>→</span><strong>M$hm</strong><span class='hoseProduct'>$hp</span><small>$hd</small></div>"
+            $hoseCards += "<div class='hoseRow'><b>T$ht</b><span class='arrow'>&rarr;</span><strong>M$hm</strong><span class='hoseProduct'>$hp</span><small>$hd</small></div>"
           }
           if([string]::IsNullOrWhiteSpace($hoseCards)){
             $hoseCards = "<div class='empty'>Sin relaciones tanque/manguera para mostrar.</div>"
@@ -424,7 +424,14 @@ try {
             $td = [System.Net.WebUtility]::HtmlEncode([string]$t.denominacion)
             $tp = [System.Net.WebUtility]::HtmlEncode([string]$t.producto)
             $tc = [System.Net.WebUtility]::HtmlEncode([string]$t.capacidad)
-            $tankCards += "<div class='tankRow'><b>T$tn</b><span class='tankName'>$td</span><span class='tankProduct'>$tp</span><strong>$tc L</strong></div>"
+            $tankHoses = @($hoseRows | Where-Object { [string]$_.tanque -eq [string]$t.numero })
+            $tankHoseText = ""
+            foreach($th in $tankHoses){
+              if($tankHoseText){ $tankHoseText += " | " }
+              $tankHoseText += "M$([System.Net.WebUtility]::HtmlEncode([string]$th.manguera)) - $([System.Net.WebUtility]::HtmlEncode([string]$th.producto))"
+            }
+            if(-not $tankHoseText){ $tankHoseText = "Sin mangueras asociadas" }
+            $tankCards += "<button type='button' class='tankRow tankPick' data-num='$tn' data-den='$td' data-prod='$tp' data-cap='$tc' data-hoses='$tankHoseText'><b>T$tn</b><span class='tankName'>$td</span><span class='tankProduct'>$tp</span><strong>$tc L</strong></button>"
           }
           if([string]::IsNullOrWhiteSpace($tankCards)){
             $tankCards = "<div class='empty'>Sin tanques para mostrar.</div>"
@@ -441,7 +448,7 @@ try {
             $ppu = [System.Net.WebUtility]::HtmlEncode([string]$d.ppu)
             $pes = [System.Net.WebUtility]::HtmlEncode([string]$d.pesos)
             $hora = [System.Net.WebUtility]::HtmlEncode([string]$d.hora)
-            $cards += "<div class='dispatchRow'><b>#$venta</b><span>Surt. $surt · Mang. $mang</span><span class='product'>$prod</span><span>$lit L · PPU $ppu · <strong>&#36;$pes</strong></span><small>$hora</small></div>"
+            $cards += "<button type='button' class='dispatchRow salePick' data-venta='$venta' data-surtidor='$surt' data-manguera='$mang' data-producto='$prod' data-litros='$lit' data-ppu='$ppu' data-pesos='$pes' data-hora='$hora'><b>#$venta</b><span>Surt. $surt - Mang. $mang</span><span class='product'>$prod</span><span>$lit L - PPU $ppu - <strong>&#36;$pes</strong></span><small>$hora</small></button>"
           }
           if([string]::IsNullOrWhiteSpace($cards)){
             $cards = "<div class='empty'>Sin despachos para mostrar.</div>"
@@ -451,7 +458,7 @@ try {
           $html = @"
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mapa Vivo · Capitán Rodolfo</title>
+<title>Mapa Vivo - Capitan Rodolfo</title>
 <style>
 :root{--bg:#050b12;--panel:#09141e;--line:#254154;--orange:#ff7138;--cyan:#2dd9ff;--green:#34f5a5;--text:#eaf6ff;--muted:#7ea2bb}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}
@@ -460,41 +467,105 @@ try {
 .stage{padding:14px}.mapWrap{position:relative;max-width:1600px;margin:auto}.mapWrap>img{display:block;width:100%;height:auto;border:1px solid #173244;border-radius:18px;background:#050b12}
 .dispatchOverlay{position:absolute;left:64.4%;top:60.4%;width:31.3%;height:18.5%;background:#07131df7;border:2px solid #2dd9ff;border-radius:18px;padding:12px 14px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .dispatchTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;font-size:12px;letter-spacing:2px;color:#89a9bd}.dispatchTitle strong{color:#eaf6ff;letter-spacing:0}
-.dispatchList{height:calc(100% - 28px);overflow:auto;padding-right:5px}.dispatchRow{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;border-bottom:1px solid #173244;padding:6px 0;font-size:11px;white-space:nowrap}.dispatchRow b{color:#34f5a5}.dispatchRow .product{overflow:hidden;text-overflow:ellipsis}.dispatchRow strong{color:#ffb06a}.dispatchRow small{color:#7ea2bb}.empty{color:#7ea2bb;padding:14px 0}
+.dispatchList{height:calc(100% - 28px);overflow:auto;padding-right:5px}.dispatchRow{display:grid;width:100%;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;border:0;border-bottom:1px solid #173244;padding:6px 0;font-size:11px;white-space:nowrap;background:transparent;color:#eaf6ff;text-align:left;cursor:pointer}.dispatchRow:hover,.dispatchRow.active{background:#0d2633}.dispatchRow b{color:#34f5a5}.dispatchRow .product{overflow:hidden;text-overflow:ellipsis}.dispatchRow strong{color:#ffb06a}.dispatchRow small{color:#7ea2bb}.empty{color:#7ea2bb;padding:14px 0}
 .tankOverlay{position:absolute;left:26.3%;top:19.5%;width:19.5%;max-height:35%;background:#09141ef2;border:2px solid #ff7138;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .tankTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:11px;letter-spacing:2px;color:#89a9bd}.tankTitle strong{color:#eaf6ff;letter-spacing:0}
-.tankList{max-height:210px;overflow:auto;padding-right:4px}.tankRow{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.tankRow b{color:#ff9d2e}.tankName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankProduct{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankRow strong{color:#2dd9ff}
+.tankList{max-height:210px;overflow:auto;padding-right:4px}.tankRow{display:grid;width:100%;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;border:0;border-bottom:1px solid #173244;padding:5px 0;font-size:10px;background:transparent;color:#eaf6ff;text-align:left;cursor:pointer}.tankRow:hover,.tankRow.active{background:#2a1710}.tankRow b{color:#ff9d2e}.tankName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankProduct{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankRow strong{color:#2dd9ff}
 .hoseOverlay{position:absolute;left:46%;top:18%;width:17%;max-height:31%;background:#07131df2;border:2px solid #34f5a5;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .hoseTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:10px;letter-spacing:1.5px;color:#89a9bd}.hoseTitle strong{color:#eaf6ff;letter-spacing:0}
 .hoseList{max-height:180px;overflow:auto;padding-right:4px}.hoseRow{display:grid;grid-template-columns:auto auto auto 1fr;gap:5px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.hoseRow b{color:#ff9d2e}.hoseRow strong{color:#34f5a5}.hoseRow .arrow{color:#2dd9ff}.hoseProduct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hoseRow small{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tankHotspot{position:absolute;left:26.2%;top:23.8%;width:18.8%;height:6.5%;border:1px dashed #ff7138;background:#ff713812;color:#ffb06a;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:2px;z-index:3}
+.detailCard{position:absolute;z-index:6;background:#07131df7;border:2px solid #ff7138;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px #000b;display:none}.detailCard.show{display:block}
+#tankDetail{left:28%;top:52%;width:28%}#saleOnPump{left:50.3%;top:30%;width:20%;border-color:#34f5a5}
+.detailTitle{font-size:11px;letter-spacing:1.5px;color:#89a9bd;margin-bottom:8px}.detailGrid{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:12px}.detailGrid b{color:#fff}.detailGrid span{color:#8fb3c9}.detailClose{position:absolute;right:8px;top:7px;border:0;background:transparent;color:#fff;cursor:pointer;font-size:16px}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
-@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}}
+@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
 </style></head>
 <body>
-<header class="top"><div class="left"><span class="badge ok">● SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v27</span></header>
+<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v28</span></header>
 <main class="stage">
   <div class="mapWrap">
-    <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitán Rodolfo">
-    <section class="tankOverlay">
+    <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitan Rodolfo">
+    <button id="tankHotspot" class="tankHotspot" type="button">TANQUES ($tankCount)</button>
+    <section id="tankPanel" class="tankOverlay">
       <div class="tankTitle"><span>TANQUES REALES</span><strong>$tankCount</strong></div>
       <div class="tankList">$tankCards</div>
     </section>
     <section class="hoseOverlay">
-      <div class="hoseTitle"><span>TANQUE → MANGUERA</span><strong>$hoseCount</strong></div>
+      <div class="hoseTitle"><span>TANQUE &rarr; MANGUERA</span><strong>$hoseCount</strong></div>
       <div class="hoseList">$hoseCards</div>
     </section>
     <section class="dispatchOverlay">
-      <div class="dispatchTitle"><span>DESPACHOS REALES</span><strong>$dispatchCount</strong></div>
+      <div class="dispatchTitle"><span>VENTAS / DESPACHOS</span><strong>$dispatchCount</strong></div>
       <div class="dispatchList">$cards</div>
+    </section>
+    <section id="tankDetail" class="detailCard">
+      <button class="detailClose" type="button" data-close="tankDetail">x</button>
+      <div class="detailTitle">DETALLE DEL TANQUE</div>
+      <div id="tankDetailBody" class="detailGrid"></div>
+    </section>
+    <section id="saleOnPump" class="detailCard">
+      <button class="detailClose" type="button" data-close="saleOnPump">x</button>
+      <div id="salePumpTitle" class="detailTitle">VENTA EN SURTIDOR</div>
+      <div id="salePumpBody" class="detailGrid"></div>
     </section>
   </div>
 </main>
-<div class="note">Tanques, relación tanque → manguera y despachos cargados directamente desde SQL.</div>
+<div class="note">Toca TANQUES para verlos. Toca un tanque para ver su ficha. Toca una venta para verla sobre el surtidor correspondiente.</div>
+<script>
+(function(){
+  const tankPanel=document.getElementById('tankPanel');
+  const tankHotspot=document.getElementById('tankHotspot');
+  const tankDetail=document.getElementById('tankDetail');
+  const tankBody=document.getElementById('tankDetailBody');
+  const saleCard=document.getElementById('saleOnPump');
+  const saleBody=document.getElementById('salePumpBody');
+  const saleTitle=document.getElementById('salePumpTitle');
+
+  if(tankHotspot){
+    tankHotspot.addEventListener('click',()=>{ tankPanel.style.display=(tankPanel.style.display==='none')?'block':'none'; });
+  }
+
+  document.querySelectorAll('.tankPick').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tankPick').forEach(x=>x.classList.remove('active')); btn.classList.add('active');
+      tankBody.innerHTML=
+        '<span>Tanque</span><b>'+btn.dataset.num+'</b>'+
+        '<span>Denominacion</span><b>'+btn.dataset.den+'</b>'+
+        '<span>Producto</span><b>'+btn.dataset.prod+'</b>'+
+        '<span>Capacidad</span><b>'+btn.dataset.cap+' L</b>'+
+        '<span>Mangueras</span><b>'+btn.dataset.hoses+'</b>';
+      tankDetail.classList.add('show');
+    });
+  });
+
+  document.querySelectorAll('.salePick').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.salePick').forEach(x=>x.classList.remove('active')); btn.classList.add('active');
+      saleTitle.textContent='VENTA #'+btn.dataset.venta+' - SURTIDOR '+btn.dataset.surtidor;
+      saleBody.innerHTML=
+        '<span>Venta</span><b>#'+btn.dataset.venta+'</b>'+
+        '<span>Surtidor</span><b>'+btn.dataset.surtidor+'</b>'+
+        '<span>Manguera</span><b>'+btn.dataset.manguera+'</b>'+
+        '<span>Producto</span><b>'+btn.dataset.producto+'</b>'+
+        '<span>Litros</span><b>'+btn.dataset.litros+' L</b>'+
+        '<span>PPU</span><b>'+btn.dataset.ppu+'</b>'+
+        '<span>Pesos</span><b>$ '+btn.dataset.pesos+'</b>'+
+        '<span>Hora</span><b>'+btn.dataset.hora+'</b>';
+      saleCard.classList.add('show');
+    });
+  });
+
+  document.querySelectorAll('[data-close]').forEach(btn=>{
+    btn.addEventListener('click',()=>document.getElementById(btn.dataset.close).classList.remove('show'));
+  });
+})();
+</script>
 </body></html>
 "@
           Send-Response $stream 200 "text/html; charset=utf-8" $html
         } catch {
-          Send-Response $stream 401 "text/html; charset=utf-8" "<h2>Sesión SQL no válida</h2><p>$([System.Net.WebUtility]::HtmlEncode($_.Exception.Message))</p><p>Volvé a abrir Capitán Rodolfo para reconectar.</p>"
+          Send-Response $stream 401 "text/html; charset=utf-8" "<h2>Sesion SQL no valida</h2><p>$([System.Net.WebUtility]::HtmlEncode($_.Exception.Message))</p><p>Volver a abrir Capitan Rodolfo para reconectar.</p>"
         }
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/connect'){
@@ -518,7 +589,7 @@ try {
           $data = $req.Body | ConvertFrom-Json
           $sid = [string]$data.sessionId
           $database = [string]$data.database
-          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesión vencida. Volvé a conectar.'}; continue }
+          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesion vencida. Volver a conectar.'}; continue }
           $sess = $Sessions[$sid]
           if($sess.databases -notcontains $database){ Send-Json $stream 403 @{error='Base no autorizada.'}; continue }
 
@@ -547,7 +618,7 @@ ORDER BY s.name,t.name;
           $data = $req.Body | ConvertFrom-Json
           $sid = [string]$data.sessionId
           $database = [string]$data.database
-          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesión vencida. Volvé a conectar.'}; continue }
+          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesion vencida. Volver a conectar.'}; continue }
           $sess = $Sessions[$sid]
           if($sess.databases -notcontains $database){ Send-Json $stream 403 @{error='Base no autorizada.'}; continue }
 
