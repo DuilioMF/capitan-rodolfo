@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, make_response
 import pyodbc, uuid
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 sessions = {}
@@ -12,9 +13,24 @@ ALLOWED_ORIGINS = {
     "null",
 }
 
+def origin_allowed(origin):
+    if origin in ALLOWED_ORIGINS:
+        return True
+    try:
+        host = (urlparse(origin).hostname or "").lower()
+    except Exception:
+        return False
+    return (
+        host in {"127.0.0.1", "localhost"}
+        or host.endswith(".doinglio.com.ar")
+        or host.endswith(".revalsoftia.com.ar")
+        or host.endswith(".revalsoftia.chatgpt.site")
+        or host.endswith(".duiliofracchia.workers.dev")
+    )
+
 def cors(resp):
     origin = request.headers.get("Origin", "")
-    if origin in ALLOWED_ORIGINS:
+    if origin_allowed(origin):
         resp.headers["Access-Control-Allow-Origin"] = origin
     resp.headers["Vary"] = "Origin"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
@@ -41,7 +57,7 @@ def driver_name():
 
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "14"})
+    return jsonify({"ok": True, "service": "DoingLio SQL Bridge", "version": "15"})
 
 @app.post("/api/connect")
 def connect():
