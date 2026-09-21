@@ -4,8 +4,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
+$AppDir = "C:\Sistemas\CapitanRodolfo"
 if(-not (Test-Path $AppDir)){ New-Item -ItemType Directory -Path $AppDir -Force | Out-Null }
+$LogDir = Join-Path $AppDir "logs"
+if(-not (Test-Path $LogDir)){ New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 $VersionPath = Join-Path $AppDir "VERSION"
 $Version = "dev"
 try {
