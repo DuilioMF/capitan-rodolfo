@@ -6,7 +6,7 @@ Centro de control visual de DoingLio para estaciones de servicio.
 
 ## Estado verificable
 
-- Versión actual en GitHub: **v17**.
+- Versión actual en GitHub: **v18**.
 - Repositorio: `DuilioMF/capitan-rodolfo`.
 - Rama principal: `main`.
 - Tarjeta operativa: https://trello.com/c/M87mZT1d
@@ -14,9 +14,9 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - URL web publicada: https://capitan-rodolfo.revalsoftia.chatgpt.site/ (**actualmente muestra v14**).
 - Dominio objetivo: https://rodolfo.doinglio.com.ar
 
-> La **v17 está versionada en GitHub**, pero el sitio público **todavía muestra v14**. Falta publicar v17 en Sites.
+> La **v18 está versionada en GitHub**, pero el sitio público puede seguir mostrando una versión anterior hasta que Sites publique este build.
 
-## Flujo v17
+## Flujo v18
 
 1. **DoingLio** — pantalla inicial.
 2. **Conexión SQL** — servidor, usuario, contraseña, selección de base y validación de tablas.
@@ -44,4 +44,4 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - **v14**: primera publicación verificada por Sites.
 - **v15**: evolución visual de estación viva.
 - **v16**: corrección del acceso al bridge local, prueba `127.0.0.1` / `localhost`, diagnóstico mejorado y botón 👁 / 🙈 en contraseña.
-- **v17**: flujo obligatorio DoingLio → SQL → base validada → Mapa Vivo.
+- **v18**: flujo obligatorio DoingLio → SQL → base validada → Mapa Vivo.
