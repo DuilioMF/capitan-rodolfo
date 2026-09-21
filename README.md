@@ -11,7 +11,7 @@ Centro de control visual de DoingLio para estaciones de servicio.
 - Rama principal: `main`.
 - Tarjeta operativa: https://trello.com/c/M87mZT1d
 - Conexión SQL local: `DUILIO\\SQLEXPRESS` mediante bridge en `127.0.0.1:8787`.
-- URL publicada actual: https://capitan-rodolfo.revalsoftia.chatgpt.site/ (**sigue mostrando v14**).
+- Nuevo dominio GitHub Pages: https://duiliomf.github.io/capitan-rodolfo/ (**se activará cuando GitHub Pages quede habilitado**).
 - Dominio objetivo: https://rodolfo.doinglio.com.ar
 
 > La **v18 está versionada en GitHub**, pero todavía **no está publicada en web**. El intento temporal con Supabase Edge Functions no sirve como hosting HTML porque el dominio compartido entrega HTML como texto.
