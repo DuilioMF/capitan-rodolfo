@@ -305,6 +305,41 @@ ORDER BY s.name,t.name;
           Send-Json $stream 500 @{error=$_.Exception.Message}
         }
       }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/dispatches'){
+        try {
+          $data = $req.Body | ConvertFrom-Json
+          $sid = [string]$data.sessionId
+          $database = [string]$data.database
+          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesión vencida. Volvé a conectar.'}; continue }
+          $sess = $Sessions[$sid]
+          if($sess.databases -notcontains $database){ Send-Json $stream 403 @{error='Base no autorizada.'}; continue }
+
+          $cn = $sess.connection
+          $cn.ChangeDatabase($database)
+          $cmd = $cn.CreateCommand()
+          $cmd.CommandText = "SELECT * FROM depachos WHERE estadovta = 0;"
+          $reader = $cmd.ExecuteReader()
+
+          $cols = @()
+          for($i=0; $i -lt $reader.FieldCount; $i++){ $cols += [string]$reader.GetName($i) }
+          $rows = @()
+          while($reader.Read()){
+            $row = [ordered]@{}
+            for($i=0; $i -lt $reader.FieldCount; $i++){
+              $v = $reader.GetValue($i)
+              if($v -is [System.DBNull]){ $v = $null }
+              elseif($v -is [DateTime]){ $v = $v.ToString("yyyy-MM-dd HH:mm:ss") }
+              elseif($v -is [byte[]]){ $v = "[binario]" }
+              $row[$cols[$i]] = $v
+            }
+            $rows += [pscustomobject]$row
+          }
+          $reader.Close()
+          Send-Json $stream 200 @{database=$database;columns=$cols;rows=$rows}
+        } catch {
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
+      }
       else {
         Send-Json $stream 404 @{error='Ruta no encontrada'}
       }
