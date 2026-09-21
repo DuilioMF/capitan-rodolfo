@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$Version = "30"
+$Version = "31"
 $Sessions = @{}
 $ActiveSessionId = $null
 $AppDir = Join-Path $env:LOCALAPPDATA "CapitanRodolfo"
@@ -218,7 +218,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </head>
 <body>
 <div class="wrap">
-<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v30</span></div>
+<div class="top"><div><strong>DoingLio - CAPITÁN RODOLFO</strong><div class="muted">Conector SQL local</div></div><span class="ver">v31</span></div>
 <div class="grid">
 <section class="card">
 <div class="heroTop">
@@ -232,7 +232,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v30 listo.</div>
+<div id="status" class="status">Conector local v31 listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
 <div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contrasena se guarda cifrada por Windows para tu usuario.</div>
 </section>
@@ -468,40 +468,43 @@ try {
 .dispatchOverlay{position:absolute;left:64.4%;top:60.4%;width:31.3%;height:18.5%;background:#07131df7;border:2px solid #2dd9ff;border-radius:18px;padding:12px 14px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .dispatchTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;font-size:12px;letter-spacing:2px;color:#89a9bd}.dispatchTitle strong{color:#eaf6ff;letter-spacing:0}
 .dispatchList{height:calc(100% - 28px);overflow:auto;padding-right:5px}.dispatchRow{display:grid;width:100%;grid-template-columns:auto auto 1fr auto auto;gap:8px;align-items:center;border:0;border-bottom:1px solid #173244;padding:6px 0;font-size:11px;white-space:nowrap;background:transparent;color:#eaf6ff;text-align:left;cursor:pointer}.dispatchRow:hover,.dispatchRow.active{background:#0d2633}.dispatchRow b{color:#34f5a5}.dispatchRow .product{overflow:hidden;text-overflow:ellipsis}.dispatchRow strong{color:#ffb06a}.dispatchRow small{color:#7ea2bb}.empty{color:#7ea2bb;padding:14px 0}
-.tankOverlay{position:absolute;left:26.3%;top:19.5%;width:19.5%;max-height:35%;background:#09141ef2;border:2px solid #ff7138;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
+.tankOverlay{position:absolute;left:26.3%;top:31%;width:19.5%;max-height:31%;background:#09141ef2;border:2px solid #ff7138;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .tankTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:11px;letter-spacing:2px;color:#89a9bd}.tankTitle strong{color:#eaf6ff;letter-spacing:0}
 .tankList{max-height:210px;overflow:auto;padding-right:4px}.tankRow{display:grid;width:100%;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;border:0;border-bottom:1px solid #173244;padding:5px 0;font-size:10px;background:transparent;color:#eaf6ff;text-align:left;cursor:pointer}.tankRow:hover,.tankRow.active{background:#2a1710}.tankRow b{color:#ff9d2e}.tankName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankProduct{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankRow strong{color:#2dd9ff}
-.hoseOverlay{position:absolute;left:46%;top:18%;width:17%;max-height:31%;background:#07131df2;border:2px solid #34f5a5;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
+.hoseOverlay{position:absolute;left:46%;top:26%;width:17%;max-height:28%;background:#07131df2;border:2px solid #34f5a5;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .hoseTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:10px;letter-spacing:1.5px;color:#89a9bd}.hoseTitle strong{color:#eaf6ff;letter-spacing:0}
 .hoseList{max-height:180px;overflow:auto;padding-right:4px}.hoseRow{display:grid;grid-template-columns:auto auto auto 1fr;gap:5px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.hoseRow b{color:#ff9d2e}.hoseRow strong{color:#34f5a5}.hoseRow .arrow{color:#2dd9ff}.hoseProduct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hoseRow small{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tankHotspot{position:absolute;left:26.2%;top:23.8%;width:18.8%;height:6.5%;border:1px dashed #ff7138;background:#ff713812;color:#ffb06a;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:2px;z-index:3}
 .hoseHotspot{position:absolute;left:46%;top:18%;width:17%;height:6.5%;border:1px dashed #34f5a5;background:#34f5a512;color:#8fffd0;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:1.4px;z-index:3}
+.dispatchHotspot{position:absolute;left:70%;top:55%;width:22%;height:5.5%;border:1px dashed #2dd9ff;background:#2dd9ff12;color:#8fefff;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:1.2px;z-index:3}
+.parentClose{border:0;background:transparent;color:#fff;cursor:pointer;font-size:15px;font-weight:900;padding:0 3px;margin:0;width:auto}
 .detailCard{position:absolute;z-index:6;background:#07131df7;border:2px solid #ff7138;border-radius:16px;padding:12px 14px;box-shadow:0 10px 30px #000b;display:none}.detailCard.show{display:block}
-#tankDetail{left:28%;top:52%;width:28%}#saleOnPump{left:50.3%;top:30%;width:20%;border-color:#34f5a5}
+#tankDetail{left:27%;top:64%;width:30%}#saleOnPump{left:50.3%;top:30%;width:20%;border-color:#34f5a5}
 .detailTitle{font-size:11px;letter-spacing:1.5px;color:#89a9bd;margin-bottom:8px}.detailGrid{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:12px}.detailGrid b{color:#fff}.detailGrid span{color:#8fb3c9}.detailClose{position:absolute;right:8px;top:7px;border:0;background:transparent;color:#fff;cursor:pointer;font-size:16px}
 .paymentBtn{width:100%;margin-top:12px;border:0;border-radius:10px;padding:10px 12px;background:linear-gradient(135deg,#ff7138,#ff9d2e);color:#101010;font-weight:900;cursor:pointer}
 #paymentPanel{left:50.3%;top:54%;width:20%;border-color:#ff7138}
 .paymentPending{color:#ffb06a;font-size:12px;line-height:1.5}
 .note{padding:0 18px 18px;color:var(--muted);font-size:13px}
-@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
+@media(max-width:900px){.dispatchOverlay,.tankOverlay,.hoseOverlay,.detailCard{position:static;width:auto;height:auto;max-height:none;margin-top:12px}.tankHotspot,.hoseHotspot,.dispatchHotspot{display:none}.tankList,.hoseList{max-height:260px}.dispatchRow{grid-template-columns:1fr 1fr}.dispatchRow .product{grid-column:1/-1}.detailCard{display:none}.detailCard.show{display:block}}
 </style></head>
 <body>
-<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v30</span></header>
+<header class="top"><div class="left"><span class="badge ok"><span style="color:#34f5a5">&#9679;</span> SQL conectado</span><span class="badge">Base: $safeDb</span></div><span class="ver">v31</span></header>
 <main class="stage">
   <div class="mapWrap">
     <img src="https://duiliomf.github.io/capitan-rodolfo/assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de Capitan Rodolfo">
     <button id="tankHotspot" class="tankHotspot" type="button">TANQUES ($tankCount)</button>
     <section id="tankPanel" class="tankOverlay" style="display:none">
-      <div class="tankTitle"><span>TANQUES REALES</span><strong>$tankCount</strong></div>
+      <div class="tankTitle"><span>TANQUES REALES</span><span><strong>$tankCount</strong> <button id="closeTankPanel" class="parentClose" type="button">x</button></span></div>
       <div class="tankList">$tankCards</div>
     </section>
     <button id="hoseHotspot" class="hoseHotspot" type="button">TANQUE &rarr; MANGUERA ($hoseCount)</button>
     <section id="hosePanel" class="hoseOverlay" style="display:none">
-      <div class="hoseTitle"><span>TANQUE &rarr; MANGUERA</span><strong>$hoseCount</strong></div>
+      <div class="hoseTitle"><span>TANQUE &rarr; MANGUERA</span><span><strong>$hoseCount</strong> <button id="closeHosePanel" class="parentClose" type="button">x</button></span></div>
       <div class="hoseList">$hoseCards</div>
     </section>
-    <section class="dispatchOverlay">
-      <div class="dispatchTitle"><span>VENTAS / DESPACHOS</span><strong>$dispatchCount</strong></div>
+    <button id="dispatchHotspot" class="dispatchHotspot" type="button" style="display:none">VENTAS / DESPACHOS ($dispatchCount)</button>
+    <section id="dispatchPanel" class="dispatchOverlay">
+      <div class="dispatchTitle"><span>VENTAS / DESPACHOS</span><span><strong>$dispatchCount</strong> <button id="closeDispatchPanel" class="parentClose" type="button">x</button></span></div>
       <div class="dispatchList">$cards</div>
     </section>
     <section id="tankDetail" class="detailCard">
@@ -523,13 +526,18 @@ try {
     </section>
   </div>
 </main>
-<div class="note">Toca TANQUES o TANQUE - MANGUERA para abrir cada ventana. Si no los tocas, quedan ocultos. Toca una venta para verla sobre el surtidor correspondiente.</div>
+<div class="note">Las ventanas padre controlan a sus hijas: al cerrar TANQUES se cierra el detalle; al cerrar VENTAS / DESPACHOS se cierran la venta seleccionada y VER PAGO.</div>
 <script>
 (function(){
   const tankPanel=document.getElementById('tankPanel');
   const tankHotspot=document.getElementById('tankHotspot');
   const hosePanel=document.getElementById('hosePanel');
   const hoseHotspot=document.getElementById('hoseHotspot');
+  const closeTankPanel=document.getElementById('closeTankPanel');
+  const closeHosePanel=document.getElementById('closeHosePanel');
+  const dispatchPanel=document.getElementById('dispatchPanel');
+  const dispatchHotspot=document.getElementById('dispatchHotspot');
+  const closeDispatchPanel=document.getElementById('closeDispatchPanel');
   const tankDetail=document.getElementById('tankDetail');
   const tankBody=document.getElementById('tankDetailBody');
   const saleCard=document.getElementById('saleOnPump');
@@ -540,11 +548,42 @@ try {
   const paymentBody=document.getElementById('paymentBody');
   let selectedSale=null;
 
-  if(tankHotspot){
-    tankHotspot.addEventListener('click',()=>{ tankPanel.style.display=(tankPanel.style.display==='none')?'block':'none'; });
+  function closeTankHierarchy(){
+    tankPanel.style.display='none';
+    tankDetail.classList.remove('show');
+    document.querySelectorAll('.tankPick').forEach(x=>x.classList.remove('active'));
   }
+  function closeSaleHierarchy(){
+    dispatchPanel.style.display='none';
+    dispatchHotspot.style.display='block';
+    saleCard.classList.remove('show');
+    paymentPanel.classList.remove('show');
+    selectedSale=null;
+    document.querySelectorAll('.salePick').forEach(x=>x.classList.remove('active'));
+  }
+
+  if(tankHotspot){
+    tankHotspot.addEventListener('click',()=>{
+      if(tankPanel.style.display==='none'){
+        tankPanel.style.display='block';
+      }else{
+        closeTankHierarchy();
+      }
+    });
+  }
+  if(closeTankPanel){ closeTankPanel.addEventListener('click',closeTankHierarchy); }
+
   if(hoseHotspot){
     hoseHotspot.addEventListener('click',()=>{ hosePanel.style.display=(hosePanel.style.display==='none')?'block':'none'; });
+  }
+  if(closeHosePanel){ closeHosePanel.addEventListener('click',()=>{hosePanel.style.display='none';}); }
+
+  if(closeDispatchPanel){ closeDispatchPanel.addEventListener('click',closeSaleHierarchy); }
+  if(dispatchHotspot){
+    dispatchHotspot.addEventListener('click',()=>{
+      dispatchPanel.style.display='block';
+      dispatchHotspot.style.display='none';
+    });
   }
 
   document.querySelectorAll('.tankPick').forEach(btn=>{
@@ -599,7 +638,15 @@ try {
   }
 
   document.querySelectorAll('[data-close]').forEach(btn=>{
-    btn.addEventListener('click',()=>document.getElementById(btn.dataset.close).classList.remove('show'));
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.close;
+      document.getElementById(id).classList.remove('show');
+      if(id==='saleOnPump'){
+        paymentPanel.classList.remove('show');
+        selectedSale=null;
+        document.querySelectorAll('.salePick').forEach(x=>x.classList.remove('active'));
+      }
+    });
   });
 })();
 </script>
