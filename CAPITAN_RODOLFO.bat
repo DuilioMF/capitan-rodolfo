@@ -1,23 +1,42 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-set "APPROOT=%LOCALAPPDATA%\CapitanRodolfo"
+set "APPROOT=C:\Sistemas\CapitanRodolfo"
+set "OLDROOT=%LOCALAPPDATA%\CapitanRodolfo"
 set "LOCALPS=%APPROOT%\capitan_rodolfo_local.ps1"
 set "VERSION_FILE=%APPROOT%\VERSION"
+set "LOGDIR=%APPROOT%\logs"
 set "VERSION_REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/VERSION"
 set "REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/bridge/capitan_rodolfo_local.ps1"
 set "HEALTH=http://127.0.0.1:8787/health"
 set "LOCALURL=http://127.0.0.1:8787/"
 set "TASKNAME=CapitanRodolfoLocal"
 
+if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
 if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
+
+if not exist "%APPROOT%" (
+  echo.
+  echo   Necesito crear %APPROOT%
+  echo   Windows va a pedir permiso de administrador una sola vez.
+  echo.
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+  exit /b
+)
+
+if not exist "%LOGDIR%" mkdir "%LOGDIR%" >nul 2>nul
+
+rem Migrar la configuracion anterior para no pedir SQL otra vez.
+if not exist "%APPROOT%\sql_profile.json" if exist "%OLDROOT%\sql_profile.json" copy /Y "%OLDROOT%\sql_profile.json" "%APPROOT%\sql_profile.json" >nul
+if not exist "%APPROOT%\VERSION" if exist "%OLDROOT%\VERSION" copy /Y "%OLDROOT%\VERSION" "%APPROOT%\VERSION" >nul
 
 echo.
 echo ============================================================
 echo                  CAPITAN RODOLFO
 echo ============================================================
 echo.
-echo   Preparando conector SQL local...
+echo   Carpeta local: %APPROOT%
+echo   Preparando conector SQL...
 echo.
 
 echo   [1/5] Leyendo version actual...
@@ -62,6 +81,7 @@ for /L %%I in (1,1,20) do (
 if "!OK!"=="1" (
   echo.
   echo   Conector local v!APP_VERSION! OK.
+  echo   Archivos locales en: %APPROOT%
   echo   Abriendo Capitan Rodolfo...
   start "" "%LOCALURL%"
   timeout /t 2 >nul
@@ -75,6 +95,7 @@ echo ============================================================
 echo   No se pudo iniciar o actualizar Capitan Rodolfo.
 echo ============================================================
 echo.
+echo   Carpeta: %APPROOT%
 echo   Mandame esta pantalla.
 pause
 exit /b 1
