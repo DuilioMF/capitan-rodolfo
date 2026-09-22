@@ -1,86 +1,15 @@
 <!doctype html>
 <html lang="es">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>DoingLio · Capitán Rodolfo</title>
-<style>
-:root{--bg:#09090c;--panel:#121217;--line:#27272e;--orange:#ff5a3d;--orange2:#ff7a49;--text:#f7f5f2;--muted:#a7a4a2;--green:#39d677}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
-body{min-height:100vh;background:radial-gradient(circle at 78% 40%,#321811 0%,#151012 27%,#09090c 58%,#09090c 100%)}
-.wrap{width:min(1380px,94vw);margin:auto;padding:28px 0 42px}
-header{height:92px;border-bottom:1px solid #272229;display:flex;align-items:center;justify-content:space-between;gap:24px}
-.brand{display:flex;align-items:center;gap:14px}.logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#ff633f,#ff7d45);display:grid;place-items:center;color:#fff;font-weight:950;font-size:23px;box-shadow:0 0 25px #ff5a3d25}.brand strong{display:block;font-size:22px}.brand small{display:block;color:var(--orange2);font-weight:900;letter-spacing:2px;font-size:12px;margin-top:3px}
-.nav{display:flex;align-items:center;gap:30px}.nav a{text-decoration:none;color:#e8e5e3;font-weight:700}.sqlnav{display:flex;align-items:center;gap:9px}.sqlnav:before{content:"▤";font-size:22px}.primary{padding:14px 20px;border-radius:14px;background:var(--orange);color:white!important;box-shadow:0 10px 30px #ff5a3d26}
-main{display:grid;grid-template-columns:1.12fr .88fr;align-items:center;min-height:710px;gap:44px}
-.kicker{display:flex;align-items:center;gap:12px;color:var(--orange2);font-weight:950;letter-spacing:3px;font-size:13px}.kicker:before{content:"";width:28px;height:2px;background:var(--orange)}
-h1{font-size:clamp(64px,7.3vw,118px);line-height:.94;letter-spacing:-5px;margin:28px 0 30px;font-weight:500}.accent{color:var(--orange);display:block}
-.lead{font-size:19px;line-height:1.75;color:#b9b6b5;max-width:760px}
-.actions{display:flex;align-items:center;gap:24px;margin-top:34px}.btn{display:inline-flex;align-items:center;gap:12px;text-decoration:none;font-weight:900;font-size:18px;border-radius:14px;padding:17px 26px}.btn-main{background:var(--orange);color:white}.btn-sql{color:#fff;padding-left:0}.btn-install{color:#ffb07b;border:1px solid #5b392c;padding:14px 18px;font-size:15px}.db{font-size:23px}.shield{margin-top:24px;color:#85858c;font-size:14px}.shield b{color:var(--green);font-size:18px;margin-right:8px}
-.hero{position:relative;min-height:650px}.speech{position:absolute;right:185px;top:115px;padding:17px 22px;border:1px solid #8f4b3e;border-radius:16px;background:#25171a;color:#f7f3f0;font-weight:800;z-index:4}
-.mascot{position:absolute;right:18px;bottom:40px;width:460px;height:510px}.head{position:absolute;left:115px;top:80px;width:210px;height:238px;background:#f0aa78;border:8px solid #131319;border-radius:44% 44% 46% 46%}.ear{position:absolute;top:150px;width:38px;height:58px;background:#efa777;border:7px solid #131319;border-radius:50%}.ear.l{left:92px}.ear.r{right:95px}.eye{position:absolute;top:150px;width:18px;height:25px;background:#111;border-radius:50%}.eye.l{left:163px}.eye.r{right:154px}.nose{position:absolute;left:221px;top:180px;width:28px;height:38px;border-right:6px solid #a85a43;border-bottom:6px solid #a85a43;border-radius:0 0 14px 0}.mustache{position:absolute;left:167px;top:225px;width:124px;height:38px;background:#19191d;border-radius:50% 50% 40% 40%;transform:rotate(2deg)}
-.cap{position:absolute;left:82px;top:28px;width:280px;height:126px;background:var(--orange);border:8px solid #131319;border-radius:48% 48% 10% 12%;z-index:2}.cap:after{content:"";position:absolute;right:-70px;bottom:-7px;width:150px;height:35px;background:var(--orange);border:8px solid #131319;border-radius:50%;transform:rotate(1deg)}.capbadge{position:absolute;left:206px;top:63px;width:54px;height:54px;border-radius:50%;background:#fff0e8;color:#e94d35;display:grid;place-items:center;font-size:25px;font-weight:950;z-index:3}
-.body{position:absolute;left:62px;bottom:0;width:330px;height:210px;background:#2b2b33;border:8px solid #131319;border-radius:40px 40px 24px 24px}.tie{position:absolute;left:207px;bottom:8px;width:64px;height:180px;background:var(--orange);clip-path:polygon(35% 0,65% 0,85% 76%,50% 100%,15% 76%)}.status{position:absolute;right:-4px;bottom:8px;width:270px;background:#17171d;border:1px solid #3a363b;border-radius:18px;padding:18px 20px;z-index:5;box-shadow:0 22px 55px #0008}.status .row{display:flex;align-items:center;gap:10px;color:#a4a3ad;font-size:12px;font-weight:900;letter-spacing:2px}.dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 0 7px #39d67718}.status strong{display:block;font-size:20px;margin:12px 0 8px}.status small{color:#777985}.version{position:fixed;right:16px;bottom:14px;color:#6e6d72;font-size:12px}
-@media(max-width:980px){.nav a:not(.sqlnav):not(.primary){display:none}main{grid-template-columns:1fr}.hero{min-height:560px}.mascot{left:50%;transform:translateX(-50%);right:auto}.speech{left:50%;transform:translateX(-50%);right:auto;white-space:nowrap}h1{font-size:70px}.actions{flex-wrap:wrap}}
-@media(max-width:580px){.wrap{width:90vw}.primary{display:none}.mascot{transform:translateX(-50%) scale(.82);transform-origin:bottom}.hero{min-height:480px}h1{font-size:54px;letter-spacing:-3px}.lead{font-size:16px}.actions{gap:10px}.btn{font-size:16px}.speech{font-size:13px;top:70px}.nav{gap:12px}}
-
-.build-version{position:fixed;right:14px;bottom:12px;z-index:9999;background:#17171d;border:1px solid #4b4141;color:#ff9b6a;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;box-shadow:0 8px 24px #0007}
-</style>
-</head>
-<body>
-<div class="wrap">
-<header>
-  <div class="brand"><div class="logo">✣</div><div><strong>DoingLio</strong><small>CAPITÁN RODOLFO</small></div></div>
-  <nav class="nav">
-    <a href="#como">Cómo funciona</a>
-    <a class="sqlnav" href="conexion-sql.html">Conectar SQL</a>
-    <a class="primary" href="conexion-sql.html">Entrar con ChatGPT</a>
-  </nav>
-</header>
-
-<main>
-  <section>
-    <div class="kicker">INTELIGENCIA PARA ESTACIONES DE SERVICIO</div>
-    <h1>Tu estación,<span class="accent">bajo control.</span></h1>
-    <p class="lead">Capitán Rodolfo sigue el combustible desde que baja del camión hasta que el dinero queda conciliado. Le hablás, pregunta a tus datos y te muestra dónde mirar.</p>
-    <div class="actions">
-      <a class="btn btn-main" href="conexion-sql.html">Conectar SQL <span>→</span></a>
-      <a class="btn btn-sql" href="conexion-sql.html"><span class="db">▤</span> Conectar SQL</a>
-      <a class="btn btn-install" href="CAPITAN_RODOLFO.bat" download>⬇ Instalar conector</a>
-    </div>
-    <div class="shield"><b>♢</b>Tus empresas, proyectos y permisos siguen separados.</div>
-  </section>
-
-  <section class="hero">
-    <div class="speech">Estoy mirando toda la estación.</div>
-    <div class="mascot">
-      <div class="cap"></div><div class="capbadge">R</div>
-      <div class="ear l"></div><div class="ear r"></div>
-      <div class="head"></div><div class="eye l"></div><div class="eye r"></div><div class="nose"></div><div class="mustache"></div>
-      <div class="body"></div><div class="tie"></div>
-      <div class="status"><div class="row"><span class="dot"></span>OPERACIÓN EN VIVO</div><strong>Todo coincide</strong><small>Última revisión · hace 2 min</small></div>
-    </div>
-  </section>
-</main>
-</div>
-<div class="build-version" data-version-prefix="Capitán Rodolfo · v">Capitán Rodolfo · v…</div>
-<script>
-(async function(){
-  try{
-    const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
-    if(!r.ok) throw new Error('VERSION '+r.status);
-    const v=(await r.text()).trim();
-    window.CAPITAN_VERSION=v;
-    document.querySelectorAll('[data-version-prefix]').forEach(el=>{
-      el.textContent=(el.dataset.versionPrefix||'')+v;
-    });
-  }catch(e){
-    console.warn('No se pudo leer VERSION',e);
-  }
-})();
-</script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#070706" />
+    <meta name="description" content="DoingLio · Ingreso Da Vinci" />
+    <title>DoingLio · Da Vinci</title>
+    <script type="module" crossorigin src="./assets/index-Dwr3tSbW.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B05F-bUP.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
