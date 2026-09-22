@@ -1,6 +1,6 @@
 # Capitán Rodolfo
 
-[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-CAPITÁN%20RODOLFO-ff6b35?style=for-the-badge)](https://duiliomf.github.io/capitan-rodolfo/)
+[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-CAPITÁN%20RODOLFO-ff6b35?style=for-the-badge)](https://capitan-rodolfo.revalsoftia.chatgpt.site/)
 [![Volver a DoingLio](https://img.shields.io/badge/←%20VOLVER-DOINGLIO-111111?style=for-the-badge)](https://doinglio.revalsoftia.chatgpt.site/)
 [![Trello](https://img.shields.io/badge/VER-TRELLO-0052CC?style=for-the-badge)](https://trello.com/c/M87mZT1d)
 
@@ -20,8 +20,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
 - Fuente actual: build **37**
-- GitHub Pages: `https://duiliomf.github.io/capitan-rodolfo/`
-- Site histórico de referencia visual: `https://capitan-rodolfo.revalsoftia.chatgpt.site/`
+- Site activo: `https://capitan-rodolfo.revalsoftia.chatgpt.site/`
 - Tarjeta operativa: `https://trello.com/c/M87mZT1d`
 
 ## Conexión
