@@ -105,9 +105,21 @@ h1 em{font-weight:500;color:#d9ae65}
 
 </style>
 <link rel="stylesheet" href="theme.css">
-<script src="theme.js" defer></script>
+<script src="theme.js?v=39" defer></script>
 </head>
 <body>
+<nav class="site-controls" id="critical-controls" aria-label="Tema y navegación">
+  <button type="button" id="critical-theme">🌙 Activar oscuro</button>
+  <a href="https://duiliomf.github.io/doinglio/" target="_self">← Volver a DoingLio</a>
+</nav>
+<script>
+(function(){
+ const b=document.getElementById('critical-theme');
+ function paint(){const light=document.documentElement.dataset.theme==='light';b.textContent=light?'🌙 Activar oscuro':'☀ Activar claro';}
+ b.onclick=function(){const t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;try{localStorage.setItem('doinglio.theme',t)}catch(_){}paint();};
+ paint();
+})();
+</script>
 <div class="wrap">
 <header>
   <div class="brand">
@@ -164,7 +176,7 @@ h1 em{font-weight:500;color:#d9ae65}
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">37</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">39</span></div>
 </div>
 <script>
 (async()=>{
