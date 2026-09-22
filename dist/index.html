@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es">
-<head>
+<head>\n<script data-doinglio-theme-init>(function(){try{document.documentElement.dataset.theme=localStorage.getItem('doinglio.theme')||'dark'}catch(_){document.documentElement.dataset.theme='dark'}})();</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -90,7 +90,22 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(max-width:920px){.hero{grid-template-columns:1fr}.manuscript{opacity:.12;right:-160px}.flow{grid-template-columns:1fr 1fr}.flow:before,.step:after{display:none}.kpis{grid-template-columns:1fr 1fr}.scribble{display:none}}
 @media(max-width:560px){header{align-items:flex-start}.nav{flex-direction:column;align-items:flex-end}.flow,.kpis{grid-template-columns:1fr}h1{font-size:58px}.voice{min-height:190px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-</style>
+
+/* Tema compartido DoingLio */
+.theme-toggle{position:fixed;right:14px;bottom:56px;z-index:10001;width:auto!important;margin:0!important;padding:9px 12px!important;border:1px solid #75603d!important;border-radius:999px!important;background:#17140f!important;color:#f3ead8!important;font:700 11px/1.2 Inter,Segoe UI,Arial,sans-serif!important;letter-spacing:.04em!important;cursor:pointer!important;box-shadow:0 8px 24px #0006!important;backdrop-filter:blur(8px)}
+.theme-toggle:hover{transform:translateY(-1px)}
+html[data-theme="light"] body{background:#f3eee3!important;color:#2b241b!important}
+html[data-theme="light"] body:before{opacity:.06!important}
+html[data-theme="light"] .top,html[data-theme="light"] header{border-color:#c8b99d!important}
+html[data-theme="light"] .card,html[data-theme="light"] .voice,html[data-theme="light"] .step,html[data-theme="light"] .kpi,html[data-theme="light"] .gatebox,html[data-theme="light"] .bridgebox,html[data-theme="light"] .status,html[data-theme="light"] .dispatchCard,html[data-theme="light"] .item,html[data-theme="light"] .table,html[data-theme="light"] .dispatchOverlay,html[data-theme="light"] .tankOverlay,html[data-theme="light"] .hoseOverlay,html[data-theme="light"] .detailCard,html[data-theme="light"] .receiptBox,html[data-theme="light"] .revalLogin,html[data-theme="light"] .badge{background:#fffaf1!important;color:#2b241b!important;border-color:#c8b99d!important;box-shadow:none}
+html[data-theme="light"] .top{background:#f8f2e7!important}
+html[data-theme="light"] .muted,html[data-theme="light"] .note,html[data-theme="light"] .sub,html[data-theme="light"] .card p,html[data-theme="light"] .hero p,html[data-theme="light"] label,html[data-theme="light"] .step span,html[data-theme="light"] .code{color:#6d6458!important}
+html[data-theme="light"] input,html[data-theme="light"] select{background:#fff!important;color:#221c15!important;border-color:#b9aa8f!important}
+html[data-theme="light"] .open,html[data-theme="light"] .btn:not(.install),html[data-theme="light"] .bridgebtn{background:#fff7e9!important;color:#443425!important;border-color:#b99d77!important}
+html[data-theme="light"] .item:hover,html[data-theme="light"] .item.active{background:#f3e2cc!important}
+html[data-theme="light"] .dataGrid th,html[data-theme="light"] .dataGrid td{background:#fffaf1!important;color:#2b241b!important;border-color:#ddd0bb!important}
+html[data-theme="light"] .theme-toggle{background:#fffaf1!important;color:#2b241b!important;border-color:#a98d64!important;box-shadow:0 8px 24px #6b543524!important}
+\n</style>
 </head>
 <body>
 <div class="wrap">
@@ -158,5 +173,5 @@ h1 em{font-weight:500;color:#d9ae65}
  }catch(_){}
 })();
 </script>
-</body>
+<script data-doinglio-theme-widget>(function(){if(document.querySelector('.theme-toggle'))return;const b=document.createElement('button');b.type='button';b.className='theme-toggle';b.setAttribute('aria-label','Cambiar tema claro u oscuro');function apply(t,save){document.documentElement.dataset.theme=t;if(save){try{localStorage.setItem('doinglio.theme',t)}catch(_){}}b.textContent=t==='light'?'🌙 Oscuro':'☀ Claro';}apply(document.documentElement.dataset.theme==='light'?'light':'dark',false);b.onclick=function(){apply(document.documentElement.dataset.theme==='light'?'dark':'light',true)};document.body.appendChild(b)})();</script>\n</body>
 </html>
