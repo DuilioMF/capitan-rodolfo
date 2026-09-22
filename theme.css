@@ -61,3 +61,8 @@ html[data-theme="light"] .num{color:#ab987c55!important}
     right:34px!important;
   }
 }
+
+/* Rev 44 — alinear controles con el borde derecho del panel marrón */
+@media(max-width:560px){
+  .site-controls{right:52px!important;}
+}
