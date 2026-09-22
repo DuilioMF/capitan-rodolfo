@@ -66,3 +66,12 @@ html[data-theme="light"] .num{color:#ab987c55!important}
 @media(max-width:560px){
   .site-controls{right:52px!important;}
 }
+
+/* Rev 45 — reparar ancho móvil: centrar página y controles dentro del viewport */
+@media(max-width:560px){
+ html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
+ .wrap{width:calc(100% - 24px)!important;max-width:none!important;margin:0 12px!important}
+ .site-controls{right:12px!important;left:auto!important;width:220px!important;max-width:calc(100vw - 24px)!important}
+ header{width:100%!important;max-width:100%!important}
+ .hero,.voice,.flow,.kpis,.footer{max-width:100%!important}
+}
