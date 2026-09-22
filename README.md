@@ -1,6 +1,8 @@
 # Capitán Rodolfo
 
-[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-Capitán%20Rodolfo%20v19-ff6b35?style=for-the-badge)](https://duiliomf.github.io/capitan-rodolfo/)
+[![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-CAPITÁN%20RODOLFO-ff6b35?style=for-the-badge)](https://duiliomf.github.io/capitan-rodolfo/)
+
+[![Dominio Rodolfo](https://img.shields.io/badge/🌐%20RODOLFO-DOINGLIO.COM.AR-111111?style=for-the-badge)](https://rodolfo.doinglio.com.ar)
 
 Centro de control visual de DoingLio para estaciones de servicio.
 
@@ -12,13 +14,13 @@ Descargá y ejecutá `INICIAR_CAPITAN_RODOLFO.bat`. El launcher actualiza el bri
 
 ## Estado verificable
 
-- Versión actual en GitHub: **v19**.
+- Build actual en GitHub: **36**.
 - Repositorio: `DuilioMF/capitan-rodolfo`.
 - Rama principal: `main`.
 - Tarjeta operativa: https://trello.com/c/M87mZT1d
 - Conexión SQL local: `DUILIO\\SQLEXPRESS` mediante bridge en `127.0.0.1:8787`.
 - Nuevo dominio GitHub Pages: https://duiliomf.github.io/capitan-rodolfo/ (**activo**).
-- Dominio objetivo: https://rodolfo.doinglio.com.ar
+- Dominio DoingLio: https://rodolfo.doinglio.com.ar (**registrado en Trello; pendiente de verificación pública**).
 
 > La **v18 está versionada en GitHub**, pero todavía **no está publicada en web**. El intento temporal con Supabase Edge Functions no sirve como hosting HTML porque el dominio compartido entrega HTML como texto.
 
