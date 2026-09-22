@@ -33,10 +33,7 @@ body:before{
 .wrap{width:min(1440px,94vw);margin:auto;padding:22px 0 46px;position:relative;z-index:1}
 header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 0 20px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:14px}
-.brain{
-  width:54px;height:54px;border:1px solid #d9823b66;border-radius:50%;display:grid;place-items:center;
-  background:radial-gradient(circle,#2a1a10,#100d09 68%);font-size:30px;position:relative;box-shadow:0 0 36px #d9823b14
-}
+.brain{width:58px;height:58px;display:grid;place-items:center;position:relative}.brain img{width:58px;height:58px;display:block;filter:drop-shadow(0 0 12px #d9823b22)}
 .brain:before,.brain:after{content:"";position:absolute;border:1px solid #c9a05d3d;border-radius:50%;inset:-8px}
 .brain:after{inset:-15px;border-style:dashed;animation:spin 28s linear infinite}
 .brand b{display:block;font:600 23px "Cormorant Garamond",serif;letter-spacing:.03em}
@@ -98,7 +95,7 @@ h1 em{font-weight:500;color:#d9ae65}
 <div class="wrap">
 <header>
   <div class="brand">
-    <div class="brain" aria-label="Cerebro">🧠</div>
+    <div class="brain" aria-label="Cerebro"><img src="brain-davinci.svg" alt=""></div>
     <div><b>Capitán Rodolfo</b><small>DOINGLIO · TABLERO VIVO</small></div>
   </div>
   <nav class="nav">
