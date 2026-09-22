@@ -1,6 +1,6 @@
 
 /* Navegación común: tema arriba, regreso debajo. */
-body{padding-top:112px!important}
+body{padding-top:112px!important;overflow-x:hidden!important}
 .site-controls{position:fixed;top:10px;right:14px;z-index:11000;display:flex;flex-direction:column;align-items:stretch;gap:6px;max-width:calc(100vw - 28px)}
 .site-controls button,.site-controls a{position:static!important;display:block!important;width:auto!important;margin:0!important;padding:10px 14px!important;border:1px solid #9a784c!important;border-radius:10px!important;background:#19140f!important;color:#f5ead7!important;font:600 13px/1.25 system-ui!important;text-decoration:none;cursor:pointer;box-shadow:0 3px 12px #0003}
 .site-controls :focus-visible{outline:3px solid #df8b34;outline-offset:2px}
@@ -16,3 +16,17 @@ html[data-theme="light"] input,html[data-theme="light"] select{background:#fff!i
 html[data-theme="light"] .site-controls button,html[data-theme="light"] .site-controls a,html[data-theme="light"] .btn,html[data-theme="light"] .bridgebtn,html[data-theme="light"] .back,html[data-theme="light"] .top a{background:#fff7e9!important;color:#563a19!important;border-color:#aa9471!important}
 html[data-theme="light"] .ok{color:#166a44!important}html[data-theme="light"] .bad{color:#a52020!important}
 html[data-theme="light"] .num{color:#ab987c55!important}
+
+/* Mobile rev 40: una sola columna de controles, sin duplicados ni desplazamiento horizontal. */
+.site-controls{box-sizing:border-box}
+@media(max-width:560px){
+  body{padding-top:164px!important;overflow-x:hidden!important}
+  .wrap{width:94vw!important;max-width:94vw!important;margin:0 auto!important;padding-top:0!important}
+  header{position:relative!important;top:auto!important;width:100%!important;display:grid!important;grid-template-columns:1fr!important;padding:12px!important}
+  header .nav{width:100%!important;align-items:stretch!important}
+  header .nav .doinglio-home{display:none!important}
+  .site-controls{top:10px!important;right:12px!important;left:auto!important;width:min(264px,calc(100vw - 24px))!important;max-width:none!important}
+  .site-controls button,.site-controls a{width:100%!important;min-width:0!important;text-align:center!important;padding:13px 14px!important;font-size:14px!important}
+  .hero{width:100%!important;min-width:0!important}
+  h1{font-size:clamp(48px,14vw,62px)!important;overflow-wrap:anywhere}
+}
