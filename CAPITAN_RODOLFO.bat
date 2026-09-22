@@ -9,7 +9,7 @@ set "LOGDIR=%APPROOT%\logs"
 set "VERSION_REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/VERSION"
 set "REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/bridge/capitan_rodolfo_local.ps1"
 set "HEALTH=http://127.0.0.1:8787/health"
-set "LOCALURL=http://127.0.0.1:8787/"
+set "WEBURL=https://duiliomf.github.io/capitan-rodolfo/"
 set "TASKNAME=CapitanRodolfoLocal"
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
@@ -26,8 +26,9 @@ if not exist "%APPROOT%" (
 
 if not exist "%LOGDIR%" mkdir "%LOGDIR%" >nul 2>nul
 
-rem Migrar la configuracion anterior para no pedir SQL otra vez.
-if not exist "%APPROOT%\sql_profile.json" if exist "%OLDROOT%\sql_profile.json" copy /Y "%OLDROOT%\sql_profile.json" "%APPROOT%\sql_profile.json" >nul
+rem No conservar conexiones SQL anteriores.
+if exist "%APPROOT%\sql_profile.json" del /Q "%APPROOT%\sql_profile.json" >nul 2>nul
+if exist "%OLDROOT%\sql_profile.json" del /Q "%OLDROOT%\sql_profile.json" >nul 2>nul
 if not exist "%APPROOT%\VERSION" if exist "%OLDROOT%\VERSION" copy /Y "%OLDROOT%\VERSION" "%APPROOT%\VERSION" >nul
 
 echo.
@@ -83,7 +84,7 @@ if "!OK!"=="1" (
   echo   Conector local v!APP_VERSION! OK.
   echo   Archivos locales en: %APPROOT%
   echo   Abriendo Capitan Rodolfo...
-  start "" "%LOCALURL%"
+  start "" "%WEBURL%"
   timeout /t 2 >nul
   exit /b 0
 )
