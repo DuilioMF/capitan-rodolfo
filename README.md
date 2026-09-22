@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Fuente actual: build **37**
+- Fuente actual: build **38**
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -51,7 +51,6 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 ## Versionado
 
 Cada cambio debe quedar en un commit recuperable antes de publicar. Conservar rollback.
-
 
 ## Publicación vigente — 22/09/2026
 
