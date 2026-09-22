@@ -1303,3 +1303,4 @@ finally {
   foreach($k in @($Sessions.Keys)){ try { $Sessions[$k].connection.Dispose() } catch {} }
   $listener.Stop()
 }
+

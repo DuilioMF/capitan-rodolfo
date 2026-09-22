@@ -20,3 +20,4 @@ echo Deje esta ventana abierta mientras use la conexion SQL.
 echo.
 py bridge.py
 pause
+

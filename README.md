@@ -2,7 +2,7 @@
 
 <p align="center"><img src="brain-davinci.svg" width="86" alt="Icono cerebro Da Vinci"></p>
 
-[![Ver Trello](https://img.shields.io/badge/VER-TRELLO-0052CC?style=for-the-badge)](https://trello.com/c/M87mZT1d)
+[![Ver Trello](https://img.shields.io/badge/VER-TRELLO-0052CC?style=for-the-badge)](https://trello.com/c/Ju1hmWW9)
 [![Abrir Capitán Rodolfo](https://img.shields.io/badge/▶%20ABRIR-CAPITÁN%20RODOLFO-ff6b35?style=for-the-badge)](https://duiliomf.github.io/capitan-rodolfo/)
 [![Volver a DoingLio](https://img.shields.io/badge/←%20VOLVER-DOINGLIO-111111?style=for-the-badge)](https://duiliomf.github.io/doinglio/)
 
@@ -23,7 +23,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 - Rama principal: `main`
 - Fuente actual: build **37**
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
-- Tarjeta operativa: `https://trello.com/c/M87mZT1d`
+- Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
 ## Conexión
 
@@ -51,3 +51,8 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 ## Versionado
 
 Cada cambio debe quedar en un commit recuperable antes de publicar. Conservar rollback.
+
+
+## Publicación vigente — 22/09/2026
+
+GitHub es la fuente de código y GitHub Pages publica `main`. No usar copias de Sites como origen ni destino de navegación. Cada cambio se integra por PR y conserva su commit para rollback. Tema claro/oscuro compartido entre páginas; control arriba y regreso debajo.
