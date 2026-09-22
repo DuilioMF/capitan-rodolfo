@@ -54,3 +54,10 @@ html[data-theme="light"] .num{color:#ab987c55!important}
     text-align:center!important;
   }
 }
+
+/* Rev 43 — desplazar controles móviles hacia la izquierda */
+@media(max-width:560px){
+  .site-controls{
+    right:34px!important;
+  }
+}
