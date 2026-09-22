@@ -30,3 +30,27 @@ html[data-theme="light"] .num{color:#ab987c55!important}
   .hero{width:100%!important;min-width:0!important}
   h1{font-size:clamp(48px,14vw,62px)!important;overflow-wrap:anywhere}
 }
+
+/* Rev 41 — controles móviles alineados arriba a la derecha */
+@media(max-width:560px){
+  body{padding-top:150px!important}
+  .site-controls{
+    position:fixed!important;
+    top:10px!important;
+    right:10px!important;
+    left:auto!important;
+    width:220px!important;
+    max-width:calc(100vw - 20px)!important;
+    align-items:stretch!important;
+    transform:none!important;
+  }
+  .site-controls button,.site-controls a{
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    text-overflow:ellipsis!important;
+    text-align:center!important;
+  }
+}
