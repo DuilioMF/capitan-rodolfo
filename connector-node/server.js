@@ -5,7 +5,6 @@ const app = express();
 const allowedOrigins = new Set([
   "https://rodolfo.doinglio.com.ar",
   "https://doinglio.com.ar",
-  "https://doinglio.revalsoftia.chatgpt.site",
   "https://doinglio.revalsoftia.com.ar",
 ]);
 
