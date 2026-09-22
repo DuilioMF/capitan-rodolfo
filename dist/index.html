@@ -1,6 +1,16 @@
 <!doctype html>
 <html lang="es">
-<head>\n<script data-doinglio-theme-init>(function(){try{document.documentElement.dataset.theme=localStorage.getItem('doinglio.theme')||'dark'}catch(_){document.documentElement.dataset.theme='dark'}})();</script>
+<head>
+<script>
+(function(){
+  try{
+    document.documentElement.dataset.theme=localStorage.getItem('doinglio.theme')||'dark';
+  }catch(_){
+    document.documentElement.dataset.theme='dark';
+  }
+})();
+</script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -31,7 +41,7 @@ body:before{
   mask-image:radial-gradient(circle at 50% 42%,#000 0,transparent 82%);
 }
 .wrap{width:min(1440px,94vw);margin:auto;padding:22px 0 46px;position:relative;z-index:1}
-header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 0 20px;border-bottom:1px solid var(--line)}
+header{position:sticky;top:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 12px 14px;border-bottom:1px solid var(--line);background:#090806e8;backdrop-filter:blur(12px)}
 .brand{display:flex;align-items:center;gap:14px}
 .brain{width:58px;height:58px;display:grid;place-items:center;position:relative}.brain img{width:58px;height:58px;display:block;filter:drop-shadow(0 0 12px #d9823b22)}
 .brain:before,.brain:after{content:"";position:absolute;border:1px solid #c9a05d3d;border-radius:50%;inset:-8px}
@@ -41,7 +51,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:18px;pa
 .nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .nav a{color:#d8d0c1;text-decoration:none;border:1px solid #6e5b3a55;border-radius:2px;padding:10px 13px;font-size:11px;font-weight:800;letter-spacing:.08em;background:#ffffff03}
 .nav a.primary{border-color:#b76c356e;background:#2b180d66;color:#ffb57b}
-.nav a.doinglio-home{position:fixed;left:16px;top:82px;bottom:auto;z-index:10020;background:#16110be8;border-color:#b76c358f;color:#ffb57b;box-shadow:0 12px 34px #0009;backdrop-filter:blur(8px);padding:11px 14px}
+.theme-switch{border:1px solid #6e5b3a88;border-radius:2px;padding:9px 12px;background:#ffffff06;color:#efe7d5;font-size:16px;line-height:1;cursor:pointer;min-width:74px}
+.theme-switch:hover{border-color:#c9a05d;color:#ffd18c}
+.nav a.doinglio-home{position:static;background:#16110be8;border-color:#b76c358f;color:#ffb57b;box-shadow:none;padding:10px 13px}
 .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;padding:46px 0 24px;position:relative}
 .manuscript{position:absolute;right:-30px;top:18px;width:420px;height:420px;opacity:.23;pointer-events:none}
 .manuscript circle,.manuscript path,.manuscript line{fill:none;stroke:#d5ae68;stroke-width:1}
@@ -92,12 +104,33 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* Tema compartido DoingLio */
-.theme-toggle{position:fixed;top:14px;right:14px;bottom:auto;z-index:10050;width:auto!important;margin:0!important;padding:7px 9px!important;border:1px solid #75603d!important;border-radius:999px!important;background:#17140fee!important;color:#f3ead8!important;font:700 16px/1 Inter,Segoe UI,Arial,sans-serif!important;cursor:pointer!important;box-shadow:0 8px 24px #0007!important;backdrop-filter:blur(8px);display:flex!important;align-items:center!important;gap:4px!important}
-.theme-toggle span{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;opacity:.55}
-html[data-theme="dark"] .theme-toggle .moon,html[data-theme="light"] .theme-toggle .sun{opacity:1;background:#ffffff18}
-.theme-toggle:hover{transform:translateY(-1px)}
-html[data-theme="light"] .theme-toggle{background:#fffaf1ee!important;color:#2b241b!important;border-color:#a98d64!important;box-shadow:0 8px 24px #6b543524!important}
-\n</style>
+\n
+/* CAPITAN LIGHT THEME FINAL */
+html[data-theme="light"] body{
+  background:radial-gradient(circle at 70% 12%,#f7ead7 0,#f4efe5 28%,#eee7dc 70%)!important;
+  color:#2b241b!important;
+}
+html[data-theme="light"] body:before{opacity:.05!important}
+html[data-theme="light"] header{background:#f6efe4ee!important;border-color:#c9b99e!important}
+html[data-theme="light"] .brand b,
+html[data-theme="light"] h1,
+html[data-theme="light"] .voice strong,
+html[data-theme="light"] .step b,
+html[data-theme="light"] .kpi strong{color:#2b241b!important}
+html[data-theme="light"] .sub,
+html[data-theme="light"] .annotation,
+html[data-theme="light"] .voice p,
+html[data-theme="light"] .step span,
+html[data-theme="light"] .kpi small,
+html[data-theme="light"] .footer{color:#6d6253!important}
+html[data-theme="light"] .voice,
+html[data-theme="light"] .step,
+html[data-theme="light"] .kpi{background:#fffaf2!important;border-color:#ccb99a!important;box-shadow:none!important}
+html[data-theme="light"] .theme-switch{background:#fffaf2!important;color:#2b241b!important;border-color:#aa916d!important}
+html[data-theme="light"] .nav a{color:#514434!important;border-color:#aa916d88!important;background:#fff8ed!important}
+html[data-theme="light"] .nav a.primary,
+html[data-theme="light"] .nav a.doinglio-home{color:#8b4d19!important;background:#f8e8d4!important}
+
 </head>
 <body>
 <div class="wrap">
@@ -108,6 +141,7 @@ html[data-theme="light"] .theme-toggle{background:#fffaf1ee!important;color:#2b2
   </div>
   <nav class="nav">
     <a class="doinglio-home" href="https://duiliomf.github.io/doinglio/" target="_self" aria-label="Volver a DoingLio">← DoingLio</a>
+    <button class="theme-switch" id="themeSwitch" type="button" aria-label="Cambiar entre modo claro y oscuro" title="Claro / oscuro">☀ / 🌙</button>
     <a class="primary" href="conexion-sql.html">⚙ Configuración de datos</a>
   </nav>
 </header>
@@ -165,14 +199,24 @@ html[data-theme="light"] .theme-toggle{background:#fffaf1ee!important;color:#2b2
  }catch(_){}
 })();
 </script>
-<script data-doinglio-theme-widget>(function(){
-  const old=document.querySelector('.theme-toggle'); if(old) old.remove();
-  const b=document.createElement('button'); b.type='button'; b.className='theme-toggle';
-  b.setAttribute('aria-label','Cambiar tema claro u oscuro');
-  b.innerHTML='<span class="sun" title="Claro">☀</span><span class="moon" title="Oscuro">🌙</span>';
-  function apply(t,save){document.documentElement.dataset.theme=t;if(save){try{localStorage.setItem('doinglio.theme',t)}catch(_){}}}
-  if(document.documentElement.dataset.theme!=='light'&&document.documentElement.dataset.theme!=='dark') apply('dark',false);
-  b.onclick=function(){apply(document.documentElement.dataset.theme==='light'?'dark':'light',true)};
-  document.body.appendChild(b);
-})();</script>\n</body>
+
+<script>
+(function(){
+  const btn=document.getElementById('themeSwitch');
+  if(!btn) return;
+  function updateLabel(){
+    const light=document.documentElement.dataset.theme==='light';
+    btn.textContent=light?'🌙 Oscuro':'☀ Claro';
+    btn.title=light?'Cambiar a oscuro':'Cambiar a claro';
+  }
+  btn.addEventListener('click',function(){
+    const next=document.documentElement.dataset.theme==='light'?'dark':'light';
+    document.documentElement.dataset.theme=next;
+    try{localStorage.setItem('doinglio.theme',next)}catch(_){}
+    updateLabel();
+  });
+  updateLabel();
+})();
+</script>
+</body>
 </html>
