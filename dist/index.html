@@ -4,29 +4,103 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta name="theme-color" content="#07090c">
+<meta name="theme-color" content="#0a0907">
 <title>Capitán Rodolfo · Tablero Vivo</title>
 <style>
-:root{--bg:#08090b;--panel:#101216;--line:#252931;--orange:#ff6b35;--text:#f4f2ee;--muted:#8e949d;--green:#3ddc84;--cyan:#55d6ef}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 75% 15%,#23140e 0,#0b0c0f 32%,#07080a 75%);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;min-height:100vh}
-.wrap{width:min(1380px,94vw);margin:auto;padding:24px 0 50px}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0 22px;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:14px}.brain{width:48px;height:48px;border:1px solid #ff8a5548;border-radius:14px;display:grid;place-items:center;background:#17100c;font-size:28px}.brand b{display:block;font-size:20px}.brand small{color:var(--orange);letter-spacing:.18em;font-size:10px}
-.nav{display:flex;gap:12px;align-items:center}.nav a{color:#ddd;text-decoration:none;border:1px solid #343840;border-radius:12px;padding:10px 13px;font-size:13px;font-weight:800}.nav a.primary{border-color:#6a3b25;background:#1a100c;color:#ffac83}
-.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:26px;padding:34px 0 22px}.eyebrow{color:var(--orange);font-size:11px;font-weight:900;letter-spacing:.22em}.live{display:inline-flex;align-items:center;gap:8px;margin-top:12px;color:#c7cec9;font-size:12px}.dot{width:9px;height:9px;background:var(--green);border-radius:50%;box-shadow:0 0 16px var(--green)}
-h1{font-size:clamp(42px,5vw,78px);line-height:.95;margin:18px 0 14px;font-weight:500}.sub{color:#aeb2b8;font-size:16px;line-height:1.65;max-width:700px}
-.voice{align-self:stretch;border:1px solid #3c2a22;background:linear-gradient(135deg,#17120f,#0e1014);border-radius:22px;padding:26px;display:flex;flex-direction:column;justify-content:center;min-height:210px}.voice .mic{font-size:30px}.voice strong{font-size:24px;margin-top:10px}.voice p{color:#9ba1aa}
-.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0 24px}.step{border:1px solid var(--line);border-radius:18px;background:#0f1115;padding:18px;min-height:128px;position:relative}.step:after{content:"→";position:absolute;right:-11px;top:50%;color:#73503e;font-size:18px}.step:last-child:after{display:none}.step small{display:block;color:#7f8792;font-size:9px;letter-spacing:.16em}.step b{display:block;margin-top:12px;font-size:18px}.step span{display:block;margin-top:8px;color:#9ca3ac;font-size:12px;line-height:1.5}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi{border:1px solid var(--line);border-radius:18px;background:#0f1115;padding:20px}.kpi small{color:#858d97}.kpi strong{display:block;font-size:28px;margin-top:10px}.ok{color:var(--green)}.warn{color:#ffb36b}
-.footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px;color:#646a73;font-size:11px}.build{border:1px solid #2b2f36;border-radius:999px;padding:6px 9px}
-@media(max-width:900px){.hero{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}.step:after{display:none}.kpis{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){header{align-items:flex-start}.nav{flex-direction:column;align-items:flex-end}.flow,.kpis{grid-template-columns:1fr}}
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,600&family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#090806;--paper:#12100c;--panel:#15120e;--ink:#efe7d5;--muted:#9a9180;
+  --copper:#d9823b;--gold:#c9a05d;--green:#5ee6a8;--cyan:#70d3dd;--line:#d7b16b24;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}
+body{
+  min-height:100vh;overflow-x:hidden;
+  background:
+    radial-gradient(circle at 70% 12%,#2b1b10 0,#15110b 24%,transparent 46%),
+    radial-gradient(circle at 20% 86%,#19201a 0,transparent 36%),
+    #090806;
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;
+  background-image:
+    linear-gradient(#c9a05d12 1px,transparent 1px),
+    linear-gradient(90deg,#c9a05d12 1px,transparent 1px),
+    radial-gradient(circle at center,#c9a05d15 1px,transparent 1.5px);
+  background-size:44px 44px,44px 44px,22px 22px;
+  mask-image:radial-gradient(circle at 50% 42%,#000 0,transparent 82%);
+}
+.wrap{width:min(1440px,94vw);margin:auto;padding:22px 0 46px;position:relative;z-index:1}
+header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 0 20px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:14px}
+.brain{
+  width:54px;height:54px;border:1px solid #d9823b66;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle,#2a1a10,#100d09 68%);font-size:30px;position:relative;box-shadow:0 0 36px #d9823b14
+}
+.brain:before,.brain:after{content:"";position:absolute;border:1px solid #c9a05d3d;border-radius:50%;inset:-8px}
+.brain:after{inset:-15px;border-style:dashed;animation:spin 28s linear infinite}
+.brand b{display:block;font:600 23px "Cormorant Garamond",serif;letter-spacing:.03em}
+.brand small{color:var(--copper);letter-spacing:.22em;font-size:9px}
+.nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.nav a{color:#d8d0c1;text-decoration:none;border:1px solid #6e5b3a55;border-radius:2px;padding:10px 13px;font-size:11px;font-weight:800;letter-spacing:.08em;background:#ffffff03}
+.nav a.primary{border-color:#b76c356e;background:#2b180d66;color:#ffb57b}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;padding:46px 0 24px;position:relative}
+.manuscript{position:absolute;right:-30px;top:18px;width:420px;height:420px;opacity:.23;pointer-events:none}
+.manuscript circle,.manuscript path,.manuscript line{fill:none;stroke:#d5ae68;stroke-width:1}
+.manuscript .dash{stroke-dasharray:7 10}
+.eyebrow{color:var(--copper);font-size:10px;font-weight:900;letter-spacing:.31em}
+.live{display:inline-flex;align-items:center;gap:9px;margin-top:14px;color:#c2bdaf;font-size:11px;letter-spacing:.11em}
+.dot{width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 18px var(--green);animation:pulse 1.7s ease-in-out infinite}
+h1{font:600 clamp(54px,7vw,102px)/.82 "Cormorant Garamond",serif;letter-spacing:-.035em;margin:24px 0 18px;position:relative}
+h1 em{font-weight:500;color:#d9ae65}
+.sub{color:#a9a08f;font-size:14px;line-height:1.75;max-width:650px;letter-spacing:.02em}
+.annotation{margin-top:20px;color:#776f60;font:italic 18px "Cormorant Garamond",serif;transform:rotate(-1deg)}
+.voice{
+  align-self:stretch;border:1px solid #7a56352f;background:
+  linear-gradient(135deg,#21170fba,#0d0e10e8),
+  repeating-linear-gradient(0deg,transparent 0 27px,#c9a05d0b 28px);
+  padding:28px;display:flex;flex-direction:column;justify-content:center;min-height:230px;position:relative;overflow:hidden
+}
+.voice:before{content:"";position:absolute;width:180px;height:180px;border:1px solid #d5ae6830;border-radius:50%;right:-55px;top:-55px}
+.voice:after{content:"";position:absolute;width:90px;height:90px;border:1px dashed #d5ae6830;border-radius:50%;right:-10px;top:-10px}
+.voice .mic{font-size:30px}.voice strong{font:600 28px "Cormorant Garamond",serif;margin-top:10px}.voice p{color:#918a7d;font-size:12px;line-height:1.7}
+.section-title{display:flex;align-items:center;gap:12px;margin:14px 0 12px;color:#8f806a;font-size:9px;letter-spacing:.24em}
+.section-title:after{content:"";height:1px;background:linear-gradient(90deg,#c9a05d45,transparent);flex:1}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:0 0 24px;position:relative}
+.flow:before{content:"";position:absolute;left:7%;right:7%;top:54%;height:1px;background:linear-gradient(90deg,transparent,#c76f374d,#d7b16b3d,transparent)}
+.step{
+  border:1px solid #75603d3b;background:linear-gradient(145deg,#17130edb,#0c0d0ee8);
+  padding:20px 18px;min-height:145px;position:relative;overflow:hidden;transition:.3s ease
+}
+.step:hover{transform:translateY(-4px);border-color:#bd7e4c7a;box-shadow:0 20px 50px #0008}
+.step:before{content:"";position:absolute;inset:9px;border:1px solid #d7b16b12;pointer-events:none}
+.step:after{content:"→";position:absolute;right:-10px;top:50%;color:#9c673f;font:italic 24px "Cormorant Garamond",serif;z-index:2}
+.step:last-child:after{display:none}
+.step small{display:block;color:#8e806d;font-size:8px;letter-spacing:.2em}
+.step b{display:block;margin-top:14px;font:600 22px "Cormorant Garamond",serif}
+.step span{display:block;margin-top:8px;color:#9c9488;font-size:11px;line-height:1.55}
+.symbol{position:absolute;right:13px;top:10px;color:#d5ae6820;font:italic 46px "Cormorant Garamond",serif}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{border-top:1px solid #8d6a403e;border-bottom:1px solid #5c473027;background:#0f0e0bdd;padding:18px 4px 16px}
+.kpi small{color:#837b6e;font-size:10px;letter-spacing:.08em}
+.kpi strong{display:block;font:600 30px "Cormorant Garamond",serif;margin-top:7px}.ok{color:var(--green)}.warn{color:#ffb36b}
+.footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px;color:#686155;font-size:9px;letter-spacing:.16em}
+.build{border:1px solid #6d583b45;border-radius:999px;padding:6px 9px;color:#9a8468}
+.scribble{position:absolute;left:-55px;bottom:25px;color:#6f6556;font:italic 15px "Cormorant Garamond",serif;transform:rotate(-8deg)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.32}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:920px){.hero{grid-template-columns:1fr}.manuscript{opacity:.12;right:-160px}.flow{grid-template-columns:1fr 1fr}.flow:before,.step:after{display:none}.kpis{grid-template-columns:1fr 1fr}.scribble{display:none}}
+@media(max-width:560px){header{align-items:flex-start}.nav{flex-direction:column;align-items:flex-end}.flow,.kpis{grid-template-columns:1fr}h1{font-size:58px}.voice{min-height:190px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-  <div class="brand"><div class="brain">🧠</div><div><b>Capitán Rodolfo</b><small>DOINGLIO · TABLERO VIVO</small></div></div>
+  <div class="brand">
+    <div class="brain" aria-label="Cerebro">🧠</div>
+    <div><b>Capitán Rodolfo</b><small>DOINGLIO · TABLERO VIVO</small></div>
+  </div>
   <nav class="nav">
     <a href="https://doinglio.revalsoftia.chatgpt.site/">← Volver a DoingLio</a>
     <a class="primary" href="conexion-sql.html">⚙ Configuración de datos</a>
@@ -34,23 +108,40 @@ h1{font-size:clamp(42px,5vw,78px);line-height:.95;margin:18px 0 14px;font-weight
 </header>
 
 <section class="hero">
+  <svg class="manuscript" viewBox="0 0 420 420" aria-hidden="true">
+    <circle cx="210" cy="210" r="150"/>
+    <circle cx="210" cy="210" r="103" class="dash"/>
+    <circle cx="210" cy="210" r="42"/>
+    <line x1="60" y1="210" x2="360" y2="210"/>
+    <line x1="210" y1="60" x2="210" y2="360"/>
+    <path d="M105 105 L315 315 M315 105 L105 315"/>
+    <path d="M210 60 L330 280 L90 280 Z" class="dash"/>
+    <path d="M85 210 C125 90 295 90 335 210 C295 330 125 330 85 210 Z"/>
+  </svg>
   <div>
     <div class="eyebrow">CIRCUITO EN LÍNEA</div>
     <div class="live"><span class="dot"></span> OPERACIÓN EN VIVO</div>
-    <h1>Capitán Rodolfo<br>· Estación</h1>
+    <h1>Capitán Rodolfo<br><em>· Estación</em></h1>
     <div class="sub">Flujo: combustible → despacho → venta → cobro</div>
+    <div class="annotation">“Todo movimiento deja una huella.”</div>
   </div>
-  <div class="voice"><div class="mic">🎙</div><strong>“Rodolfo, ¿qué pasó hoy?”</strong><p>El tablero concentra el circuito operativo completo de la estación.</p></div>
+  <div class="voice">
+    <div class="mic">🎙</div>
+    <strong>“Rodolfo, ¿qué pasó hoy?”</strong>
+    <p>Una lectura viva de la estación: desde el ingreso del combustible hasta el dinero conciliado.</p>
+  </div>
 </section>
 
+<div class="section-title">ANATOMÍA DEL CIRCUITO</div>
 <section class="flow">
-  <div class="step"><small>CAMIÓN</small><b>Descarga combustible</b><span>Ingreso al circuito</span></div>
-  <div class="step"><small>TANQUES</small><b>Súper · Infinia · Diesel</b><span>Niveles y movimiento</span></div>
-  <div class="step"><small>SURTIDOR</small><b>38.4 L</b><span>Pico 03 · activo</span></div>
-  <div class="step"><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
-  <div class="step"><small>COBRO</small><b>$ 48.920</b><span class="ok">PAGADO ✓</span></div>
+  <div class="step"><span class="symbol">I</span><small>CAMIÓN</small><b>Descarga combustible</b><span>Ingreso al circuito</span></div>
+  <div class="step"><span class="symbol">II</span><small>TANQUES</small><b>Súper · Infinia · Diesel</b><span>Niveles y movimiento</span></div>
+  <div class="step"><span class="symbol">III</span><small>SURTIDOR</small><b>38.4 L</b><span>Pico 03 · activo</span></div>
+  <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
+  <div class="step"><span class="symbol">V</span><small>COBRO</small><b>$ 48.920</b><span class="ok">PAGADO ✓</span></div>
 </section>
 
+<div class="section-title">LECTURA DEL DÍA</div>
 <section class="kpis">
   <div class="kpi"><small>Litros vendidos hoy</small><strong>12.480 L</strong></div>
   <div class="kpi"><small>Ventas cobradas</small><strong>$ 18,4 M</strong></div>
@@ -58,7 +149,8 @@ h1{font-size:clamp(42px,5vw,78px);line-height:.95;margin:18px 0 14px;font-weight
   <div class="kpi"><small>Alertas</small><strong class="warn">1 sin conciliar</strong></div>
 </section>
 
-<div class="footer"><span>DoingLio · Capitán Rodolfo</span><span class="build" id="build">36</span></div>
+<div class="scribble">stazione · flusso · controllo · memoria</div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">37</span></div>
 </div>
 <script>
 (async()=>{
