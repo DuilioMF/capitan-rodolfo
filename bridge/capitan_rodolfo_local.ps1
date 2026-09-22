@@ -1,6 +1,6 @@
 param(
   [int]$Port = 8787,
-  [string]$DefaultServer = "DUILIO\SQLEXPRESS"
+  [string]$DefaultServer = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,6 +19,7 @@ try {
 $Sessions = @{}
 $ActiveSessionId = $null
 $ProfilePath = Join-Path $AppDir "sql_profile.json"
+try { if(Test-Path $ProfilePath){ Remove-Item $ProfilePath -Force -ErrorAction SilentlyContinue } } catch {}
 
 function Send-Response {
     param(
@@ -116,36 +117,14 @@ function New-SqlConnection {
 
 function Save-SqlProfile {
     param([string]$Server,[string]$Auth,[string]$User,[string]$Password,[string]$Database)
-    $enc = ""
-    if($Auth -eq "sql" -and -not [string]::IsNullOrWhiteSpace($Password)){
-        $enc = ConvertTo-SecureString $Password -AsPlainText -Force | ConvertFrom-SecureString
-    } elseif($Auth -eq "sql" -and (Test-Path $ProfilePath)) {
-        try { $old = Get-Content $ProfilePath -Raw | ConvertFrom-Json; $enc = [string]$old.password } catch {}
-    }
-    $obj = [ordered]@{
-        server=$Server
-        auth=$Auth
-        user=$User
-        password=$enc
-        database=$Database
-    }
-    $obj | ConvertTo-Json | Set-Content -Path $ProfilePath -Encoding UTF8
+    # Intencionalmente no persiste datos de conexión.
 }
 
-function Load-SqlProfile {
-    if(-not (Test-Path $ProfilePath)){ return $null }
-    try { return (Get-Content $ProfilePath -Raw | ConvertFrom-Json) } catch { return $null }
-}
+function Load-SqlProfile { return $null }
 
 function Unprotect-ProfilePassword {
     param($Profile)
-    if($null -eq $Profile -or [string]::IsNullOrWhiteSpace([string]$Profile.password)){ return "" }
-    try {
-        $ss = ConvertTo-SecureString ([string]$Profile.password)
-        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($ss)
-        try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
-        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-    } catch { return "" }
+    return ""
 }
 
 function Open-SqlSession {
@@ -170,24 +149,13 @@ function Ensure-ActiveSession {
         try {
             $sess = $Sessions[$script:ActiveSessionId]
             if($sess.connection.State -eq [System.Data.ConnectionState]::Open){
-                $p = Load-SqlProfile
                 $db = ""
-                if($p){ $db = [string]$p.database }
+                if($sess.ContainsKey("database")){ $db = [string]$sess.database }
                 return @{sessionId=$script:ActiveSessionId;server=$sess.server;auth=$sess.auth;user=$sess.user;databases=$sess.databases;database=$db}
             }
         } catch {}
     }
-
-    $p = Load-SqlProfile
-    if($null -eq $p -or [string]::IsNullOrWhiteSpace([string]$p.server)){ return $null }
-    $pw = Unprotect-ProfilePassword $p
-    try {
-        $state = Open-SqlSession -Server ([string]$p.server) -Auth ([string]$p.auth) -User ([string]$p.user) -Password $pw
-        $state["database"] = [string]$p.database
-        return $state
-    } catch {
-        return $null
-    }
+    return $null
 }
 
 function Get-HomeHtml {
@@ -236,14 +204,14 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
   <div class="rCap"></div><div class="rHead"></div><div class="rEye l"></div><div class="rEye r"></div><div class="rMust"></div><div class="rBody"></div><div class="rTie"></div>
 </div>
 </div>
-<label>Servidor / instancia</label><input id="server" value="$DefaultServer">
+<label>Servidor / instancia</label><input id="server" value="" autocomplete="off">
 <label>Autenticacion</label>
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
 <button id="connect">Conectar y ver bases</button>
 <div id="status" class="status">Conector local v$Version listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
-<div class="note">La conexión queda recordada en esta PC. Si usás usuario SQL, la contrasena se guarda cifrada por Windows para tu usuario.</div>
+<div class="note">La conexión no queda guardada. Cada vez que abrís Capitán Rodolfo tenés que conectarte nuevamente.</div>
 </section>
 <section class="card">
 <div class="cols"><div><h3>Bases</h3><div id="dbs" class="list"><div class="item">Conectate para ver bases</div></div></div><div><h3>Tablas</h3><div id="tables" class="list"><div class="table">Selecciona una base</div></div></div></div>
@@ -264,25 +232,6 @@ async function api(path,body){
  const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j;
 }
-async function restoreConnection(){
- try{
-  const r=await fetch('/api/state',{cache:'no-store'});
-  const d=await r.json();
-  if(!d.connected){return}
-  sessionId=d.sessionId;
-  document.getElementById('server').value=d.server||'';
-  document.getElementById('auth').value=d.auth||'sql';
-  document.getElementById('user').value=d.user||'';
-  document.getElementById('sqlCreds').style.display=(d.auth==='windows')?'none':'block';
-  status('Conectado automaticamente a '+d.server,'ok');
-  dbs.innerHTML='';
-  d.databases.forEach(name=>{
-    const b=document.createElement('button');b.className='item';b.textContent=name;b.onclick=()=>loadTables(name,b);dbs.appendChild(b);
-    if(d.database && name===d.database){ setTimeout(()=>loadTables(name,b),100); }
-  });
- }catch(_){}
-}
-
 document.getElementById('connect').onclick=async()=>{
  try{
   status('Conectando…');
@@ -298,7 +247,7 @@ async function loadTables(database,el){
   tables.innerHTML='<div class="table">Validando base…</div>';
   const d=await api('/api/tables',{sessionId,database});
   status('Base '+database+' validada - entrando a Capitan Rodolfo…','ok');
-  setTimeout(()=>{ location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(database); },350);
+  setTimeout(()=>{ location.href='https://duiliomf.github.io/capitan-rodolfo/?sql=connected'; },350);
  }catch(e){
   status('Error: '+e.message,'bad')
  }
@@ -314,8 +263,7 @@ function renderDispatches(data){
  data.rows.forEach(row=>{const tr=document.createElement('tr');data.columns.forEach(c=>{const td=document.createElement('td');const v=row[c];td.textContent=(v===null||v===undefined)?'':String(v);tr.appendChild(td)});tbody.appendChild(tr)});
  table.appendChild(tbody);wrap.appendChild(table);dispatches.appendChild(wrap);
 }
-goMap.onclick=()=>{if(sessionId&&selectedDatabase) location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(selectedDatabase)};
-restoreConnection();
+goMap.textContent='Volver a Capitán Rodolfo →'; goMap.onclick=()=>{if(sessionId&&selectedDatabase) location.href='https://duiliomf.github.io/capitan-rodolfo/?sql=connected'};
 </script>
 </body></html>
 "@
@@ -346,13 +294,7 @@ try {
         }
       }
       elseif($req.Method -eq 'GET' -and ($pathOnly -eq '/' -or $pathOnly -eq '/index.html')){
-        $state = Ensure-ActiveSession
-        if($state -and -not [string]::IsNullOrWhiteSpace([string]$state.database)){
-          $target = "/mapa-vivo?sessionId=$([uri]::EscapeDataString([string]$state.sessionId))&database=$([uri]::EscapeDataString([string]$state.database))"
-          Send-Redirect $stream $target
-        } else {
-          Send-Response $stream 200 "text/html; charset=utf-8" (Get-HomeHtml)
-        }
+        Send-Response $stream 200 "text/html; charset=utf-8" (Get-HomeHtml)
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/mapa-vivo'){
         try {
@@ -1084,7 +1026,6 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
           if([string]::IsNullOrWhiteSpace($server)){ throw "Completá servidor/instancia." }
 
           $state = Open-SqlSession -Server $server -Auth $auth -User $user -Password $password
-          Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database ""
           Send-Json $stream 200 $state
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
@@ -1112,8 +1053,7 @@ ORDER BY s.name,t.name;
           $rows = @()
           while($reader.Read()){ $rows += @{schema=[string]$reader.GetString(0);name=[string]$reader.GetString(1)} }
           $reader.Close()
-          $p = Load-SqlProfile
-          if($p){ Save-SqlProfile -Server ([string]$p.server) -Auth ([string]$p.auth) -User ([string]$p.user) -Password "" -Database $database }
+          $sess["database"] = $database
           Send-Json $stream 200 @{database=$database;tables=$rows}
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
