@@ -56,3 +56,4 @@ echo.
 echo LISTO. Deja abierta la ventana del bridge mientras uses SQL.
 timeout /t 3 >nul
 exit /b 0
+

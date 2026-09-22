@@ -22,3 +22,4 @@ echo Deja esta ventana abierta mientras uses Capitan Rodolfo.
 echo.
 call npm start
 pause
+

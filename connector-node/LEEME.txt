@@ -8,3 +8,4 @@ CONECTOR SQL DE DOINGLIO - CAPITAN RODOLFO
 
 La contraseña no se guarda. La conexión a SQL usa cifrado obligatorio y
 certificado de servidor de confianza. El conector escucha solamente en esta PC.
+

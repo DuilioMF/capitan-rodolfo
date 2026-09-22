@@ -27,8 +27,12 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Sync version
-        run: cp VERSION dist/VERSION
+      - name: Prepare canonical GitHub source
+        run: |
+          mkdir -p dist
+          cp *.html *.svg *.bat VERSION theme.css theme.js dist/
+          cp -R assets bridge connector-node dist/
+          touch dist/.nojekyll
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
@@ -36,3 +40,4 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+

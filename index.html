@@ -103,36 +103,9 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(max-width:560px){header{align-items:flex-start}.nav{flex-direction:column;align-items:flex-end}.flow,.kpis{grid-template-columns:1fr}h1{font-size:58px}.voice{min-height:190px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-/* Tema compartido DoingLio */
-
-
-/* CAPITAN LIGHT THEME FINAL */
-html[data-theme="light"] body{
-  background:radial-gradient(circle at 70% 12%,#f7ead7 0,#f4efe5 28%,#eee7dc 70%)!important;
-  color:#2b241b!important;
-}
-html[data-theme="light"] body:before{opacity:.05!important}
-html[data-theme="light"] header{background:#f6efe4ee!important;border-color:#c9b99e!important}
-html[data-theme="light"] .brand b,
-html[data-theme="light"] h1,
-html[data-theme="light"] .voice strong,
-html[data-theme="light"] .step b,
-html[data-theme="light"] .kpi strong{color:#2b241b!important}
-html[data-theme="light"] .sub,
-html[data-theme="light"] .annotation,
-html[data-theme="light"] .voice p,
-html[data-theme="light"] .step span,
-html[data-theme="light"] .kpi small,
-html[data-theme="light"] .footer{color:#6d6253!important}
-html[data-theme="light"] .voice,
-html[data-theme="light"] .step,
-html[data-theme="light"] .kpi{background:#fffaf2!important;border-color:#ccb99a!important;box-shadow:none!important}
-html[data-theme="light"] .theme-switch{background:#fffaf2!important;color:#2b241b!important;border-color:#aa916d!important}
-html[data-theme="light"] .nav a{color:#514434!important;border-color:#aa916d88!important;background:#fff8ed!important}
-html[data-theme="light"] .nav a.primary,
-html[data-theme="light"] .nav a.doinglio-home{color:#8b4d19!important;background:#f8e8d4!important}
-
 </style>
+<link rel="stylesheet" href="theme.css">
+<script src="theme.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -143,7 +116,7 @@ html[data-theme="light"] .nav a.doinglio-home{color:#8b4d19!important;background
   </div>
   <nav class="nav">
     <a class="doinglio-home" href="https://duiliomf.github.io/doinglio/" target="_self" aria-label="Volver a DoingLio">← DoingLio</a>
-    <button class="theme-switch" id="themeSwitch" type="button" aria-label="Cambiar entre modo claro y oscuro" title="Claro / oscuro">☀ / 🌙</button>
+    
     <a class="primary" href="conexion-sql.html">⚙ Configuración de datos</a>
   </nav>
 </header>
@@ -202,23 +175,6 @@ html[data-theme="light"] .nav a.doinglio-home{color:#8b4d19!important;background
 })();
 </script>
 
-<script>
-(function(){
-  const btn=document.getElementById('themeSwitch');
-  if(!btn) return;
-  function updateLabel(){
-    const light=document.documentElement.dataset.theme==='light';
-    btn.textContent=light?'🌙 Oscuro':'☀ Claro';
-    btn.title=light?'Cambiar a oscuro':'Cambiar a claro';
-  }
-  btn.addEventListener('click',function(){
-    const next=document.documentElement.dataset.theme==='light'?'dark':'light';
-    document.documentElement.dataset.theme=next;
-    try{localStorage.setItem('doinglio.theme',next)}catch(_){}
-    updateLabel();
-  });
-  updateLabel();
-})();
-</script>
+
 </body>
 </html>
