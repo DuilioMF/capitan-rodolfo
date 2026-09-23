@@ -38,11 +38,16 @@ function Send-Response {
     }
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
     $nl = [Environment]::NewLine
+    $allowedOrigins = @("https://duiliomf.github.io","http://127.0.0.1:8790","http://localhost:8790")
+    $corsOrigin = "https://duiliomf.github.io"
+    if(-not [string]::IsNullOrWhiteSpace([string]$script:CurrentOrigin) -and $allowedOrigins -contains [string]$script:CurrentOrigin){
+        $corsOrigin = [string]$script:CurrentOrigin
+    }
     $headers = "HTTP/1.1 $StatusCode $statusText" + $nl +
       "Content-Type: $ContentType" + $nl +
       "Content-Length: $($bytes.Length)" + $nl +
       "Cache-Control: no-store" + $nl +
-      "Access-Control-Allow-Origin: https://duiliomf.github.io" + $nl +
+      "Access-Control-Allow-Origin: $corsOrigin" + $nl +
       "Access-Control-Allow-Methods: GET, POST, OPTIONS" + $nl +
       "Access-Control-Allow-Headers: Content-Type" + $nl +
       "Access-Control-Allow-Private-Network: true" + $nl +
@@ -408,6 +413,8 @@ try {
       $stream = $client.GetStream()
       $req = Read-Request -Stream $stream
       if($null -eq $req){ continue }
+      $script:CurrentOrigin = ""
+      if($req.Headers.ContainsKey('origin')){ $script:CurrentOrigin = [string]$req.Headers['origin'] }
 
       $pathOnly = ($req.Path -split '\?')[0]
       if($req.Method -eq 'OPTIONS'){
