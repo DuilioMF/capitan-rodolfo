@@ -1381,6 +1381,8 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
 
           $state = Open-SqlSession -Server $server -Auth $auth -User $user -Password $password
           Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database ""
+          $script:LastRestoreError = ""
+          Write-ServiceStatus -State "running-connected" -Database "" -Server $server
           Send-Json $stream 200 $state
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
@@ -1410,6 +1412,7 @@ ORDER BY s.name,t.name;
           $reader.Close()
           $sess["database"] = $database
           Save-SqlProfile -Server ([string]$sess.server) -Auth ([string]$sess.auth) -User ([string]$sess.user) -Password "" -Database $database
+          Write-ServiceStatus -State "running-connected" -Database $database -Server ([string]$sess.server)
           Send-Json $stream 200 @{database=$database;tables=$rows}
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
