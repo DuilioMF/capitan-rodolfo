@@ -30,9 +30,8 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":8787 .*LISTENING"') d
 schtasks /End /TN "%TASK%" >nul 2>nul
 schtasks /Delete /F /TN "%TASK%" >nul 2>nul
 
-schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%TASK%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%BRIDGE%\" -AppDir \"%APPROOT%\" -BackgroundChild" >nul 2>nul
-
-start "" powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%BRIDGE%" -AppDir "%APPROOT%" -BackgroundChild
+rem El propio conector crea la tarea de inicio y lanza el hijo oculto.
+powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%BRIDGE%" -AppDir "%APPROOT%"
 
 set "READY=0"
 for /L %%I in (1,1,20) do (
