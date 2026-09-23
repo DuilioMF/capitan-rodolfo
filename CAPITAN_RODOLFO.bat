@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 title DoingLio - Conector SQL
 
 set "APPROOT=C:\Sistemas\DoingLioConnector"
@@ -7,12 +7,15 @@ set "BRIDGEDIR=%APPROOT%\bridge"
 set "BRIDGE=%BRIDGEDIR%\capitan_rodolfo_local.ps1"
 set "VERSION_FILE=%APPROOT%\VERSION"
 set "ALLOWLIST=%APPROOT%\sp_allowlist.json"
+set "LOG=%APPROOT%\install.log"
 set "TASK=CapitanRodolfoLocal"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main"
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
 if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
 if not exist "%BRIDGEDIR%" mkdir "%BRIDGEDIR%" >nul 2>nul
+
+> "%LOG%" echo [%date% %time%] Inicio instalacion conector DoingLio SQL
 
 echo.
 echo ============================================================
@@ -23,37 +26,42 @@ echo Carpeta local: %APPROOT%
 echo Actualizando conector...
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
 
-for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":8787 .*LISTENING"') do taskkill /PID %%P /F >nul 2>nul
+for %%Q in (8787 8797 18787 27877 37877 48787 57877) do (
+  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%%Q .*LISTENING"') do taskkill /PID %%P /F >nul 2>nul
+)
 schtasks /End /TN "%TASK%" >nul 2>nul
 schtasks /Delete /F /TN "%TASK%" >nul 2>nul
 
-rem El propio conector crea la tarea de inicio y lanza el hijo oculto.
-powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%BRIDGE%" -AppDir "%APPROOT%"
+echo [%date% %time%] Iniciando PowerShell bridge >>"%LOG%"
+powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%BRIDGE%" -AppDir "%APPROOT%" >>"%LOG%" 2>&1
 
-set "READY=0"
-for /L %%I in (1,1,20) do (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-RestMethod -Uri 'http://127.0.0.1:8787/health' -TimeoutSec 1; if($r.ok){exit 0}else{exit 1} } catch { exit 1 }"
-  if not errorlevel 1 (
-    set "READY=1"
-    goto :ready
+set "ACTIVE_PORT="
+for /L %%I in (1,1,30) do (
+  for /f "usebackq delims=" %%Q in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports=8787,8797,18787,27877,37877,48787,57877; foreach($p in $ports){ try{$r=Invoke-RestMethod -Uri ('http://127.0.0.1:'+ $p +'/health') -TimeoutSec 1; if($r.ok){Write-Output $p; break}}catch{}}" `) do (
+    set "ACTIVE_PORT=%%Q"
   )
+  if defined ACTIVE_PORT goto :ready
   timeout /t 1 >nul
 )
 
 :ready
-if "%READY%"=="1" (
-  echo Conector SQL listo.
-  start "" "https://duiliomf.github.io/capitan-rodolfo/conexion-sql.html"
+if defined ACTIVE_PORT (
+  echo [%date% %time%] Conector listo puerto !ACTIVE_PORT! >>"%LOG%"
+  echo Conector SQL listo en puerto !ACTIVE_PORT!.
+  start "" "https://duiliomf.github.io/capitan-rodolfo/conexion-sql.html?v=65"
   timeout /t 2 >nul
   exit /b 0
 )
 
 :error
+echo [%date% %time%] ERROR: no respondio ningun puerto >>"%LOG%"
 echo.
 echo No se pudo instalar o iniciar el conector SQL.
+echo Log: %LOG%
 echo No se borraron las credenciales guardadas.
+start "" notepad.exe "%LOG%"
 pause
 exit /b 1
