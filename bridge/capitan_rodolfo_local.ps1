@@ -23,20 +23,26 @@ try {
 } catch {}
 $Sessions = @{}
 $ActiveSessionId = $null
-$ProfilePath = Join-Path $AppDir "sql_profile.json"
-$OpenAIKeyPath = Join-Path $AppDir "openai_key.dat"
-$ServiceStatusPath = Join-Path $AppDir "servicio_sql_estado.json"
+
+# Datos persistentes fuera del codigo. Git puede actualizar el programa sin tocar la conexion.
+$DataRoot = "C:\Sistemas\DoingLio\data\capitan"
+if(-not (Test-Path $DataRoot)){ New-Item -ItemType Directory -Path $DataRoot -Force | Out-Null }
+$ProfilePath = Join-Path $DataRoot "conexion.json"
+$PasswordPath = Join-Path $DataRoot "credenciales.dat"
+$OpenAIKeyPath = Join-Path $DataRoot "openai_key.dat"
+$ServiceStatusPath = Join-Path $DataRoot "estado.json"
+$SpAllowlistPath = Join-Path $DataRoot "sp_allowlist.json"
+$DefaultSpAllowlistPath = Join-Path $AppDir "sp_allowlist.json"
 $TaskName = "CapitanRodolfoLocal"
 $script:LastRestoreError = ""
 
 function Write-ServiceStatus {
     param([string]$State,[string]$Database="",[string]$Server="",[string]$User="",[string]$ErrorMessage="")
     try {
-        $hasProtectedPassword = $false
+        $hasProtectedPassword = (Test-Path $PasswordPath)
         if(Test-Path $ProfilePath){
             try {
                 $sp = Get-Content $ProfilePath -Raw | ConvertFrom-Json
-                $hasProtectedPassword = -not [string]::IsNullOrWhiteSpace([string]$sp.passwordProtected)
                 if([string]::IsNullOrWhiteSpace($User)){ $User = [string]$sp.user }
                 if([string]::IsNullOrWhiteSpace($Server)){ $Server = [string]$sp.server }
                 if([string]::IsNullOrWhiteSpace($Database)){ $Database = [string]$sp.database }
@@ -83,33 +89,62 @@ Ensure-BackgroundTask | Out-Null
 Write-ServiceStatus -State "starting"
 
 function Import-LegacyLocalState {
-    $roots = @("C:\Sistemas", (Join-Path $env:LOCALAPPDATA "CapitanRodolfo")) | Where-Object { $_ -and (Test-Path $_) }
-    foreach($target in @(
-        @{ Name="sql_profile.json"; Path=$ProfilePath },
-        @{ Name="openai_key.dat"; Path=$OpenAIKeyPath }
-    )){
-        if(Test-Path $target.Path){ continue }
-        $candidate = $null
-        foreach($root in $roots){
-            try {
-                $candidate = Get-ChildItem -Path $root -Filter $target.Name -File -Recurse -ErrorAction SilentlyContinue |
-                    Where-Object {
-                        $_.FullName -ne $target.Path -and
-                        ($_.DirectoryName -match '(?i)capitan|rodolfo')
-                    } |
-                    Sort-Object LastWriteTime -Descending |
-                    Select-Object -First 1
-                if($candidate){ break }
-            } catch {}
-        }
-        if($candidate){
-            try {
-                Copy-Item -Path $candidate.FullName -Destination $target.Path -Force
-                Write-Host "Estado local recuperado: $($target.Name) desde $($candidate.DirectoryName)"
-            } catch {
-                Write-Host "No se pudo recuperar $($target.Name): $($_.Exception.Message)"
+    try {
+        # Migrar perfiles anteriores sin perder credenciales.
+        if(-not (Test-Path $ProfilePath)){
+            $roots = @($AppDir, "C:\Sistemas", (Join-Path $env:LOCALAPPDATA "CapitanRodolfo")) | Where-Object { $_ -and (Test-Path $_) }
+            $candidate = $null
+            foreach($root in $roots){
+                try {
+                    $candidate = Get-ChildItem -Path $root -Filter "sql_profile.json" -File -Recurse -ErrorAction SilentlyContinue |
+                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                    if($candidate){ break }
+                } catch {}
+            }
+            if($candidate){
+                $old = Get-Content $candidate.FullName -Raw | ConvertFrom-Json
+                $profile = [ordered]@{
+                    server = [string]$old.server
+                    auth = [string]$old.auth
+                    user = [string]$old.user
+                    database = [string]$old.database
+                    savedAt = (Get-Date).ToString("o")
+                    format = 2
+                }
+                [IO.File]::WriteAllText($ProfilePath,($profile | ConvertTo-Json -Depth 4),[Text.Encoding]::UTF8)
+                $legacyProtected = [string]$old.passwordProtected
+                if(-not [string]::IsNullOrWhiteSpace($legacyProtected)){
+                    [IO.File]::WriteAllText($PasswordPath,$legacyProtected,[Text.Encoding]::UTF8)
+                }
+                Write-Host "Conexion SQL anterior migrada desde $($candidate.FullName)"
             }
         }
+
+        if(-not (Test-Path $OpenAIKeyPath)){
+            $roots = @($AppDir, "C:\Sistemas", (Join-Path $env:LOCALAPPDATA "CapitanRodolfo")) | Where-Object { $_ -and (Test-Path $_) }
+            foreach($root in $roots){
+                try {
+                    $candidate = Get-ChildItem -Path $root -Filter "openai_key.dat" -File -Recurse -ErrorAction SilentlyContinue |
+                        Where-Object { $_.FullName -ne $OpenAIKeyPath } |
+                        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                    if($candidate){
+                        Copy-Item -Path $candidate.FullName -Destination $OpenAIKeyPath -Force
+                        Write-Host "Clave OpenAI local migrada desde $($candidate.FullName)"
+                        break
+                    }
+                } catch {}
+            }
+        }
+
+        if(-not (Test-Path $SpAllowlistPath)){
+            if(Test-Path $DefaultSpAllowlistPath){
+                Copy-Item $DefaultSpAllowlistPath $SpAllowlistPath -Force
+            } else {
+                [IO.File]::WriteAllText($SpAllowlistPath,'{"procedures":["dbo.PA_VentasFormasPago"]}',[Text.Encoding]::UTF8)
+            }
+        }
+    } catch {
+        Write-Host "Aviso al migrar estado local: $($_.Exception.Message)"
     }
 }
 Import-LegacyLocalState
@@ -267,27 +302,27 @@ function New-SqlConnection {
 
 function Save-SqlProfile {
     param([string]$Server,[string]$Auth,[string]$User,[string]$Password,[string]$Database)
-    $protectedPassword = ""
+    $old = Load-SqlProfile
+    $sameIdentity = ($null -ne $old -and [string]$old.server -eq $Server -and [string]$old.auth -eq $Auth -and [string]$old.user -eq $User)
+
     if($Auth -eq "sql"){
         if(-not [string]::IsNullOrWhiteSpace($Password)){
             $secure = ConvertTo-SecureString $Password -AsPlainText -Force
-            $protectedPassword = ConvertFrom-SecureString $secure
-        } elseif(Test-Path $ProfilePath) {
-            try {
-                $old = Get-Content $ProfilePath -Raw | ConvertFrom-Json
-                if(([string]$old.server -eq $Server) -and ([string]$old.auth -eq $Auth) -and ([string]$old.user -eq $User)){
-                    $protectedPassword = [string]$old.passwordProtected
-                }
-            } catch {}
+            [IO.File]::WriteAllText($PasswordPath,(ConvertFrom-SecureString $secure),[Text.Encoding]::UTF8)
+        } elseif(-not $sameIdentity -and (Test-Path $PasswordPath)){
+            Remove-Item $PasswordPath -Force -ErrorAction SilentlyContinue
         }
+    } elseif(Test-Path $PasswordPath) {
+        Remove-Item $PasswordPath -Force -ErrorAction SilentlyContinue
     }
+
     $profile = [ordered]@{
         server = $Server
         auth = $Auth
         user = $User
-        passwordProtected = $protectedPassword
         database = $Database
         savedAt = (Get-Date).ToString("o")
+        format = 2
     }
     [IO.File]::WriteAllText($ProfilePath,($profile | ConvertTo-Json -Depth 4),[Text.Encoding]::UTF8)
 }
@@ -306,14 +341,127 @@ function Load-SqlProfile {
 function Unprotect-ProfilePassword {
     param($Profile)
     if($null -eq $Profile -or [string]$Profile.auth -ne "sql"){ return "" }
-    $raw = [string]$Profile.passwordProtected
-    if([string]::IsNullOrWhiteSpace($raw)){ return "" }
+    if(-not (Test-Path $PasswordPath)){ return "" }
     try {
+        $raw = (Get-Content $PasswordPath -Raw).Trim()
+        if([string]::IsNullOrWhiteSpace($raw)){ return "" }
         $secure = ConvertTo-SecureString $raw
         $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
         try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) }
         finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
     } catch { return "" }
+}
+
+function Get-SpAllowlist {
+    try {
+        if(-not (Test-Path $SpAllowlistPath)){ return @() }
+        $cfg = Get-Content $SpAllowlistPath -Raw | ConvertFrom-Json
+        if($null -eq $cfg.procedures){ return @() }
+        return @($cfg.procedures | ForEach-Object { [string]$_ })
+    } catch {
+        return @()
+    }
+}
+
+function Assert-AllowedProcedure {
+    param([string]$Procedure)
+    if([string]::IsNullOrWhiteSpace($Procedure)){ throw "Elegí un procedimiento almacenado." }
+    if($Procedure -notmatch '^[A-Za-z0-9_]+\.[A-Za-z0-9_]+$'){ throw "Nombre de SP inválido." }
+    $allowed = Get-SpAllowlist
+    $ok = $false
+    foreach($name in $allowed){ if([string]::Equals($name,$Procedure,[StringComparison]::OrdinalIgnoreCase)){ $ok=$true; break } }
+    if(-not $ok){ throw "El SP $Procedure no está habilitado en C:\Sistemas\DoingLio\data\capitan\sp_allowlist.json." }
+}
+
+function Get-AllowedProcedureMetadata {
+    param($Connection,[string]$Database)
+    $Connection.ChangeDatabase($Database)
+    $result = @()
+    foreach($fullName in (Get-SpAllowlist)){
+        try {
+            $parts = $fullName.Split('.',2)
+            if($parts.Count -ne 2){ continue }
+            $schema = $parts[0]; $proc = $parts[1]
+            $cmd = $Connection.CreateCommand()
+            $cmd.CommandText = @"
+SELECT prm.name AS parameter_name,
+       TYPE_NAME(prm.user_type_id) AS data_type,
+       prm.max_length,
+       prm.precision,
+       prm.scale,
+       prm.is_output
+FROM sys.procedures p
+JOIN sys.schemas s ON s.schema_id=p.schema_id
+LEFT JOIN sys.parameters prm ON prm.object_id=p.object_id
+WHERE s.name=@schema AND p.name=@proc
+ORDER BY prm.parameter_id;
+"@
+            $null=$cmd.Parameters.Add("@schema",[System.Data.SqlDbType]::NVarChar,128);$cmd.Parameters["@schema"].Value=$schema
+            $null=$cmd.Parameters.Add("@proc",[System.Data.SqlDbType]::NVarChar,128);$cmd.Parameters["@proc"].Value=$proc
+            $reader=$cmd.ExecuteReader()
+            $params=@(); $found=$false
+            while($reader.Read()){
+                $found=$true
+                if(-not $reader.IsDBNull(0)){
+                    $params += @{
+                        name=[string]$reader.GetString(0)
+                        type=[string]$reader.GetString(1)
+                        maxLength=if($reader.IsDBNull(2)){0}else{[int]$reader.GetInt16(2)}
+                        precision=if($reader.IsDBNull(3)){0}else{[int]$reader.GetByte(3)}
+                        scale=if($reader.IsDBNull(4)){0}else{[int]$reader.GetByte(4)}
+                        output=if($reader.IsDBNull(5)){$false}else{[bool]$reader.GetBoolean(5)}
+                    }
+                }
+            }
+            $reader.Close()
+            if($found){ $result += @{name=$fullName;parameters=$params} }
+        } catch {}
+    }
+    return $result
+}
+
+function Invoke-AllowedStoredProcedure {
+    param($Connection,[string]$Database,[string]$Procedure,$Parameters)
+    Assert-AllowedProcedure -Procedure $Procedure
+    $Connection.ChangeDatabase($Database)
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandType=[System.Data.CommandType]::StoredProcedure
+    $cmd.CommandText=$Procedure
+    $cmd.CommandTimeout=60
+
+    if($null -ne $Parameters){
+        foreach($prop in $Parameters.PSObject.Properties){
+            $name=[string]$prop.Name
+            if(-not $name.StartsWith("@")){ $name="@"+$name }
+            $value=$prop.Value
+            if($null -eq $value -or [string]::Equals([string]$value,"null",[StringComparison]::OrdinalIgnoreCase)){ $value=[DBNull]::Value }
+            $null=$cmd.Parameters.AddWithValue($name,$value)
+        }
+    }
+
+    $reader=$cmd.ExecuteReader()
+    $sets=@()
+    do {
+        if($reader.FieldCount -gt 0){
+            $columns=@()
+            for($i=0;$i -lt $reader.FieldCount;$i++){ $columns += [string]$reader.GetName($i) }
+            $rows=@()
+            while($reader.Read() -and $rows.Count -lt 500){
+                $row=[ordered]@{}
+                for($i=0;$i -lt $reader.FieldCount;$i++){
+                    $v=$reader.GetValue($i)
+                    if($v -is [DBNull]){$v=$null}
+                    elseif($v -is [DateTime]){$v=([DateTime]$v).ToString("yyyy-MM-dd HH:mm:ss")}
+                    elseif($v -is [byte[]]){$v="[binario]"}
+                    $row[$columns[$i]]=$v
+                }
+                $rows += [pscustomobject]$row
+            }
+            $sets += @{columns=$columns;rows=$rows;rowCount=$rows.Count}
+        }
+    } while($reader.NextResult())
+    $reader.Close()
+    return @{database=$Database;procedure=$Procedure;resultSets=$sets}
 }
 
 function Open-SqlSession {
@@ -576,7 +724,8 @@ try {
             auth=[string]$p.auth
             user=[string]$p.user
             database=[string]$p.database
-            hasPassword=(-not [string]::IsNullOrWhiteSpace([string]$p.passwordProtected))
+            hasPassword=(Test-Path $PasswordPath)
+            dataFolder=$DataRoot
           }
         }
       }
@@ -1504,6 +1653,35 @@ ORDER BY s.name,t.name;
           Save-SqlProfile -Server ([string]$sess.server) -Auth ([string]$sess.auth) -User ([string]$sess.user) -Password "" -Database $database
           Write-ServiceStatus -State "running-connected" -Database $database -Server ([string]$sess.server) -User ([string]$sess.user)
           Send-Json $stream 200 @{database=$database;tables=$rows}
+        } catch {
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/sp/list'){
+        try {
+          $data = $req.Body | ConvertFrom-Json
+          $sid = [string]$data.sessionId
+          $database = [string]$data.database
+          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesión vencida. Volvé a conectar.'}; continue }
+          $sess = $Sessions[$sid]
+          if($sess.databases -notcontains $database){ Send-Json $stream 403 @{error='Base no autorizada.'}; continue }
+          $procedures = Get-AllowedProcedureMetadata -Connection $sess.connection -Database $database
+          Send-Json $stream 200 @{database=$database;procedures=$procedures;allowlistPath=$SpAllowlistPath}
+        } catch {
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/sp/execute'){
+        try {
+          $data = $req.Body | ConvertFrom-Json
+          $sid = [string]$data.sessionId
+          $database = [string]$data.database
+          $procedure = [string]$data.procedure
+          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesión vencida. Volvé a conectar.'}; continue }
+          $sess = $Sessions[$sid]
+          if($sess.databases -notcontains $database){ Send-Json $stream 403 @{error='Base no autorizada.'}; continue }
+          $result = Invoke-AllowedStoredProcedure -Connection $sess.connection -Database $database -Procedure $procedure -Parameters $data.parameters
+          Send-Json $stream 200 $result
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
         }
