@@ -112,8 +112,8 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(max-width:700px){.tank-modal{padding:8px}.tank-dialog{max-height:94vh}.tank-head h2{font-size:24px}.tank-table th,.tank-table td{padding:9px 10px;font-size:11px}}
 
 </style>
-<link rel="stylesheet" href="theme.css?v=56">
-<script src="theme.js?v=56" defer></script>
+<link rel="stylesheet" href="theme.css?v=57">
+<script src="theme.js?v=57" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -220,8 +220,8 @@ h1 em{font-weight:500;color:#d9ae65}
    tankTableWrap.innerHTML='<div class="tank-empty">Leyendo dbo.Tanque desde la base conectada…</div>';
    if(!stationConnected||!activeBridge){
      tankStatus.className='tank-status warn';
-     tankStatus.textContent='SQL SIN CONEXIÓN · abrí Núcleo → Datos, conectá la base y volvé a TANQUES.';
-     tankTableWrap.innerHTML='<div class="tank-empty">No hay una base SQL activa.</div>';
+     tankStatus.textContent=activeBridge?'CONECTOR ACTIVO · falta una base SQL activa. Abrí Núcleo → Datos una vez.':'SQL SIN CONEXIÓN · volvé a abrir DoingLio desde C:\\Sistemas\\DOINGLIO.bat.';
+     tankTableWrap.innerHTML='<div class="tank-empty">No hay una base SQL activa todavía.</div>';
      return;
    }
    try{
@@ -258,10 +258,14 @@ h1 em{font-weight:500;color:#d9ae65}
      }catch(_){}
    }
    if(!found||!found.d.connected){
-     activeBridge=null;stationConnected=false;
-     connection.innerHTML='<span class="dot" style="background:#ffb36b;box-shadow:0 0 18px #ffb36b"></span> SQL local sin base activa · Núcleo → Datos';
+     activeBridge=found?found.base:null;stationConnected=false;
+     const d=found?found.d:{};
+     let msg='Conector SQL local no responde · volvé a abrir DoingLio';
+     if(found&&d.bridge&&d.profileSaved) msg='Conector activo · conexión SQL guardada pero no pudo reconectar · Núcleo → Datos';
+     else if(found&&d.bridge) msg='Conector activo · falta conectar una base · Núcleo → Datos';
+     connection.innerHTML='<span class="dot" style="background:#ffb36b;box-shadow:0 0 18px #ffb36b"></span> '+msg;
      set('liveTanks','—');set('liveHoses','Esperando datos SQL');set('livePumps','—');set('liveDatabase','Base no conectada');
-     set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');set('liveDbKpi','Sin conexión');
+     set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');set('liveDbKpi',found&&d.bridge?'Conector activo':'Sin conexión');
      return;
    }
    const d=found.d;

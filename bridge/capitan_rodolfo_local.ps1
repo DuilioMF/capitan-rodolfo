@@ -24,6 +24,39 @@ $Sessions = @{}
 $ActiveSessionId = $null
 $ProfilePath = Join-Path $AppDir "sql_profile.json"
 $OpenAIKeyPath = Join-Path $AppDir "openai_key.dat"
+$script:LastRestoreError = ""
+
+function Import-LegacyLocalState {
+    $roots = @("C:\Sistemas", (Join-Path $env:LOCALAPPDATA "CapitanRodolfo")) | Where-Object { $_ -and (Test-Path $_) }
+    foreach($target in @(
+        @{ Name="sql_profile.json"; Path=$ProfilePath },
+        @{ Name="openai_key.dat"; Path=$OpenAIKeyPath }
+    )){
+        if(Test-Path $target.Path){ continue }
+        $candidate = $null
+        foreach($root in $roots){
+            try {
+                $candidate = Get-ChildItem -Path $root -Filter $target.Name -File -Recurse -ErrorAction SilentlyContinue |
+                    Where-Object {
+                        $_.FullName -ne $target.Path -and
+                        ($_.DirectoryName -match '(?i)capitan|rodolfo')
+                    } |
+                    Sort-Object LastWriteTime -Descending |
+                    Select-Object -First 1
+                if($candidate){ break }
+            } catch {}
+        }
+        if($candidate){
+            try {
+                Copy-Item -Path $candidate.FullName -Destination $target.Path -Force
+                Write-Host "Estado local recuperado: $($target.Name) desde $($candidate.DirectoryName)"
+            } catch {
+                Write-Host "No se pudo recuperar $($target.Name): $($_.Exception.Message)"
+            }
+        }
+    }
+}
+Import-LegacyLocalState
 
 function Send-Response {
     param(
@@ -399,7 +432,8 @@ try {
         Write-Host "Conexion SQL restaurada: $([string]$profile.server) / $savedDb"
     }
 } catch {
-    Write-Host "No se pudo restaurar la conexion SQL guardada: $($_.Exception.Message)"
+    $script:LastRestoreError = $_.Exception.Message
+    Write-Host "No se pudo restaurar la conexion SQL guardada: $script:LastRestoreError"
 }
 
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,$Port)
@@ -439,7 +473,12 @@ try {
         try {
           $state = Ensure-ActiveSession
           if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
-            Send-Json $stream 200 @{connected=$false}
+            Send-Json $stream 200 @{
+              connected=$false
+              bridge=$true
+              profileSaved=(Test-Path $ProfilePath)
+              restoreError=[string]$script:LastRestoreError
+            }
             continue
           }
           $cn = $Sessions[$state.sessionId].connection
