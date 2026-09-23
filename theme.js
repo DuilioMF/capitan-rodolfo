@@ -3,7 +3,8 @@
  const STORAGE_STYLE='doinglio.style';
  const STYLES=[
    {id:'leon',label:'León',icon:'🦁'},
-   {id:'chaty',label:'Chaty',icon:'✨'}
+   {id:'chaty',label:'Chaty',icon:'✨'},
+   {id:'estacion',label:'Estación',icon:'⛽'}
  ];
 
  const controls=document.createElement('nav');

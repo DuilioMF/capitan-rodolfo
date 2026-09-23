@@ -344,8 +344,21 @@ html[data-style="chaty"][data-theme="light"] .theme-style-title{color:#3d7889!im
   to{transform:translate(-50%,-50%) rotate(360deg)}
 }
 
+/* Estación: tablero operativo industrial para Tanque → Surtidor → Manguera. */
+html[data-style="estacion"]{--bg:#050b12;--paper:#09141e;--panel:#09141e;--card:#0b1823;--ink:#eaf6ff;--text:#eaf6ff;--muted:#7ea2bb;--copper:#ff7138;--gold:#2dd9ff;--green:#34f5a5;--cyan:#2dd9ff;--line:#254154}
+html[data-style="estacion"] body{background:linear-gradient(#2dd9ff08 1px,transparent 1px),linear-gradient(90deg,#2dd9ff08 1px,transparent 1px),radial-gradient(circle at 50% 0,#123149,#050b12 58%)!important;background-size:34px 34px,34px 34px,auto!important;color:#eaf6ff!important}
+html[data-style="estacion"] header,html[data-style="estacion"] .voice,html[data-style="estacion"] .step,html[data-style="estacion"] .kpi,html[data-style="estacion"] .card,html[data-style="estacion"] .gatebox{background:#09141ef2!important;border:1px solid #254154!important;color:#eaf6ff!important;box-shadow:0 12px 35px #0008,inset 0 1px 0 #ffffff08!important}
+html[data-style="estacion"] .step{border-top:3px solid #2dd9ff!important}html[data-style="estacion"] .step:nth-child(2){border-top-color:#ff7138!important}html[data-style="estacion"] .step:nth-child(3){border-top-color:#34f5a5!important}
+html[data-style="estacion"] h1 em,html[data-style="estacion"] .section-title,html[data-style="estacion"] .brand small{color:#2dd9ff!important}html[data-style="estacion"] .eyebrow{color:#ff7138!important}
+html[data-style="estacion"] .manuscript circle,html[data-style="estacion"] .manuscript path,html[data-style="estacion"] .manuscript line{stroke:#2dd9ff!important}
+html[data-style="estacion"] .site-controls button,html[data-style="estacion"] .site-controls a{background:#07131df2!important;color:#eaf6ff!important;border-color:#2dd9ff55!important}
+html[data-style="estacion"] .site-controls .theme-style-option.is-current{background:#102d3d!important;border-color:#34f5a5!important;color:#9fffd7!important}
+html[data-style="estacion"][data-theme="light"]{--bg:#e8f0f4;--paper:#f8fbfc;--panel:#f8fbfc;--card:#fff;--ink:#142936;--text:#142936;--muted:#587080;--line:#8ba7b8}
+html[data-style="estacion"][data-theme="light"] body{background:linear-gradient(#177e9b0a 1px,transparent 1px),linear-gradient(90deg,#177e9b0a 1px,transparent 1px),radial-gradient(circle at 50% 0,#fff,#dfeaf0 65%)!important;background-size:34px 34px,34px 34px,auto!important;color:#142936!important}
+html[data-style="estacion"][data-theme="light"] header,html[data-style="estacion"][data-theme="light"] .voice,html[data-style="estacion"][data-theme="light"] .step,html[data-style="estacion"][data-theme="light"] .kpi,html[data-style="estacion"][data-theme="light"] .card,html[data-style="estacion"][data-theme="light"] .gatebox{background:#fffffff2!important;border-color:#8ba7b8!important;color:#142936!important;box-shadow:0 12px 30px #35586b1c!important}
+
 @media(max-width:560px){
   .site-controls{width:238px!important}
-  .theme-style-grid{grid-template-columns:1fr 1fr}
+  .theme-style-grid{grid-template-columns:1fr 1fr 1fr}
   html[data-style="chaty"] header{border-radius:16px}
 }
