@@ -1618,11 +1618,23 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
             }
           }
 
+          $savedBefore = Load-SqlProfile
           $state = Open-SqlSession -Server $server -Auth $auth -User $user -Password $password
-          Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database ""
+          $selectedDb = ""
+          if($null -ne $savedBefore -and
+             [string]$savedBefore.server -eq $server -and
+             [string]$savedBefore.auth -eq $auth -and
+             [string]$savedBefore.user -eq $user){
+            $candidateDb = [string]$savedBefore.database
+            if(-not [string]::IsNullOrWhiteSpace($candidateDb) -and $state.databases -contains $candidateDb){
+              $selectedDb = $candidateDb
+              $Sessions[$state.sessionId]["database"] = $selectedDb
+            }
+          }
+          Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database $selectedDb
           $script:LastRestoreError = ""
-          Write-ServiceStatus -State "running-connected" -Database "" -Server $server -User $user
-          Send-Json $stream 200 $state
+          Write-ServiceStatus -State "running-connected" -Database $selectedDb -Server $server -User $user
+          Send-Json $stream 200 @{sessionId=$state.sessionId;server=$state.server;auth=$state.auth;user=$state.user;databases=$state.databases;database=$selectedDb}
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
         }
