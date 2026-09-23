@@ -104,8 +104,8 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 </style>
-<link rel="stylesheet" href="theme.css?v=46">
-<script src="theme.js?v=46" defer></script>
+<link rel="stylesheet" href="theme.css?v=47">
+<script src="theme.js?v=47" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -117,7 +117,7 @@ h1 em{font-weight:500;color:#d9ae65}
   <nav class="nav">
     <a class="doinglio-home" href="https://duiliomf.github.io/doinglio/" target="_self" aria-label="Volver a DoingLio">← DoingLio</a>
     
-    <a class="primary" href="conexion-sql.html">⚙ Configuración de datos</a>
+    <a class="primary" href="nucleo.html">◉ Núcleo</a>
   </nav>
 </header>
 
@@ -139,10 +139,11 @@ h1 em{font-weight:500;color:#d9ae65}
     <div class="sub">Flujo: combustible → despacho → venta → cobro</div>
     <div class="annotation">“Todo movimiento deja una huella.”</div>
   </div>
-  <div class="voice">
-    <div class="mic">🎙</div>
+  <div class="voice" aria-labelledby="voice-title">
+    <button class="voice-mic" id="voiceMic" type="button" aria-label="Iniciar conversación por voz" aria-pressed="false">🎙</button>
     <strong>“Rodolfo, ¿qué pasó hoy?”</strong>
-    <p>Una lectura viva de la estación: desde el ingreso del combustible hasta el dinero conciliado.</p>
+    <p id="voiceStatus">Tocá el micrófono y hablá. Rodolfo transcribe tu consulta sin salir del tablero.</p>
+    <output id="voiceTranscript" class="voice-transcript" aria-live="polite"></output>
   </div>
 </section>
 
@@ -172,6 +173,32 @@ h1 em{font-weight:500;color:#d9ae65}
   const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
   if(r.ok) document.getElementById('build').textContent=(await r.text()).trim();
  }catch(_){}
+})();
+
+(function(){
+ const button=document.getElementById('voiceMic');
+ const status=document.getElementById('voiceStatus');
+ const transcript=document.getElementById('voiceTranscript');
+ const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SpeechRecognition){
+   button.disabled=true;
+   status.textContent='La conversación por voz necesita un navegador compatible con reconocimiento de voz.';
+   return;
+ }
+ const recognition=new SpeechRecognition();
+ recognition.lang='es-AR';
+ recognition.continuous=true;
+ recognition.interimResults=true;
+ let listening=false;
+ recognition.onstart=()=>{listening=true;button.classList.add('is-listening');button.setAttribute('aria-pressed','true');status.textContent='Te escucho… tocá nuevamente para detener.'};
+ recognition.onresult=event=>{
+   let text='';
+   for(let i=event.resultIndex;i<event.results.length;i++) text+=event.results[i][0].transcript;
+   transcript.textContent=text.trim();
+ };
+ recognition.onerror=event=>{status.textContent='No pude escuchar: '+event.error+'. Podés intentarlo otra vez.'};
+ recognition.onend=()=>{listening=false;button.classList.remove('is-listening');button.setAttribute('aria-pressed','false');if(transcript.textContent)status.textContent='Consulta capturada. El motor predeterminado se configura en Núcleo → Inteligencia.'};
+ button.addEventListener('click',()=>{if(listening)recognition.stop();else{transcript.textContent='';recognition.start()}});
 })();
 </script>
 
