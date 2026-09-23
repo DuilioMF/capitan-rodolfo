@@ -334,7 +334,7 @@ function renderDispatches(data){
  data.rows.forEach(row=>{const tr=document.createElement('tr');data.columns.forEach(c=>{const td=document.createElement('td');const v=row[c];td.textContent=(v===null||v===undefined)?'':String(v);tr.appendChild(td)});tbody.appendChild(tr)});
  table.appendChild(tbody);wrap.appendChild(table);dispatches.appendChild(wrap);
 }
-goMap.textContent='Volver a Capitán Rodolfo →'; goMap.onclick=()=>{if(sessionId&&selectedDatabase) location.href='https://duiliomf.github.io/capitan-rodolfo/?sql=connected'};
+goMap.textContent='Ver tanques y surtidores →'; goMap.onclick=()=>{if(sessionId&&selectedDatabase) location.href='/mapa-vivo?sessionId='+encodeURIComponent(sessionId)+'&database='+encodeURIComponent(selectedDatabase)};
 </script>
 </body></html>
 "@
@@ -455,14 +455,19 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
           $tankReader.Close()
           $tankCount = $tankRows.Count
 
+          $hoseSurtidorSelect = "NULL"
+          $hoseMetaCmd = $cn.CreateCommand()
+          $hoseMetaCmd.CommandText = "SELECT COUNT(*) FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Surtan') AND UPPER(name)='SURTIDOR';"
+          if(([int]$hoseMetaCmd.ExecuteScalar()) -gt 0){ $hoseSurtidorSelect = "s.SURTIDOR" }
           $hoseCmd = $cn.CreateCommand()
-          $hoseCmd.CommandText = "SELECT s.N_TANQUE, t.DENOMINACION, s.MANGUERA, p.DESCRIIMPRESION FROM Surtan s INNER JOIN Tanque t ON s.N_TANQUE = t.N_TANQUE INNER JOIN prod p ON s.CODART = p.Codart;"
+          $hoseCmd.CommandText = "SELECT s.N_TANQUE, t.DENOMINACION, " + $hoseSurtidorSelect + " AS SURTIDOR, s.MANGUERA, p.DESCRIIMPRESION FROM Surtan s INNER JOIN Tanque t ON s.N_TANQUE = t.N_TANQUE INNER JOIN prod p ON s.CODART = p.Codart;"
           $hoseReader = $hoseCmd.ExecuteReader()
           $hoseRows = New-Object System.Collections.Generic.List[object]
           while($hoseReader.Read()){
             $hoseRows.Add([pscustomobject]@{
               tanque = if($hoseReader["N_TANQUE"] -is [DBNull]){""}else{[string]$hoseReader["N_TANQUE"]}
               denominacion = if($hoseReader["DENOMINACION"] -is [DBNull]){""}else{[string]$hoseReader["DENOMINACION"]}
+              surtidor = if($hoseReader["SURTIDOR"] -is [DBNull]){""}else{[string]$hoseReader["SURTIDOR"]}
               manguera = if($hoseReader["MANGUERA"] -is [DBNull]){""}else{[string]$hoseReader["MANGUERA"]}
               producto = if($hoseReader["DESCRIIMPRESION"] -is [DBNull]){""}else{[string]$hoseReader["DESCRIIMPRESION"]}
             })
@@ -470,28 +475,21 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
           $hoseReader.Close()
           $hoseCount = $hoseRows.Count
 
-          $surtidorCountText = "0"
-          try {
-            $surtidorCmd = $cn.CreateCommand()
-            $surtidorCmd.CommandText = "SELECT ISNULL(SUM(CAST(surtido AS decimal(18,2))),0) / 2.0 FROM SURPLA;"
-            $surtidorValue = $surtidorCmd.ExecuteScalar()
-            if($null -ne $surtidorValue -and $surtidorValue -isnot [DBNull]){
-              $surtidorCountText = ([decimal]$surtidorValue).ToString("0.##",[System.Globalization.CultureInfo]::InvariantCulture)
-            }
-          } catch {
-            $surtidorCountText = "?"
-          }
+          $realSurtidores = @($hoseRows | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.surtidor) } | ForEach-Object { [string]$_.surtidor } | Sort-Object -Unique)
+          $surtidorCountText = if($realSurtidores.Count -gt 0){ [string]$realSurtidores.Count } else { "?" }
 
           $hoseCards = ""
           foreach($h in $hoseRows){
             $ht = [System.Net.WebUtility]::HtmlEncode([string]$h.tanque)
             $hd = [System.Net.WebUtility]::HtmlEncode([string]$h.denominacion)
+            $hs = [System.Net.WebUtility]::HtmlEncode([string]$h.surtidor)
             $hm = [System.Net.WebUtility]::HtmlEncode([string]$h.manguera)
             $hp = [System.Net.WebUtility]::HtmlEncode([string]$h.producto)
-            $hoseCards += "<div class='hoseRow'><b>T$ht</b><span class='arrow'>&rarr;</span><strong>M$hm</strong><span class='hoseProduct'>$hp</span><small>$hd</small></div>"
+            $surtidorLabel = if([string]::IsNullOrWhiteSpace($hs)){ "S?" } else { "S$hs" }
+            $hoseCards += "<div class='hoseRow'><b>T$ht</b><span class='arrow'>&rarr;</span><strong>$surtidorLabel</strong><span class='arrow'>&rarr;</span><strong>M$hm</strong><span class='hoseProduct'>$hp</span><small>$hd</small></div>"
           }
           if([string]::IsNullOrWhiteSpace($hoseCards)){
-            $hoseCards = "<div class='empty'>Sin relaciones tanque/manguera para mostrar.</div>"
+            $hoseCards = "<div class='empty'>Sin relaciones Tanque → Surtidor → Manguera para mostrar.</div>"
           }
 
           $tankCards = ""
@@ -504,7 +502,7 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
             $tankHoseText = ""
             foreach($th in $tankHoses){
               if($tankHoseText){ $tankHoseText += " | " }
-              $tankHoseText += "M$([System.Net.WebUtility]::HtmlEncode([string]$th.manguera)) - $([System.Net.WebUtility]::HtmlEncode([string]$th.producto))"
+              $tankHoseText += "S$([System.Net.WebUtility]::HtmlEncode([string]$th.surtidor)) / M$([System.Net.WebUtility]::HtmlEncode([string]$th.manguera)) - $([System.Net.WebUtility]::HtmlEncode([string]$th.producto))"
             }
             if(-not $tankHoseText){ $tankHoseText = "Sin mangueras asociadas" }
             $tankCards += "<button type='button' class='tankRow tankPick' data-num='$tn' data-den='$td' data-prod='$tp' data-cap='$tc' data-hoses='$tankHoseText'><b>T$tn</b><span class='tankName'>$td</span><span class='tankProduct'>$tp</span><strong>$tc L</strong></button>"
@@ -550,7 +548,7 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
 .tankList{max-height:210px;overflow:auto;padding-right:4px}.tankRow{display:grid;width:100%;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;border:0;border-bottom:1px solid #173244;padding:5px 0;font-size:10px;background:transparent;color:#eaf6ff;text-align:left;cursor:pointer}.tankRow:hover,.tankRow.active{background:#2a1710}.tankRow b{color:#ff9d2e}.tankName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankProduct{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tankRow strong{color:#2dd9ff}
 .hoseOverlay{position:absolute;left:46%;top:26%;width:17%;max-height:28%;background:#07131df2;border:2px solid #34f5a5;border-radius:16px;padding:10px 12px;overflow:hidden;box-shadow:0 8px 24px #0009}
 .hoseTitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px;font-size:10px;letter-spacing:1.5px;color:#89a9bd}.hoseTitle strong{color:#eaf6ff;letter-spacing:0}
-.hoseList{max-height:180px;overflow:auto;padding-right:4px}.hoseRow{display:grid;grid-template-columns:auto auto auto 1fr;gap:5px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.hoseRow b{color:#ff9d2e}.hoseRow strong{color:#34f5a5}.hoseRow .arrow{color:#2dd9ff}.hoseProduct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hoseRow small{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hoseList{max-height:180px;overflow:auto;padding-right:4px}.hoseRow{display:grid;grid-template-columns:auto auto auto auto auto 1fr;gap:5px;align-items:center;border-bottom:1px solid #173244;padding:5px 0;font-size:10px}.hoseRow b{color:#ff9d2e}.hoseRow strong{color:#34f5a5}.hoseRow .arrow{color:#2dd9ff}.hoseProduct{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hoseRow small{grid-column:1/-1;color:#7ea2bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tankHotspot{position:absolute;left:26.2%;top:23.8%;width:18.8%;height:6.5%;border:1px dashed #ff7138;background:#ff713812;color:#ffb06a;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:2px;z-index:3}
 .hoseHotspot{position:absolute;left:46%;top:18%;width:17%;height:6.5%;border:1px dashed #34f5a5;background:#34f5a512;color:#8fffd0;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:1.4px;z-index:3}
 .dispatchHotspot{position:absolute;left:70%;top:55%;width:22%;height:5.5%;border:1px dashed #2dd9ff;background:#2dd9ff12;color:#8fefff;border-radius:10px;cursor:pointer;font-weight:900;letter-spacing:1.2px;z-index:3}
@@ -599,9 +597,9 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
       <div class="tankTitle"><span>TANQUES REALES</span><span><strong>$tankCount</strong> <button id="closeTankPanel" class="parentClose" type="button">x</button></span></div>
       <div class="tankList">$tankCards</div>
     </section>
-    <button id="hoseHotspot" class="hoseHotspot" type="button">TANQUE &rarr; MANGUERA ($hoseCount)</button>
+    <button id="hoseHotspot" class="hoseHotspot" type="button">TANQUE &rarr; SURTIDOR &rarr; MANGUERA ($hoseCount)</button>
     <section id="hosePanel" class="hoseOverlay" style="display:none">
-      <div class="hoseTitle"><span>TANQUE &rarr; MANGUERA</span><span><strong>$hoseCount</strong> <button id="closeHosePanel" class="parentClose" type="button">x</button></span></div>
+      <div class="hoseTitle"><span>TANQUE &rarr; SURTIDOR &rarr; MANGUERA</span><span><strong>$hoseCount</strong> <button id="closeHosePanel" class="parentClose" type="button">x</button></span></div>
       <div class="hoseList">$hoseCards</div>
     </section>
     <button id="dispatchHotspot" class="dispatchHotspot" type="button" style="display:none">VENTAS / DESPACHOS ($dispatchCount)</button>
