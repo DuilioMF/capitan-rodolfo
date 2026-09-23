@@ -483,6 +483,60 @@ try {
           Send-Json $stream 500 @{error=$_.Exception.Message}
         }
       }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/tanks'){
+        try {
+          $state = Ensure-ActiveSession
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 200 @{connected=$false}
+            continue
+          }
+
+          $cn = $Sessions[$state.sessionId].connection
+          $cn.ChangeDatabase([string]$state.database)
+
+          $existsCmd = $cn.CreateCommand()
+          $existsCmd.CommandText = "SELECT CASE WHEN OBJECT_ID('dbo.Tanque','U') IS NULL THEN 0 ELSE 1 END"
+          $tableExists = ([int]$existsCmd.ExecuteScalar() -eq 1)
+          if(-not $tableExists){
+            Send-Json $stream 200 @{connected=$true;database=[string]$state.database;table='dbo.Tanque';tableExists=$false;columns=@();rowCount=0;rows=@()}
+            continue
+          }
+
+          $q = $cn.CreateCommand()
+          $q.CommandText = "SELECT TOP (200) * FROM dbo.Tanque"
+          $q.CommandTimeout = 15
+          $rdr = $q.ExecuteReader()
+          try {
+            $columns = New-Object System.Collections.Generic.List[string]
+            for($i=0;$i -lt $rdr.FieldCount;$i++){ $columns.Add($rdr.GetName($i)) }
+
+            $rows = New-Object System.Collections.Generic.List[object]
+            while($rdr.Read()){
+              $row = [ordered]@{}
+              for($i=0;$i -lt $rdr.FieldCount;$i++){
+                $value = $rdr.GetValue($i)
+                if($value -is [DBNull]){ $value = $null }
+                $row[$rdr.GetName($i)] = $value
+              }
+              $rows.Add([pscustomobject]$row)
+            }
+
+            Send-Json $stream 200 @{
+              connected=$true
+              database=[string]$state.database
+              table='dbo.Tanque'
+              tableExists=$true
+              columns=$columns
+              rowCount=$rows.Count
+              rows=$rows
+            }
+          } finally {
+            $rdr.Close()
+          }
+        } catch {
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
+      }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/state'){
         $state = Ensure-ActiveSession
         if($null -eq $state){

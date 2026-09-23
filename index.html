@@ -102,10 +102,18 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(max-width:920px){.hero{grid-template-columns:1fr}.manuscript{opacity:.12;right:-160px}.flow{grid-template-columns:1fr 1fr}.flow:before,.step:after{display:none}.kpis{grid-template-columns:1fr 1fr}.scribble{display:none}}
 @media(max-width:560px){header{align-items:flex-start}.nav{flex-direction:column;align-items:flex-end}.flow,.kpis{grid-template-columns:1fr}h1{font-size:58px}.voice{min-height:190px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.step[data-action]{cursor:pointer}.step[data-action]:focus{outline:2px solid var(--copper);outline-offset:3px}.step[data-action]:hover b{color:#ffd09b}
+.tank-modal{position:fixed;inset:0;z-index:5000;background:#050403d9;backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
+.tank-modal.open{display:flex}.tank-dialog{width:min(1180px,96vw);max-height:88vh;overflow:hidden;border:1px solid #b76c357d;background:#100d09;box-shadow:0 30px 100px #000c;display:flex;flex-direction:column}
+.tank-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 20px;border-bottom:1px solid #75603d55}.tank-head h2{margin:0;font:600 30px "Cormorant Garamond",serif}.tank-close{border:1px solid #75603d77;background:#ffffff08;color:var(--ink);width:38px;height:38px;cursor:pointer;font-size:20px}
+.tank-status{padding:12px 20px;color:var(--muted);font-size:12px;border-bottom:1px solid #75603d30}.tank-status.ok{color:var(--green)}.tank-status.warn{color:#ffb36b}
+.tank-table-wrap{overflow:auto;max-height:65vh}.tank-table{width:100%;border-collapse:collapse;font-size:12px}.tank-table th,.tank-table td{padding:10px 12px;border-bottom:1px solid #75603d30;text-align:left;white-space:nowrap}.tank-table th{position:sticky;top:0;background:#18130d;color:#ffd09b;z-index:1}.tank-table tbody tr:hover{background:#ffffff05}
+.tank-empty{padding:28px 20px;color:var(--muted)}
+@media(max-width:700px){.tank-modal{padding:8px}.tank-dialog{max-height:94vh}.tank-head h2{font-size:24px}.tank-table th,.tank-table td{padding:9px 10px;font-size:11px}}
 
 </style>
-<link rel="stylesheet" href="theme.css?v=55">
-<script src="theme.js?v=55" defer></script>
+<link rel="stylesheet" href="theme.css?v=56">
+<script src="theme.js?v=56" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -151,11 +159,19 @@ h1 em{font-weight:500;color:#d9ae65}
 <div class="section-title">ANATOMÍA DEL CIRCUITO</div>
 <section class="flow">
   <div class="step"><span class="symbol">I</span><small>CAMIÓN</small><b>Descarga combustible</b><span>Ingreso al circuito</span></div>
-  <div class="step"><span class="symbol">II</span><small>TANQUES</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
+  <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
   <div class="step"><span class="symbol">III</span><small>SURTIDORES</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
   <div class="step"><span class="symbol">V</span><small>COBRO</small><b>$ 48.920</b><span class="ok">PAGADO ✓</span></div>
 </section>
+
+<div class="tank-modal" id="tankModal" role="dialog" aria-modal="true" aria-labelledby="tankModalTitle">
+  <div class="tank-dialog">
+    <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques de la estación</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="tankStatus">Esperando conexión SQL…</div>
+    <div class="tank-table-wrap" id="tankTableWrap"><div class="tank-empty">Hacé clic en TANQUES para consultar dbo.Tanque.</div></div>
+  </div>
+</div>
 
 <div class="section-title">LECTURA DEL DÍA</div>
 <section class="kpis">
@@ -183,6 +199,54 @@ h1 em{font-weight:500;color:#d9ae65}
  const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
  const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,targetAddressSpace:'local'});
+ let activeBridge=null,stationConnected=false;
+ const tankStep=document.getElementById('tankStep'),tankModal=document.getElementById('tankModal'),tankClose=document.getElementById('tankClose'),tankStatus=document.getElementById('tankStatus'),tankTableWrap=document.getElementById('tankTableWrap');
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ function closeTanks(){tankModal.classList.remove('open')}
+ function renderTanks(d){
+   const rows=Array.isArray(d.rows)?d.rows:[];
+   const columns=Array.isArray(d.columns)&&d.columns.length?d.columns:(rows[0]?Object.keys(rows[0]):[]);
+   tankStatus.className='tank-status ok';
+   tankStatus.textContent='SQL CONECTADO · '+(d.database||'')+' · '+rows.length+' tanque'+(rows.length===1?'':'s')+' · dbo.Tanque';
+   if(!rows.length){tankTableWrap.innerHTML='<div class="tank-empty">La tabla dbo.Tanque existe pero no devolvió registros.</div>';return}
+   const head='<thead><tr>'+columns.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead>';
+   const body='<tbody>'+rows.map(r=>'<tr>'+columns.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>').join('')+'</tbody>';
+   tankTableWrap.innerHTML='<table class="tank-table">'+head+body+'</table>';
+ }
+ async function openTanks(){
+   tankModal.classList.add('open');
+   tankStatus.className='tank-status';
+   tankStatus.textContent='Consultando tanques…';
+   tankTableWrap.innerHTML='<div class="tank-empty">Leyendo dbo.Tanque desde la base conectada…</div>';
+   if(!stationConnected||!activeBridge){
+     tankStatus.className='tank-status warn';
+     tankStatus.textContent='SQL SIN CONEXIÓN · abrí Núcleo → Datos, conectá la base y volvé a TANQUES.';
+     tankTableWrap.innerHTML='<div class="tank-empty">No hay una base SQL activa.</div>';
+     return;
+   }
+   try{
+     const r=await localFetch(activeBridge+'/api/tanks');
+     const d=await r.json();
+     if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
+     if(!d.connected) throw new Error('No hay una base SQL activa.');
+     if(d.tableExists===false){
+       tankStatus.className='tank-status warn';
+       tankStatus.textContent='SQL CONECTADO · '+(d.database||'')+' · no existe dbo.Tanque';
+       tankTableWrap.innerHTML='<div class="tank-empty">La base está conectada, pero no encontré la tabla dbo.Tanque.</div>';
+       return;
+     }
+     renderTanks(d);
+   }catch(e){
+     tankStatus.className='tank-status warn';
+     tankStatus.textContent='No pude leer los tanques: '+e.message;
+     tankTableWrap.innerHTML='<div class="tank-empty">Revisá que el conector local siga abierto.</div>';
+   }
+ }
+ tankClose.addEventListener('click',closeTanks);
+ tankModal.addEventListener('click',e=>{if(e.target===tankModal)closeTanks()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTanks()});
+ tankStep.addEventListener('click',openTanks);
+ tankStep.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTanks()}});
  async function refreshStation(){
    let found=null;
    for(const base of bridges){
@@ -194,13 +258,15 @@ h1 em{font-weight:500;color:#d9ae65}
      }catch(_){}
    }
    if(!found||!found.d.connected){
+     activeBridge=null;stationConnected=false;
      connection.innerHTML='<span class="dot" style="background:#ffb36b;box-shadow:0 0 18px #ffb36b"></span> SQL local sin base activa · Núcleo → Datos';
      set('liveTanks','—');set('liveHoses','Esperando datos SQL');set('livePumps','—');set('liveDatabase','Base no conectada');
      set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');set('liveDbKpi','Sin conexión');
      return;
    }
    const d=found.d;
-   connection.innerHTML='<span class="dot"></span> SQL conectado · '+d.database;
+   activeBridge=found.base;stationConnected=true;
+   connection.innerHTML='<span class="dot"></span> SQL CONECTADO · '+d.database+' · TANQUES disponible con un clic';
    set('liveTanks',nf.format(d.tankCount||0)+' tanques');
    set('liveHoses',nf.format(d.hoseCount||0)+' relaciones tanque → surtidor → manguera');
    set('livePumps',nf.format(d.pumpCount||0)+' surtidores');
