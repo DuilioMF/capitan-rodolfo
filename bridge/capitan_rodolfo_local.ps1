@@ -257,7 +257,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
   <div class="rCap"></div><div class="rHead"></div><div class="rEye l"></div><div class="rEye r"></div><div class="rMust"></div><div class="rBody"></div><div class="rTie"></div>
 </div>
 </div>
-<label>Servidor / instancia</label><input id="server" value="" autocomplete="off">
+<label>Servidor / instancia</label><input id="server" value="DUILIO\SQLEXPRESS" autocomplete="off">
 <label>Autenticacion</label>
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
@@ -271,13 +271,17 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </section>
 </div>
 <section class="dispatchCard">
+  <div class="dispatchHead"><h2>Tabla SURPLA</h2><span class="query">SELECT * FROM dbo.SURPLA</span></div>
+  <div id="surpla" class="muted">Conectate y elegí una base para ver SURPLA.</div>
+</section>
+<section class="dispatchCard">
   <div class="dispatchHead"><h2>Despachos abiertos</h2><span class="query">SELECT * FROM Despachos WHERE estadovta = 0</span></div>
   <div id="dispatches" class="muted">Selecciona una base para ver los despachos.</div>
 </section>
 </div>
 <script>
 let sessionId=null;
-const s=document.getElementById('status'), dbs=document.getElementById('dbs'), tables=document.getElementById('tables'), dispatches=document.getElementById('dispatches'), goMap=document.getElementById('goMap');
+const s=document.getElementById('status'), dbs=document.getElementById('dbs'), tables=document.getElementById('tables'), surpla=document.getElementById('surpla'), dispatches=document.getElementById('dispatches'), goMap=document.getElementById('goMap');
 let selectedDatabase=null;
 function status(m,k=''){s.textContent=m;s.className='status '+k}
 document.getElementById('auth').onchange=e=>document.getElementById('sqlCreds').style.display=e.target.value==='windows'?'none':'block';
@@ -299,11 +303,25 @@ async function loadTables(database,el){
   [...document.querySelectorAll('#dbs .item')].forEach(x=>x.classList.remove('active'));el.classList.add('active');
   tables.innerHTML='<div class="table">Validando base…</div>';
   const d=await api('/api/tables',{sessionId,database});
-  status('Base '+database+' validada - entrando a Capitan Rodolfo…','ok');
-  setTimeout(()=>{ location.href='https://duiliomf.github.io/capitan-rodolfo/?sql=connected'; },350);
+  tables.innerHTML='';d.tables.forEach(t=>{const row=document.createElement('div');row.className='table';row.textContent=t.schema+'.'+t.name;tables.appendChild(row)});
+  status('Base '+database+' conectada. Mostrando SELECT * FROM dbo.SURPLA','ok');
+  const result=await api('/api/surpla',{sessionId,database});
+  renderGrid(surpla,result,'SURPLA no tiene filas.');
+  goMap.classList.add('show');
  }catch(e){
   status('Error: '+e.message,'bad')
  }
+}
+function renderGrid(container,data,emptyText){
+ container.innerHTML='';
+ if(!data.rows||!data.rows.length){container.innerHTML='<div class="muted">'+emptyText+'</div>';return}
+ const wrap=document.createElement('div');wrap.className='tableWrap';
+ const table=document.createElement('table');table.className='dataGrid';
+ const thead=document.createElement('thead'),trh=document.createElement('tr');
+ data.columns.forEach(c=>{const th=document.createElement('th');th.textContent=c;trh.appendChild(th)});thead.appendChild(trh);table.appendChild(thead);
+ const tbody=document.createElement('tbody');
+ data.rows.forEach(row=>{const tr=document.createElement('tr');data.columns.forEach(c=>{const td=document.createElement('td');const v=row[c];td.textContent=(v===null||v===undefined)?'':String(v);tr.appendChild(td)});tbody.appendChild(tr)});
+ table.appendChild(tbody);wrap.appendChild(table);container.appendChild(wrap);
 }
 function renderDispatches(data){
  dispatches.innerHTML='';
@@ -1123,6 +1141,39 @@ ORDER BY s.name,t.name;
           $reader.Close()
           $sess["database"] = $database
           Send-Json $stream 200 @{database=$database;tables=$rows}
+        } catch {
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/surpla'){
+        try {
+          $data = $req.Body | ConvertFrom-Json
+          $sid = [string]$data.sessionId
+          $database = [string]$data.database
+          if(-not $Sessions.ContainsKey($sid)){ Send-Json $stream 401 @{error='Sesion vencida. Volver a conectar.'}; continue }
+          $sess = $Sessions[$sid]
+          if($sess.databases -notcontains $database){ Send-Json $stream 403 @{error='Base no autorizada.'}; continue }
+          $cn = $sess.connection
+          $cn.ChangeDatabase($database)
+          $cmd = $cn.CreateCommand()
+          $cmd.CommandText = 'SELECT * FROM dbo.SURPLA;'
+          $cmd.CommandTimeout = 30
+          $reader = $cmd.ExecuteReader()
+          $columns = @()
+          for($i=0;$i -lt $reader.FieldCount;$i++){ $columns += [string]$reader.GetName($i) }
+          $rows = @()
+          while($reader.Read()){
+            $row = [ordered]@{}
+            for($i=0;$i -lt $reader.FieldCount;$i++){
+              $value = $reader.GetValue($i)
+              if($value -is [DBNull]){ $value = $null }
+              elseif($value -is [DateTime]){ $value = ([DateTime]$value).ToString('dd/MM/yyyy HH:mm:ss') }
+              $row[$columns[$i]] = $value
+            }
+            $rows += [pscustomobject]$row
+          }
+          $reader.Close()
+          Send-Json $stream 200 @{database=$database;query='SELECT * FROM dbo.SURPLA';columns=$columns;rows=$rows;rowCount=$rows.Count}
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
         }
