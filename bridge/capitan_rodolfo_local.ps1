@@ -30,8 +30,18 @@ $TaskName = "CapitanRodolfoLocal"
 $script:LastRestoreError = ""
 
 function Write-ServiceStatus {
-    param([string]$State,[string]$Database="",[string]$Server="",[string]$ErrorMessage="")
+    param([string]$State,[string]$Database="",[string]$Server="",[string]$User="",[string]$ErrorMessage="")
     try {
+        $hasProtectedPassword = $false
+        if(Test-Path $ProfilePath){
+            try {
+                $sp = Get-Content $ProfilePath -Raw | ConvertFrom-Json
+                $hasProtectedPassword = -not [string]::IsNullOrWhiteSpace([string]$sp.passwordProtected)
+                if([string]::IsNullOrWhiteSpace($User)){ $User = [string]$sp.user }
+                if([string]::IsNullOrWhiteSpace($Server)){ $Server = [string]$sp.server }
+                if([string]::IsNullOrWhiteSpace($Database)){ $Database = [string]$sp.database }
+            } catch {}
+        }
         $payload = [ordered]@{
             service = "Capitan Rodolfo SQL"
             state = $State
@@ -41,6 +51,8 @@ function Write-ServiceStatus {
             port = $Port
             database = $Database
             server = $Server
+            user = $User
+            hasProtectedPassword = $hasProtectedPassword
             profileExists = (Test-Path $ProfilePath)
             scheduledTask = $TaskName
             updatedAt = (Get-Date).ToString("o")
@@ -384,9 +396,10 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <label>Servidor / instancia</label><input id="server" value="DUILIO\SQLEXPRESS" autocomplete="off">
 <label>Autenticacion</label>
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
-<div id="sqlCreds"><label>Usuario SQL</label><input id="user"><label>Contraseña</label><input id="password" type="password"></div>
-<button id="connect">Conectar y ver bases</button>
-<div id="status" class="status">Conector local v$Version listo.</div>
+<div id="sqlCreds"><label>Usuario SQL</label><input id="user" autocomplete="username"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password" placeholder="Ingresá la contraseña la primera vez"></div>
+<div id="credentialState" class="note">Buscando conexión guardada…</div>
+<button id="connect">Conectar y guardar</button>
+<div id="status" class="status">Servicio SQL local v$Version listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
 <div class="note">La conexión queda guardada localmente y protegida con tu usuario de Windows. Al volver a abrir Capitán Rodolfo intenta reconectarse automáticamente a la última base elegida.</div>
 </section>
@@ -405,22 +418,59 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 </div>
 <script>
 let sessionId=null;
-const s=document.getElementById('status'), dbs=document.getElementById('dbs'), tables=document.getElementById('tables'), surpla=document.getElementById('surpla'), dispatches=document.getElementById('dispatches'), goMap=document.getElementById('goMap');
+const s=document.getElementById('status'), dbs=document.getElementById('dbs'), tables=document.getElementById('tables'), surpla=document.getElementById('surpla'), dispatches=document.getElementById('dispatches'), goMap=document.getElementById('goMap'), credentialState=document.getElementById('credentialState');
+const serverInput=document.getElementById('server'),authInput=document.getElementById('auth'),userInput=document.getElementById('user'),passwordInput=document.getElementById('password');
 let selectedDatabase=null;
 function status(m,k=''){s.textContent=m;s.className='status '+k}
-document.getElementById('auth').onchange=e=>document.getElementById('sqlCreds').style.display=e.target.value==='windows'?'none':'block';
+function updateAuth(){document.getElementById('sqlCreds').style.display=authInput.value==='windows'?'none':'block'}
+authInput.onchange=updateAuth;
 async function api(path,body){
- const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j;
+}
+async function getJson(path){
+ const r=await fetch(path,{cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;
+}
+function showDatabases(d,autoDb){
+ sessionId=d.sessionId;
+ dbs.innerHTML='';
+ (d.databases||[]).forEach(name=>{
+   const b=document.createElement('button');b.className='item';b.textContent=name;b.onclick=()=>loadTables(name,b);dbs.appendChild(b);
+   if(autoDb&&name===autoDb)setTimeout(()=>loadTables(name,b),0);
+ });
+}
+async function restoreSaved(){
+ try{
+  const p=await getJson('/api/profile-status');
+  if(p.saved){
+    serverInput.value=p.server||serverInput.value;authInput.value=p.auth||'sql';userInput.value=p.user||'';updateAuth();
+    if(p.hasPassword){passwordInput.value='';passwordInput.placeholder='Contraseña guardada y protegida por Windows';credentialState.textContent='Usuario '+(p.user||'(Windows)')+' · contraseña guardada de forma segura · base '+(p.database||'sin elegir');}
+    else credentialState.textContent='Conexión guardada sin contraseña SQL.';
+  }else{
+    credentialState.textContent='Todavía no hay usuario/contraseña guardados en esta PC.';
+  }
+  let state=await getJson('/api/state');
+  if(!state.connected&&p.saved){
+    status('Reconectando automáticamente…');
+    state=await api('/api/reconnect-saved',{});
+  }
+  if(state.connected){
+    serverInput.value=state.server||serverInput.value;authInput.value=state.auth||authInput.value;userInput.value=state.user||userInput.value;updateAuth();
+    showDatabases(state,state.database||p.database);
+    if(state.database) status('SQL conectado automáticamente · '+state.database,'ok');
+    else status('SQL conectado automáticamente · elegí una base','ok');
+  }
+ }catch(e){status('Servicio activo, pero no pude recuperar la conexión guardada: '+e.message,'bad')}
 }
 document.getElementById('connect').onclick=async()=>{
  try{
   status('Conectando…');
-  const payload={server:document.getElementById('server').value.trim(),auth:document.getElementById('auth').value,user:document.getElementById('user').value.trim(),password:document.getElementById('password').value};
-  const d=await api('/api/connect',payload); sessionId=d.sessionId; status('Conectado a '+d.server+' - elegi una base','ok');
-  dbs.innerHTML=''; d.databases.forEach(name=>{const b=document.createElement('button');b.className='item';b.textContent=name;b.onclick=()=>loadTables(name,b);dbs.appendChild(b)});
+  const payload={server:serverInput.value.trim(),auth:authInput.value,user:userInput.value.trim(),password:passwordInput.value};
+  const d=await api('/api/connect',payload); passwordInput.value=''; passwordInput.placeholder='Contraseña guardada y protegida por Windows'; credentialState.textContent='Usuario '+(payload.user||'(Windows)')+' · contraseña protegida y guardada localmente'; status('Conectado a '+d.server+' - elegí una base','ok');
+  showDatabases(d,null);
  }catch(e){status('No se pudo conectar. '+e.message,'bad')}
 };
+restoreSaved();
 async function loadTables(database,el){
  try{
   selectedDatabase=database;
@@ -483,7 +533,7 @@ try {
 try {
     $statusState = Ensure-ActiveSession
     if($null -ne $statusState){
-        Write-ServiceStatus -State "running-connected" -Database ([string]$statusState.database) -Server ([string]$statusState.server)
+        Write-ServiceStatus -State "running-connected" -Database ([string]$statusState.database) -Server ([string]$statusState.server) -User ([string]$statusState.user)
     } else {
         Write-ServiceStatus -State "running-no-sql" -ErrorMessage ([string]$script:LastRestoreError)
     }
@@ -514,6 +564,40 @@ try {
         $db = ""
         if($null -ne $st){ $db = [string]$st.database }
         Send-Json $stream 200 @{ok=$true;service='Capitan Rodolfo Local';version=$Version;mode='background';scheduledTask=$TaskName;statusFile=$ServiceStatusPath;profileSaved=(Test-Path $ProfilePath);connected=($null -ne $st);database=$db}
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/profile-status'){
+        $p = Load-SqlProfile
+        if($null -eq $p){
+          Send-Json $stream 200 @{saved=$false;server='';auth='sql';user='';database='';hasPassword=$false}
+        } else {
+          Send-Json $stream 200 @{
+            saved=$true
+            server=[string]$p.server
+            auth=[string]$p.auth
+            user=[string]$p.user
+            database=[string]$p.database
+            hasPassword=(-not [string]::IsNullOrWhiteSpace([string]$p.passwordProtected))
+          }
+        }
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/reconnect-saved'){
+        try {
+          $p = Load-SqlProfile
+          if($null -eq $p){ throw 'No hay una conexión SQL guardada en este equipo.' }
+          $savedPassword = Unprotect-ProfilePassword -Profile $p
+          $state = Open-SqlSession -Server ([string]$p.server) -Auth ([string]$p.auth) -User ([string]$p.user) -Password $savedPassword
+          $savedDb = [string]$p.database
+          if(-not [string]::IsNullOrWhiteSpace($savedDb) -and $state.databases -contains $savedDb){
+            $Sessions[$state.sessionId]["database"] = $savedDb
+          }
+          $script:LastRestoreError = ''
+          Write-ServiceStatus -State 'running-connected' -Database $savedDb -Server ([string]$p.server) -User ([string]$p.user)
+          Send-Json $stream 200 @{sessionId=$state.sessionId;server=$state.server;auth=$state.auth;user=$state.user;databases=$state.databases;database=$savedDb;restored=$true}
+        } catch {
+          $script:LastRestoreError = $_.Exception.Message
+          Write-ServiceStatus -State 'running-no-sql' -ErrorMessage $script:LastRestoreError
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/openai/status'){
         Send-Json $stream 200 @{configured=(-not [string]::IsNullOrWhiteSpace((Get-OpenAIKey)));defaultEngine='openai';model='gpt-realtime-2.1'}
@@ -1378,11 +1462,17 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
           $user = [string]$data.user
           $password = [string]$data.password
           if([string]::IsNullOrWhiteSpace($server)){ throw "Completá servidor/instancia." }
+          if($auth -eq 'sql' -and [string]::IsNullOrWhiteSpace($password)){
+            $saved = Load-SqlProfile
+            if($null -ne $saved -and [string]$saved.server -eq $server -and [string]$saved.auth -eq $auth -and [string]$saved.user -eq $user){
+              $password = Unprotect-ProfilePassword -Profile $saved
+            }
+          }
 
           $state = Open-SqlSession -Server $server -Auth $auth -User $user -Password $password
           Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database ""
           $script:LastRestoreError = ""
-          Write-ServiceStatus -State "running-connected" -Database "" -Server $server
+          Write-ServiceStatus -State "running-connected" -Database "" -Server $server -User $user
           Send-Json $stream 200 $state
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
@@ -1412,7 +1502,7 @@ ORDER BY s.name,t.name;
           $reader.Close()
           $sess["database"] = $database
           Save-SqlProfile -Server ([string]$sess.server) -Auth ([string]$sess.auth) -User ([string]$sess.user) -Password "" -Database $database
-          Write-ServiceStatus -State "running-connected" -Database $database -Server ([string]$sess.server)
+          Write-ServiceStatus -State "running-connected" -Database $database -Server ([string]$sess.server) -User ([string]$sess.user)
           Send-Json $stream 200 @{database=$database;tables=$rows}
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
