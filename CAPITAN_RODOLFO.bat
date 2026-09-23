@@ -9,7 +9,7 @@ set "LOGDIR=%APPROOT%\logs"
 set "VERSION_REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/VERSION"
 set "REMOTE=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/bridge/capitan_rodolfo_local.ps1"
 set "HEALTH=http://127.0.0.1:8787/health"
-set "WEBURL=https://duiliomf.github.io/capitan-rodolfo/"
+set "WEBURL=https://duiliomf.github.io/capitan-rodolfo/nucleo.html"
 set "TASKNAME=CapitanRodolfoLocal"
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
@@ -100,4 +100,3 @@ echo   Carpeta: %APPROOT%
 echo   Mandame esta pantalla.
 pause
 exit /b 1
-
