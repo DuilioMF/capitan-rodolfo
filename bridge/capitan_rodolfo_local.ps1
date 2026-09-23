@@ -1,7 +1,8 @@
 param(
   [int]$Port = 8787,
   [string]$DefaultServer = "",
-  [string]$AppDir = ""
+  [string]$AppDir = "",
+  [switch]$BackgroundChild
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,7 +25,50 @@ $Sessions = @{}
 $ActiveSessionId = $null
 $ProfilePath = Join-Path $AppDir "sql_profile.json"
 $OpenAIKeyPath = Join-Path $AppDir "openai_key.dat"
+$ServiceStatusPath = Join-Path $AppDir "servicio_sql_estado.json"
+$TaskName = "CapitanRodolfoLocal"
 $script:LastRestoreError = ""
+
+function Write-ServiceStatus {
+    param([string]$State,[string]$Database="",[string]$Server="",[string]$ErrorMessage="")
+    try {
+        $payload = [ordered]@{
+            service = "Capitan Rodolfo SQL"
+            state = $State
+            mode = "background"
+            version = $Version
+            pid = $PID
+            port = $Port
+            database = $Database
+            server = $Server
+            profileExists = (Test-Path $ProfilePath)
+            scheduledTask = $TaskName
+            updatedAt = (Get-Date).ToString("o")
+            error = $ErrorMessage
+        }
+        [IO.File]::WriteAllText($ServiceStatusPath,($payload | ConvertTo-Json -Depth 4),[Text.Encoding]::UTF8)
+    } catch {}
+}
+
+function Ensure-BackgroundTask {
+    try {
+        $action = 'powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -Port ' + $Port + ' -AppDir "' + $AppDir + '" -BackgroundChild'
+        & schtasks.exe /Create /F /SC ONLOGON /RL LIMITED /TN $TaskName /TR $action 2>$null | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
+if(-not $BackgroundChild){
+    Ensure-BackgroundTask | Out-Null
+    $argLine = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -Port ' + $Port + ' -AppDir "' + $AppDir + '" -BackgroundChild'
+    Start-Process -FilePath "powershell.exe" -ArgumentList $argLine -WindowStyle Hidden
+    exit 0
+}
+
+Ensure-BackgroundTask | Out-Null
+Write-ServiceStatus -State "starting"
 
 function Import-LegacyLocalState {
     $roots = @("C:\Sistemas", (Join-Path $env:LOCALAPPDATA "CapitanRodolfo")) | Where-Object { $_ -and (Test-Path $_) }
@@ -436,6 +480,17 @@ try {
     Write-Host "No se pudo restaurar la conexion SQL guardada: $script:LastRestoreError"
 }
 
+try {
+    $statusState = Ensure-ActiveSession
+    if($null -ne $statusState){
+        Write-ServiceStatus -State "running-connected" -Database ([string]$statusState.database) -Server ([string]$statusState.server)
+    } else {
+        Write-ServiceStatus -State "running-no-sql" -ErrorMessage ([string]$script:LastRestoreError)
+    }
+} catch {
+    Write-ServiceStatus -State "running-no-sql" -ErrorMessage $_.Exception.Message
+}
+
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,$Port)
 $listener.Start()
 Write-Host "Capitan Rodolfo local v$Version escuchando en http://127.0.0.1:$Port/"
@@ -455,7 +510,10 @@ try {
         Send-Response $stream 204 'text/plain' ''
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/health'){
-        Send-Json $stream 200 @{ok=$true;service='Capitan Rodolfo Local';version=$Version}
+        $st = Ensure-ActiveSession
+        $db = ""
+        if($null -ne $st){ $db = [string]$st.database }
+        Send-Json $stream 200 @{ok=$true;service='Capitan Rodolfo Local';version=$Version;mode='background';scheduledTask=$TaskName;statusFile=$ServiceStatusPath;profileSaved=(Test-Path $ProfilePath);connected=($null -ne $st);database=$db}
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/openai/status'){
         Send-Json $stream 200 @{configured=(-not [string]::IsNullOrWhiteSpace((Get-OpenAIKey)));defaultEngine='openai';model='gpt-realtime-2.1'}
@@ -476,6 +534,9 @@ try {
             Send-Json $stream 200 @{
               connected=$false
               bridge=$true
+              serviceMode='background'
+              scheduledTask=$TaskName
+              statusFile=$ServiceStatusPath
               profileSaved=(Test-Path $ProfilePath)
               restoreError=[string]$script:LastRestoreError
             }
@@ -509,6 +570,10 @@ try {
 
           Send-Json $stream 200 @{
             connected=$true
+            bridge=$true
+            serviceMode='background'
+            scheduledTask=$TaskName
+            statusFile=$ServiceStatusPath
             database=[string]$state.database
             server=[string]$state.server
             tankCount=$tankCount

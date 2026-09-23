@@ -112,8 +112,8 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(max-width:700px){.tank-modal{padding:8px}.tank-dialog{max-height:94vh}.tank-head h2{font-size:24px}.tank-table th,.tank-table td{padding:9px 10px;font-size:11px}}
 
 </style>
-<link rel="stylesheet" href="theme.css?v=57">
-<script src="theme.js?v=57" defer></script>
+<link rel="stylesheet" href="theme.css?v=58">
+<script src="theme.js?v=58" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -260,9 +260,9 @@ h1 em{font-weight:500;color:#d9ae65}
    if(!found||!found.d.connected){
      activeBridge=found?found.base:null;stationConnected=false;
      const d=found?found.d:{};
-     let msg='Conector SQL local no responde · volvé a abrir DoingLio';
-     if(found&&d.bridge&&d.profileSaved) msg='Conector activo · conexión SQL guardada pero no pudo reconectar · Núcleo → Datos';
-     else if(found&&d.bridge) msg='Conector activo · falta conectar una base · Núcleo → Datos';
+     let msg='Servicio SQL local no responde · volvé a abrir DoingLio';
+     if(found&&d.bridge&&d.profileSaved) msg='Servicio SQL activo en segundo plano · conexión SQL guardada pero no pudo reconectar · Núcleo → Datos';
+     else if(found&&d.bridge) msg='Servicio SQL activo en segundo plano · falta conectar una base · Núcleo → Datos';
      connection.innerHTML='<span class="dot" style="background:#ffb36b;box-shadow:0 0 18px #ffb36b"></span> '+msg;
      set('liveTanks','—');set('liveHoses','Esperando datos SQL');set('livePumps','—');set('liveDatabase','Base no conectada');
      set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');set('liveDbKpi',found&&d.bridge?'Conector activo':'Sin conexión');
