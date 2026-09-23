@@ -1,10 +1,14 @@
 param(
   [int]$Port = 8787,
-  [string]$DefaultServer = ""
+  [string]$DefaultServer = "",
+  [string]$AppDir = ""
 )
 
 $ErrorActionPreference = "Stop"
-$AppDir = "C:\Sistemas\CapitanRodolfo"
+if([string]::IsNullOrWhiteSpace($AppDir)){
+    $AppDir = Split-Path -Parent $PSScriptRoot
+}
+$AppDir = [IO.Path]::GetFullPath($AppDir)
 if(-not (Test-Path $AppDir)){ New-Item -ItemType Directory -Path $AppDir -Force | Out-Null }
 $LogDir = Join-Path $AppDir "logs"
 if(-not (Test-Path $LogDir)){ New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
@@ -20,7 +24,6 @@ $Sessions = @{}
 $ActiveSessionId = $null
 $ProfilePath = Join-Path $AppDir "sql_profile.json"
 $OpenAIKeyPath = Join-Path $AppDir "openai_key.dat"
-try { if(Test-Path $ProfilePath){ Remove-Item $ProfilePath -Force -ErrorAction SilentlyContinue } } catch {}
 
 function Send-Response {
     param(
@@ -170,14 +173,53 @@ function New-SqlConnection {
 
 function Save-SqlProfile {
     param([string]$Server,[string]$Auth,[string]$User,[string]$Password,[string]$Database)
-    # Intencionalmente no persiste datos de conexión.
+    $protectedPassword = ""
+    if($Auth -eq "sql"){
+        if(-not [string]::IsNullOrWhiteSpace($Password)){
+            $secure = ConvertTo-SecureString $Password -AsPlainText -Force
+            $protectedPassword = ConvertFrom-SecureString $secure
+        } elseif(Test-Path $ProfilePath) {
+            try {
+                $old = Get-Content $ProfilePath -Raw | ConvertFrom-Json
+                if(([string]$old.server -eq $Server) -and ([string]$old.auth -eq $Auth) -and ([string]$old.user -eq $User)){
+                    $protectedPassword = [string]$old.passwordProtected
+                }
+            } catch {}
+        }
+    }
+    $profile = [ordered]@{
+        server = $Server
+        auth = $Auth
+        user = $User
+        passwordProtected = $protectedPassword
+        database = $Database
+        savedAt = (Get-Date).ToString("o")
+    }
+    [IO.File]::WriteAllText($ProfilePath,($profile | ConvertTo-Json -Depth 4),[Text.Encoding]::UTF8)
 }
 
-function Load-SqlProfile { return $null }
+function Load-SqlProfile {
+    if(-not (Test-Path $ProfilePath)){ return $null }
+    try {
+        $p = Get-Content $ProfilePath -Raw | ConvertFrom-Json
+        if([string]::IsNullOrWhiteSpace([string]$p.server)){ return $null }
+        return $p
+    } catch {
+        return $null
+    }
+}
 
 function Unprotect-ProfilePassword {
     param($Profile)
-    return ""
+    if($null -eq $Profile -or [string]$Profile.auth -ne "sql"){ return "" }
+    $raw = [string]$Profile.passwordProtected
+    if([string]::IsNullOrWhiteSpace($raw)){ return "" }
+    try {
+        $secure = ConvertTo-SecureString $raw
+        $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+        try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
+    } catch { return "" }
 }
 
 function Open-SqlSession {
@@ -340,6 +382,21 @@ goMap.textContent='Ver tanques y surtidores →'; goMap.onclick=()=>{if(sessionI
 "@
 }
 
+try {
+    $profile = Load-SqlProfile
+    if($null -ne $profile){
+        $savedPassword = Unprotect-ProfilePassword -Profile $profile
+        $restored = Open-SqlSession -Server ([string]$profile.server) -Auth ([string]$profile.auth) -User ([string]$profile.user) -Password $savedPassword
+        $savedDb = [string]$profile.database
+        if(-not [string]::IsNullOrWhiteSpace($savedDb) -and $restored.databases -contains $savedDb){
+            $Sessions[$restored.sessionId]["database"] = $savedDb
+        }
+        Write-Host "Conexion SQL restaurada: $([string]$profile.server) / $savedDb"
+    }
+} catch {
+    Write-Host "No se pudo restaurar la conexion SQL guardada: $($_.Exception.Message)"
+}
+
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,$Port)
 $listener.Start()
 Write-Host "Capitan Rodolfo local v$Version escuchando en http://127.0.0.1:$Port/"
@@ -370,6 +427,54 @@ try {
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/ai/sql-read'){
         try {$data=$req.Body|ConvertFrom-Json;Send-Json $stream 200 (Invoke-ReadOnlySql -SessionId ([string]$data.sessionId) -Database ([string]$data.database) -Sql ([string]$data.sql))} catch {Send-Json $stream 400 @{error=$_.Exception.Message}}
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/station-summary'){
+        try {
+          $state = Ensure-ActiveSession
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 200 @{connected=$false}
+            continue
+          }
+          $cn = $Sessions[$state.sessionId].connection
+          $cn.ChangeDatabase([string]$state.database)
+
+          $q = $cn.CreateCommand()
+          $q.CommandText = "IF OBJECT_ID('dbo.Tanque') IS NULL SELECT 0 ELSE SELECT COUNT(*) FROM dbo.Tanque"
+          $tankCount = [int]$q.ExecuteScalar()
+
+          $q = $cn.CreateCommand()
+          $q.CommandText = "IF OBJECT_ID('dbo.Surtan') IS NULL SELECT 0 ELSE SELECT COUNT(*) FROM dbo.Surtan"
+          $hoseCount = [int]$q.ExecuteScalar()
+
+          $q = $cn.CreateCommand()
+          $q.CommandText = "IF OBJECT_ID('dbo.Surtan') IS NULL OR COL_LENGTH('dbo.Surtan','SURTIDOR') IS NULL SELECT 0 ELSE EXEC('SELECT COUNT(DISTINCT SURTIDOR) FROM dbo.Surtan WHERE SURTIDOR IS NOT NULL')"
+          $pumpCount = [int]$q.ExecuteScalar()
+
+          $q = $cn.CreateCommand()
+          $q.CommandText = "IF OBJECT_ID('dbo.Despachos') IS NULL SELECT 0 AS cantidad,CAST(0 AS decimal(18,2)) AS litros,CAST(0 AS decimal(18,2)) AS pesos ELSE SELECT COUNT(*) cantidad,ISNULL(SUM(CAST(Litros AS decimal(18,2))),0) litros,ISNULL(SUM(CAST(pesos AS decimal(18,2))),0) pesos FROM dbo.Despachos"
+          $rdr = $q.ExecuteReader()
+          $dispatchCount = 0; $liters = 0; $pesos = 0
+          if($rdr.Read()){
+            $dispatchCount = [int]$rdr["cantidad"]
+            $liters = [decimal]$rdr["litros"]
+            $pesos = [decimal]$rdr["pesos"]
+          }
+          $rdr.Close()
+
+          Send-Json $stream 200 @{
+            connected=$true
+            database=[string]$state.database
+            server=[string]$state.server
+            tankCount=$tankCount
+            hoseCount=$hoseCount
+            pumpCount=$pumpCount
+            dispatchCount=$dispatchCount
+            liters=$liters
+            pesos=$pesos
+          }
+        } catch {
+          Send-Json $stream 500 @{error=$_.Exception.Message}
+        }
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/state'){
         $state = Ensure-ActiveSession
@@ -1110,6 +1215,7 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
           if([string]::IsNullOrWhiteSpace($server)){ throw "Completá servidor/instancia." }
 
           $state = Open-SqlSession -Server $server -Auth $auth -User $user -Password $password
+          Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database ""
           Send-Json $stream 200 $state
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
@@ -1138,6 +1244,7 @@ ORDER BY s.name,t.name;
           while($reader.Read()){ $rows += @{schema=[string]$reader.GetString(0);name=[string]$reader.GetString(1)} }
           $reader.Close()
           $sess["database"] = $database
+          Save-SqlProfile -Server ([string]$sess.server) -Auth ([string]$sess.auth) -User ([string]$sess.user) -Password "" -Database $database
           Send-Json $stream 200 @{database=$database;tables=$rows}
         } catch {
           Send-Json $stream 500 @{error=$_.Exception.Message}
