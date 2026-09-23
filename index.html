@@ -104,8 +104,8 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 </style>
-<link rel="stylesheet" href="theme.css?v=47">
-<script src="theme.js?v=47" defer></script>
+<link rel="stylesheet" href="theme.css?v=48">
+<script src="theme.js?v=48" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -142,8 +142,8 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="voice" aria-labelledby="voice-title">
     <button class="voice-mic" id="voiceMic" type="button" aria-label="Iniciar conversación por voz" aria-pressed="false">🎙</button>
     <strong>“Rodolfo, ¿qué pasó hoy?”</strong>
-    <p id="voiceStatus">Tocá el micrófono y hablá. Rodolfo transcribe tu consulta sin salir del tablero.</p>
-    <output id="voiceTranscript" class="voice-transcript" aria-live="polite"></output>
+    <p id="voiceStatus">Tocá el micrófono una vez y conversá naturalmente con Rodolfo.</p>
+    <div id="voiceTranscript" class="voice-transcript" aria-live="polite"></div>
   </div>
 </section>
 
@@ -165,7 +165,7 @@ h1 em{font-weight:500;color:#d9ae65}
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">46</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">48</span></div>
 </div>
 <script>
 (async()=>{
@@ -176,29 +176,42 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 
 (function(){
- const button=document.getElementById('voiceMic');
- const status=document.getElementById('voiceStatus');
- const transcript=document.getElementById('voiceTranscript');
- const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SpeechRecognition){
-   button.disabled=true;
-   status.textContent='La conversación por voz necesita un navegador compatible con reconocimiento de voz.';
-   return;
+ const button=document.getElementById('voiceMic'),status=document.getElementById('voiceStatus'),transcript=document.getElementById('voiceTranscript');
+ const BRIDGES=['http://127.0.0.1:8787','http://localhost:8787'];
+ let pc=null,dc=null,stream=null,bridge=null,active=false,assistantLine=null;
+ const addLine=(who,text)=>{const p=document.createElement('p');p.className='voice-line';const b=document.createElement('b');b.textContent=who+': ';p.append(b,document.createTextNode(text));transcript.appendChild(p);transcript.scrollTop=transcript.scrollHeight;return p};
+ const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,targetAddressSpace:'local'});
+ async function findBridge(){for(const base of BRIDGES){try{const r=await localFetch(base+'/health');if(r.ok)return base}catch(_){}}throw new Error('Abrí el conector local desde Núcleo → Datos.')}
+ async function callSql(args){
+   const stateResponse=await localFetch(bridge+'/api/state'),state=await stateResponse.json();
+   const sessionId=state.sessionId,database=state.database;
+   if(!state.connected||!sessionId||!database)return {error:'No hay una conexión SQL activa con una base seleccionada. Abrí Núcleo → Datos.'};
+   const r=await localFetch(bridge+'/api/ai/sql-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,database,sql:args.consulta})});return await r.json();
  }
- const recognition=new SpeechRecognition();
- recognition.lang='es-AR';
- recognition.continuous=true;
- recognition.interimResults=true;
- let listening=false;
- recognition.onstart=()=>{listening=true;button.classList.add('is-listening');button.setAttribute('aria-pressed','true');status.textContent='Te escucho… tocá nuevamente para detener.'};
- recognition.onresult=event=>{
-   let text='';
-   for(let i=event.resultIndex;i<event.results.length;i++) text+=event.results[i][0].transcript;
-   transcript.textContent=text.trim();
- };
- recognition.onerror=event=>{status.textContent='No pude escuchar: '+event.error+'. Podés intentarlo otra vez.'};
- recognition.onend=()=>{listening=false;button.classList.remove('is-listening');button.setAttribute('aria-pressed','false');if(transcript.textContent)status.textContent='Consulta capturada. El motor predeterminado se configura en Núcleo → Inteligencia.'};
- button.addEventListener('click',()=>{if(listening)recognition.stop();else{transcript.textContent='';recognition.start()}});
+ function send(event){if(dc&&dc.readyState==='open')dc.send(JSON.stringify(event))}
+ async function handleTool(item){let result;try{result=await callSql(JSON.parse(item.arguments||'{}'))}catch(e){result={error:e.message}}send({type:'conversation.item.create',item:{type:'function_call_output',call_id:item.call_id,output:JSON.stringify(result)}});send({type:'response.create'})}
+ function onEvent(event){
+   let e;try{e=JSON.parse(event.data)}catch(_){return}
+   if(e.type==='input_audio_buffer.speech_started')status.textContent='Te escucho…';
+   if(e.type==='input_audio_buffer.speech_stopped')status.textContent='Rodolfo está pensando…';
+   if(e.type==='conversation.item.input_audio_transcription.completed'&&e.transcript)addLine('Vos',e.transcript);
+   if(e.type==='response.output_audio_transcript.delta'){if(!assistantLine)assistantLine=addLine('Rodolfo','');assistantLine.append(document.createTextNode(e.delta||''));transcript.scrollTop=transcript.scrollHeight}
+   if(e.type==='response.output_audio_transcript.done'){assistantLine=null;status.textContent='Conversación activa · podés seguir hablando.'}
+   if(e.type==='response.done')for(const item of (e.response?.output||[]))if(item.type==='function_call'&&item.name==='consultar_sql_lectura')handleTool(item);
+   if(e.type==='error')status.textContent='OpenAI: '+(e.error?.message||'error de conversación');
+ }
+ async function start(){
+   button.disabled=true;status.textContent='Conectando con Rodolfo…';transcript.replaceChildren();
+   try{
+     bridge=await findBridge();const tokenResponse=await localFetch(bridge+'/api/openai/realtime-secret',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const data=await tokenResponse.json();
+     if(!tokenResponse.ok)throw new Error(data.error||'No se pudo iniciar OpenAI.');if(!data.value)throw new Error('OpenAI no devolvió la credencial efímera.');
+     pc=new RTCPeerConnection();const audio=document.createElement('audio');audio.autoplay=true;pc.ontrack=e=>audio.srcObject=e.streams[0];stream=await navigator.mediaDevices.getUserMedia({audio:true});pc.addTrack(stream.getTracks()[0]);
+     dc=pc.createDataChannel('oai-events');dc.addEventListener('message',onEvent);dc.addEventListener('open',()=>{active=true;button.disabled=false;button.classList.add('is-listening');button.setAttribute('aria-pressed','true');status.textContent='Conversación activa · hablá cuando quieras.'});
+     const offer=await pc.createOffer();await pc.setLocalDescription(offer);const sdp=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',body:offer.sdp,headers:{Authorization:'Bearer '+data.value,'Content-Type':'application/sdp'}});if(!sdp.ok)throw new Error('OpenAI rechazó la sesión ('+sdp.status+').');await pc.setRemoteDescription({type:'answer',sdp:await sdp.text()});
+   }catch(e){stop();button.disabled=false;status.textContent=e.message}
+ }
+ function stop(){active=false;if(dc)dc.close();if(pc)pc.close();if(stream)stream.getTracks().forEach(t=>t.stop());dc=pc=stream=null;button.classList.remove('is-listening');button.setAttribute('aria-pressed','false');status.textContent='Conversación detenida. Tocá el micrófono para volver a hablar.'}
+ button.addEventListener('click',()=>active?stop():start());
 })();
 </script>
 
