@@ -1,5 +1,5 @@
 @echo off
 setlocal
-rem Instalador actual: DoingLio ya descarga todos los archivos necesarios.
+rem DoingLio ya descarga los archivos. Este acceso instala/actualiza y arranca el servicio SQL actual.
 call "%~dp0CAPITAN_RODOLFO.bat"
 exit /b %errorlevel%
