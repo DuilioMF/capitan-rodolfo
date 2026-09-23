@@ -41,7 +41,8 @@ html[data-theme="light"] .num{color:#ab987c55!important}
 .voice-mic:hover{transform:scale(1.04);box-shadow:0 0 0 13px #d9823b12,0 20px 55px #0007}
 .voice-mic.is-listening{animation:voicePulse 1.25s ease-in-out infinite;border-color:#5ee6a8;box-shadow:0 0 0 14px #5ee6a818,0 0 34px #5ee6a844}
 .voice-mic:disabled{opacity:.45;cursor:not-allowed}
-.voice-transcript{display:block;min-height:24px;margin-top:8px;color:var(--ink);font:italic 17px/1.5 'Cormorant Garamond',serif}
+.voice-transcript{display:block;min-height:24px;max-height:150px;overflow:auto;margin-top:8px;color:var(--ink);font:italic 17px/1.5 'Cormorant Garamond',serif}
+.voice-line{margin:5px 0;text-align:left}.voice-line b{color:var(--gold);font-style:normal}
 html[data-style="chaty"] .voice-mic{background:linear-gradient(145deg,#13283a,#11182a);border-color:#75e8ff88;box-shadow:0 0 0 10px #75e8ff0c,0 18px 50px #0006}
 html[data-theme="light"] .voice-mic{background:#fff7e9;color:#563a19;border-color:#aa9471}
 @keyframes voicePulse{50%{transform:scale(1.08)}}
