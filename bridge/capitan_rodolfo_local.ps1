@@ -162,7 +162,7 @@ function Send-Response {
     }
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
     $nl = [Environment]::NewLine
-    $allowedOrigins = @("https://duiliomf.github.io","http://127.0.0.1:8790","http://localhost:8790")
+    $allowedOrigins = @("https://duiliomf.github.io","https://doinglio.revalsoftia.com.ar","https://capitan.revalsoftia.com.ar","http://127.0.0.1:8790","http://localhost:8790")
     $corsOrigin = "https://duiliomf.github.io"
     if(-not [string]::IsNullOrWhiteSpace([string]$script:CurrentOrigin) -and $allowedOrigins -contains [string]$script:CurrentOrigin){
         $corsOrigin = [string]$script:CurrentOrigin
