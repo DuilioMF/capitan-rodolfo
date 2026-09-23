@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-set "APPROOT=C:\Sistemas\CapitanRodolfo"
+for %%I in ("%~dp0.") do set "APPROOT=%%~fI"
 set "OLDROOT=%LOCALAPPDATA%\CapitanRodolfo"
 set "LOCALPS=%APPROOT%\capitan_rodolfo_local.ps1"
 set "VERSION_FILE=%APPROOT%\VERSION"
@@ -26,9 +26,7 @@ if not exist "%APPROOT%" (
 
 if not exist "%LOGDIR%" mkdir "%LOGDIR%" >nul 2>nul
 
-rem No conservar conexiones SQL anteriores.
-if exist "%APPROOT%\sql_profile.json" del /Q "%APPROOT%\sql_profile.json" >nul 2>nul
-if exist "%OLDROOT%\sql_profile.json" del /Q "%OLDROOT%\sql_profile.json" >nul 2>nul
+rem La conexión SQL local se conserva cifrada para reutilizarla en el próximo inicio.
 if not exist "%APPROOT%\VERSION" if exist "%OLDROOT%\VERSION" copy /Y "%OLDROOT%\VERSION" "%APPROOT%\VERSION" >nul
 
 echo.
@@ -63,10 +61,10 @@ if errorlevel 1 goto :fatal
 
 echo   [4/5] Configurando arranque automatico...
 schtasks /Delete /F /TN "%TASKNAME%" >nul 2>nul
-schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%TASKNAME%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%LOCALPS%\"" >nul 2>nul
+schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%TASKNAME%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%LOCALPS%\" -AppDir \"%APPROOT%\"" >nul 2>nul
 
 echo   [5/5] Iniciando conector v!APP_VERSION!...
-start "Capitan Rodolfo Local" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%LOCALPS%"
+start "Capitan Rodolfo Local" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%LOCALPS%" -AppDir "%APPROOT%"
 
 set "OK=0"
 for /L %%I in (1,1,20) do (
