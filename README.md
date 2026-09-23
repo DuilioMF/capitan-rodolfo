@@ -40,6 +40,15 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 - `mapa-vivo.html`: mapa operativo.
 - `assets/`: recursos visuales.
 - `bridge/`: conector local.
+
+## Voz con OpenAI (revisión 48)
+
+- La conversación usa OpenAI Realtime por WebRTC: micrófono continuo, respuesta de audio y transcripción visible.
+- La clave estándar de OpenAI nunca se publica en GitHub ni se entrega al navegador. El conector local la cifra con la protección del usuario de Windows y crea credenciales efímeras.
+- Configuración: iniciar/actualizar `CAPITAN_RODOLFO.bat`, abrir `Núcleo → Inteligencia` y guardar la clave API una sola vez.
+- Rodolfo puede solicitar datos a la sesión SQL activa mediante `consultar_sql_lectura`. El conector solo acepta consultas que comiencen con `SELECT` o `WITH`, bloquea operaciones de escritura/administración y limita la salida a 50 filas.
+- Para construir la estación visual, Rodolfo debe inspeccionar el esquema real (`sys.tables`, `sys.views`, `sys.columns`, relaciones y procedimientos), probar cada consulta y documentar la evidencia antes de afirmar el mapeo Tanque → Surtidor → Pico/Manguera → Despacho → Estado → Cobro → Forma de pago.
+- El motor predeterminado es OpenAI; la interfaz entre voz, motor y herramientas queda separada para incorporar otros motores más adelante.
 - `dist/`: versión publicable.
 - `VERSION`: build actual.
 
