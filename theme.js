@@ -132,6 +132,15 @@
    oldBack.setAttribute('aria-label','Volver a DoingLio');
  }
  oldBack.className='control-back';
+ if(document.body.dataset.capitanBack==='true'){
+   const capitanBack=document.createElement('a');
+   capitanBack.href='index.html';
+   capitanBack.target='_self';
+   capitanBack.textContent='← Volver a Capitán';
+   capitanBack.setAttribute('aria-label','Volver a Capitán Rodolfo');
+   capitanBack.className='control-back control-back-capitan';
+   controls.appendChild(capitanBack);
+ }
  controls.appendChild(oldBack);
 
  document.body.appendChild(controls);
