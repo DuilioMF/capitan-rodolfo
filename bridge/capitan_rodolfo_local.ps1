@@ -689,8 +689,32 @@ try {
     Write-ServiceStatus -State "running-no-sql" -ErrorMessage $_.Exception.Message
 }
 
-$listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,$Port)
-$listener.Start()
+$listener = $null
+$requestedPort = $Port
+$portCandidates = @($requestedPort,8797,18787,27877,37877) | Select-Object -Unique
+$bindErrors = @()
+foreach($candidatePort in $portCandidates){
+  try {
+    $testListener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,[int]$candidatePort)
+    $testListener.Start()
+    $listener = $testListener
+    $Port = [int]$candidatePort
+    break
+  } catch {
+    $bindErrors += ("{0}: {1}" -f $candidatePort,$_.Exception.Message)
+  }
+}
+if($null -eq $listener){
+  throw ("No pude abrir ningún puerto local. Probé: " + ($bindErrors -join " | "))
+}
+try {
+  $stateNow = Ensure-ActiveSession
+  if($null -ne $stateNow){
+    Write-ServiceStatus -State "running-connected" -Database ([string]$stateNow.database) -Server ([string]$stateNow.server) -User ([string]$stateNow.user)
+  } else {
+    Write-ServiceStatus -State "running-no-sql" -ErrorMessage ([string]$script:LastRestoreError)
+  }
+} catch {}
 Write-Host "Capitan Rodolfo local v$Version escuchando en http://127.0.0.1:$Port/"
 
 try {
