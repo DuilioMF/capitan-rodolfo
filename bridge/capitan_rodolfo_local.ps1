@@ -19,6 +19,7 @@ try {
 $Sessions = @{}
 $ActiveSessionId = $null
 $ProfilePath = Join-Path $AppDir "sql_profile.json"
+$OpenAIKeyPath = Join-Path $AppDir "openai_key.dat"
 try { if(Test-Path $ProfilePath){ Remove-Item $ProfilePath -Force -ErrorAction SilentlyContinue } } catch {}
 
 function Send-Response {
@@ -38,11 +39,63 @@ function Send-Response {
       "Content-Type: $ContentType" + $nl +
       "Content-Length: $($bytes.Length)" + $nl +
       "Cache-Control: no-store" + $nl +
+      "Access-Control-Allow-Origin: https://duiliomf.github.io" + $nl +
+      "Access-Control-Allow-Methods: GET, POST, OPTIONS" + $nl +
+      "Access-Control-Allow-Headers: Content-Type" + $nl +
+      "Access-Control-Allow-Private-Network: true" + $nl +
       "Connection: close" + $nl + $nl
     $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
     $Stream.Write($headerBytes,0,$headerBytes.Length)
     if($bytes.Length -gt 0){ $Stream.Write($bytes,0,$bytes.Length) }
     $Stream.Flush()
+}
+
+function Save-OpenAIKey {
+    param([string]$ApiKey)
+    if([string]::IsNullOrWhiteSpace($ApiKey) -or -not $ApiKey.StartsWith('sk-')){ throw "La clave de OpenAI no tiene un formato válido." }
+    $secure = ConvertTo-SecureString $ApiKey.Trim() -AsPlainText -Force
+    [IO.File]::WriteAllText($OpenAIKeyPath,(ConvertFrom-SecureString $secure),[Text.Encoding]::UTF8)
+}
+
+function Get-OpenAIKey {
+    if(-not (Test-Path $OpenAIKeyPath)){ return $null }
+    try {
+        $secure = ConvertTo-SecureString ((Get-Content $OpenAIKeyPath -Raw).Trim())
+        $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+        try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
+    } catch { return $null }
+}
+
+function New-OpenAIRealtimeSecret {
+    param([string]$ApiKey)
+    $instructions = "Sos Capitán Rodolfo, especialista de DoingLio para estaciones de servicio. Hablás siempre en español rioplatense, claro, breve y natural. Tu identidad visible es Capitán Rodolfo; no te presentás como OpenAI. Escuchás sin exigir que el usuario pulse enviar. Si necesitás datos reales de la estación, usás consultar_sql_lectura. Nunca inventás tablas, campos, relaciones, formas de pago ni valores. Para mapear la estación primero inspeccionás el esquema real con consultas a sys.tables, sys.views, sys.columns, sys.foreign_keys, sys.procedures y sys.sql_modules; después probás cada consulta de negocio con datos reales. Solo afirmás una relación cuando la evidencia SQL la confirma. El mapeo buscado es Tanque → Surtidor → Pico/Manguera → Despacho → Estado → Cobro → Forma de pago. Efectivo, tarjeta, Mercado Pago, App YPF u otros solo se nombran si aparecen realmente. Antes de consultar, explicás brevemente qué necesitás mirar."
+    $payload = @{
+        session = @{
+            type='realtime'; model='gpt-realtime-2.1'; output_modalities=@('audio'); instructions=$instructions
+            audio=@{input=@{transcription=@{model='gpt-4o-mini-transcribe';language='es'};turn_detection=@{type='semantic_vad'}};output=@{voice='cedar'}}
+            tools=@(@{type='function';name='consultar_sql_lectura';description='Consulta datos reales de la base SQL Server activa. Solo admite SELECT o WITH de lectura.';parameters=@{type='object';properties=@{consulta=@{type='string';description='Consulta T-SQL de solo lectura, sin punto y coma.'}};required=@('consulta')}})
+            tool_choice='auto'
+        }
+    } | ConvertTo-Json -Depth 12 -Compress
+    $headers = @{Authorization="Bearer $ApiKey";'OpenAI-Safety-Identifier'='capitan-rodolfo-local'}
+    return Invoke-RestMethod -Uri 'https://api.openai.com/v1/realtime/client_secrets' -Method Post -Headers $headers -ContentType 'application/json' -Body $payload -TimeoutSec 20
+}
+
+function Invoke-ReadOnlySql {
+    param([string]$SessionId,[string]$Database,[string]$Sql)
+    if(-not $Sessions.ContainsKey($SessionId)){ throw 'Sesión SQL vencida. Volvé a conectar desde Núcleo → Datos.' }
+    $sess=$Sessions[$SessionId]
+    if([string]::IsNullOrWhiteSpace($Database) -or $sess.databases -notcontains $Database){ throw 'Base SQL no autorizada.' }
+    $clean=$Sql.Trim()
+    if($clean -notmatch '^(?is)(SELECT|WITH)\b'){ throw 'Solo se permiten consultas SELECT o WITH.' }
+    if($clean -match '(?is);|--|/\*|\b(INSERT|UPDATE|DELETE|MERGE|DROP|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE|GRANT|REVOKE|DENY|BACKUP|RESTORE|DBCC|KILL|INTO)\b'){ throw 'La consulta contiene una operación no permitida.' }
+    $cn=$sess.connection;$cn.ChangeDatabase($Database);$cmd=$cn.CreateCommand();$cmd.CommandText=$clean;$cmd.CommandTimeout=15;$reader=$cmd.ExecuteReader()
+    try {
+        $rows=New-Object System.Collections.Generic.List[object]
+        while($reader.Read() -and $rows.Count -lt 50){$row=[ordered]@{};for($i=0;$i -lt $reader.FieldCount;$i++){$value=$reader.GetValue($i);if($value -is [DBNull]){$value=$null};$row[$reader.GetName($i)]=$value};$rows.Add([pscustomobject]$row)}
+        return @{database=$Database;rowCount=$rows.Count;rows=$rows}
+    } finally {$reader.Close()}
 }
 
 function Send-Json {
@@ -282,8 +335,23 @@ try {
       if($null -eq $req){ continue }
 
       $pathOnly = ($req.Path -split '\?')[0]
-      if($req.Method -eq 'GET' -and $pathOnly -eq '/health'){
+      if($req.Method -eq 'OPTIONS'){
+        Send-Response $stream 204 'text/plain' ''
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/health'){
         Send-Json $stream 200 @{ok=$true;service='Capitan Rodolfo Local';version=$Version}
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/openai/status'){
+        Send-Json $stream 200 @{configured=(-not [string]::IsNullOrWhiteSpace((Get-OpenAIKey)));defaultEngine='openai';model='gpt-realtime-2.1'}
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/openai/config'){
+        try {$data=$req.Body|ConvertFrom-Json;Save-OpenAIKey -ApiKey ([string]$data.apiKey);Send-Json $stream 200 @{ok=$true;configured=$true;defaultEngine='openai'}} catch {Send-Json $stream 400 @{error=$_.Exception.Message}}
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/openai/realtime-secret'){
+        try {$key=Get-OpenAIKey;if([string]::IsNullOrWhiteSpace($key)){throw 'Configurá la clave de OpenAI en Núcleo → Inteligencia.'};Send-Json $stream 200 (New-OpenAIRealtimeSecret -ApiKey $key)} catch {Send-Json $stream 500 @{error=$_.Exception.Message}}
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/ai/sql-read'){
+        try {$data=$req.Body|ConvertFrom-Json;Send-Json $stream 200 (Invoke-ReadOnlySql -SessionId ([string]$data.sessionId) -Database ([string]$data.database) -Sql ([string]$data.sql))} catch {Send-Json $stream 400 @{error=$_.Exception.Message}}
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/state'){
         $state = Ensure-ActiveSession
@@ -1303,4 +1371,3 @@ finally {
   foreach($k in @($Sessions.Keys)){ try { $Sessions[$k].connection.Dispose() } catch {} }
   $listener.Stop()
 }
-
