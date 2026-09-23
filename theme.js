@@ -94,6 +94,23 @@
    darkButton.setAttribute('aria-expanded','false');
  }
 
+ async function openStationMap(){
+   const bridges=['http://127.0.0.1:8787','http://localhost:8787'];
+   for(const base of bridges){
+     try{
+       const r=await fetch(base+'/api/state',{cache:'no-store',targetAddressSpace:'local'});
+       if(!r.ok) continue;
+       const d=await r.json();
+       if(d.connected&&d.sessionId&&d.database){
+         location.href=base+'/mapa-vivo?sessionId='+encodeURIComponent(d.sessionId)+'&database='+encodeURIComponent(d.database);
+         return;
+       }
+       location.href=base+'/';
+       return;
+     }catch(_){}
+   }
+ }
+
  function openMenu(theme){
    pendingTheme=theme;
    menuTitle.textContent=(theme==='light'?'CLARO':'OSCURO')+' · ELEGÍ ESTILO';
@@ -104,9 +121,10 @@
      btn.className='theme-style-option';
      btn.dataset.styleOption=style.id;
      btn.innerHTML='<span class="theme-style-icon">'+style.icon+'</span><span>'+style.label+'</span>';
-     btn.addEventListener('click',()=>{
+     btn.addEventListener('click',async()=>{
        apply(theme,style.id,true);
        closeMenu();
+       if(style.id==='estacion') await openStationMap();
      });
      styleGrid.appendChild(btn);
    });
@@ -132,6 +150,8 @@
    oldBack.textContent='← Volver a DoingLio';
    oldBack.setAttribute('aria-label','Volver a DoingLio');
  }
+ const localHost=location.hostname==='127.0.0.1'||location.hostname==='localhost';
+ if(localHost) oldBack.href='../index.html';
  oldBack.className='control-back';
  if(document.body.dataset.capitanBack==='true'){
    const capitanBack=document.createElement('a');
