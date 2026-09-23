@@ -40,7 +40,7 @@ powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%BR
 
 set "ACTIVE_PORT="
 for /L %%I in (1,1,30) do (
-  for /f "usebackq delims=" %%Q in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports=8787,8797,18787,27877,37877,48787,57877; foreach($p in $ports){ try{$r=Invoke-RestMethod -Uri ('http://127.0.0.1:'+ $p +'/health') -TimeoutSec 1; if($r.ok){Write-Output $p; break}}catch{}}" `) do (
+  for /f "delims=" %%Q in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports=8787,8797,18787,27877,37877,48787,57877; foreach($p in $ports){ try{$r=Invoke-RestMethod -Uri ('http://127.0.0.1:'+ $p +'/health') -TimeoutSec 1; if($r.ok){Write-Output $p; break}}catch{}}"') do (
     set "ACTIVE_PORT=%%Q"
   )
   if defined ACTIVE_PORT goto :ready
