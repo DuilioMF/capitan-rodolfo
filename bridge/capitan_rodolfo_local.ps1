@@ -311,7 +311,7 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
 <button id="connect">Conectar y ver bases</button>
 <div id="status" class="status">Conector local v$Version listo.</div>
 <button id="goMap" class="continueMap" type="button">Continuar al Mapa Vivo -></button>
-<div class="note">La conexión no queda guardada. Cada vez que abrís Capitán Rodolfo tenés que conectarte nuevamente.</div>
+<div class="note">La conexión queda guardada localmente y protegida con tu usuario de Windows. Al volver a abrir Capitán Rodolfo intenta reconectarse automáticamente a la última base elegida.</div>
 </section>
 <section class="card">
 <div class="cols"><div><h3>Bases</h3><div id="dbs" class="list"><div class="item">Conectate para ver bases</div></div></div><div><h3>Tablas</h3><div id="tables" class="list"><div class="table">Selecciona una base</div></div></div></div>
