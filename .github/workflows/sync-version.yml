@@ -3,8 +3,6 @@ name: Sync project version
 on:
   push:
     branches: [main]
-    paths:
-      - 'VERSION'
   workflow_dispatch:
 
 jobs:
