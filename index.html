@@ -104,8 +104,8 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 </style>
-<link rel="stylesheet" href="theme.css?v=53">
-<script src="theme.js?v=53" defer></script>
+<link rel="stylesheet" href="theme.css?v=54">
+<script src="theme.js?v=54" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -137,6 +137,7 @@ h1 em{font-weight:500;color:#d9ae65}
     <div class="live"><span class="dot"></span> OPERACIÓN EN VIVO</div>
     <h1>Capitán Rodolfo<br><em>· Estación</em></h1>
     <div class="sub">Flujo: combustible → despacho → venta → cobro</div>
+    <div class="live" id="stationConnection"><span class="dot"></span> Buscando conexión SQL local…</div>
     <div class="annotation">“Todo movimiento deja una huella.”</div>
   </div>
   <div class="voice" aria-labelledby="voice-title">
@@ -150,22 +151,22 @@ h1 em{font-weight:500;color:#d9ae65}
 <div class="section-title">ANATOMÍA DEL CIRCUITO</div>
 <section class="flow">
   <div class="step"><span class="symbol">I</span><small>CAMIÓN</small><b>Descarga combustible</b><span>Ingreso al circuito</span></div>
-  <div class="step"><span class="symbol">II</span><small>TANQUES</small><b>Súper · Infinia · Diesel</b><span>Niveles y movimiento</span></div>
-  <div class="step"><span class="symbol">III</span><small>SURTIDOR</small><b>38.4 L</b><span>Pico 03 · activo</span></div>
+  <div class="step"><span class="symbol">II</span><small>TANQUES</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
+  <div class="step"><span class="symbol">III</span><small>SURTIDORES</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
   <div class="step"><span class="symbol">V</span><small>COBRO</small><b>$ 48.920</b><span class="ok">PAGADO ✓</span></div>
 </section>
 
 <div class="section-title">LECTURA DEL DÍA</div>
 <section class="kpis">
-  <div class="kpi"><small>Litros vendidos hoy</small><strong>12.480 L</strong></div>
-  <div class="kpi"><small>Ventas cobradas</small><strong>$ 18,4 M</strong></div>
-  <div class="kpi"><small>Pendiente</small><strong>$ 312.000</strong></div>
-  <div class="kpi"><small>Alertas</small><strong class="warn">1 sin conciliar</strong></div>
+  <div class="kpi"><small>Litros en despachos</small><strong id="liveLiters">—</strong></div>
+  <div class="kpi"><small>Importe en despachos</small><strong id="livePesos">—</strong></div>
+  <div class="kpi"><small>Despachos</small><strong id="liveDispatches">—</strong></div>
+  <div class="kpi"><small>Base SQL</small><strong class="ok" id="liveDbKpi">Sin conexión</strong></div>
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">53</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">54</span></div>
 </div>
 <script>
 (async()=>{
@@ -173,6 +174,44 @@ h1 em{font-weight:500;color:#d9ae65}
   const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
   if(r.ok) document.getElementById('build').textContent=(await r.text()).trim();
  }catch(_){}
+})();
+
+(function(){
+ const bridges=['http://127.0.0.1:8787','http://localhost:8787'];
+ const connection=document.getElementById('stationConnection');
+ const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
+ const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
+ const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+ const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,targetAddressSpace:'local'});
+ async function refreshStation(){
+   let found=null;
+   for(const base of bridges){
+     try{
+       const r=await localFetch(base+'/api/station-summary');
+       if(!r.ok) continue;
+       const d=await r.json();
+       found={base,d}; break;
+     }catch(_){}
+   }
+   if(!found||!found.d.connected){
+     connection.innerHTML='<span class="dot" style="background:#ffb36b;box-shadow:0 0 18px #ffb36b"></span> SQL local sin base activa · Núcleo → Datos';
+     set('liveTanks','—');set('liveHoses','Esperando datos SQL');set('livePumps','—');set('liveDatabase','Base no conectada');
+     set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');set('liveDbKpi','Sin conexión');
+     return;
+   }
+   const d=found.d;
+   connection.innerHTML='<span class="dot"></span> SQL conectado · '+d.database;
+   set('liveTanks',nf.format(d.tankCount||0)+' tanques');
+   set('liveHoses',nf.format(d.hoseCount||0)+' relaciones tanque → surtidor → manguera');
+   set('livePumps',nf.format(d.pumpCount||0)+' surtidores');
+   set('liveDatabase',d.database||'Base conectada');
+   set('liveLiters',nf.format(Number(d.liters||0))+' L');
+   set('livePesos',money.format(Number(d.pesos||0)));
+   set('liveDispatches',nf.format(d.dispatchCount||0));
+   set('liveDbKpi',d.database||'Conectada');
+ }
+ refreshStation();
+ setInterval(refreshStation,10000);
 })();
 
 (function(){
