@@ -1,0 +1,20 @@
+name: Sync project version
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'VERSION'
+  workflow_dispatch:
+
+jobs:
+  notify-version-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Memoria Duilio
+        run: |
+          curl --fail --show-error --silent --retry 3 \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            -d '{"repository":"DuilioMF/capitan-rodolfo","sha":"${{ github.sha }}","ref":"${{ github.ref }}"}' \
+            'https://n8n.srv1251563.hstgr.cloud/webhook/memoria-version-sync-github-v1'
