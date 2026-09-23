@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Fuente actual: build **38**
+- Fuente actual: revisión **47**
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -35,6 +35,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 ## Archivos principales
 
 - `index.html`: portada / Tablero Vivo.
+- `nucleo.html`: centro de Datos e Inteligencia.
 - `conexion-sql.html`: conexión SQL y selección de base.
 - `mapa-vivo.html`: mapa operativo.
 - `assets/`: recursos visuales.
@@ -51,6 +52,13 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 ## Versionado
 
 Cada cambio debe quedar en un commit recuperable antes de publicar. Conservar rollback.
+
+## Arquitectura de cuenta
+
+- Una identidad Supabase por usuario.
+- Un usuario puede tener acceso a varios especialistas.
+- Los permisos de especialistas no dependen del proveedor de pagos.
+- Cada especialista puede habilitar varios motores de IA y conservar uno predeterminado.
 
 ## Publicación vigente — 22/09/2026
 

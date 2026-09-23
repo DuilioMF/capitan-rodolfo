@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es">
 <head>
-<script data-doinglio-theme-init>(function(){try{document.documentElement.dataset.theme=localStorage.getItem('doinglio.theme')||'dark'}catch(_){document.documentElement.dataset.theme='dark'}})();</script>
+<script data-doinglio-theme-init>(function(){try{document.documentElement.dataset.theme=localStorage.getItem('doinglio.theme')||'dark';document.documentElement.dataset.style=localStorage.getItem('doinglio.style')||'leon';document.documentElement.dataset.style=localStorage.getItem('doinglio.style')||'leon';}catch(_){document.documentElement.dataset.theme='dark';document.documentElement.dataset.style='leon';}})();</script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -16,12 +16,12 @@
 .note{margin-top:18px;font-size:12px;color:var(--muted)}@media(max-width:650px){.actions{grid-template-columns:1fr}}
 
 </style>
-<link rel="stylesheet" href="theme.css">
-<script src="theme.js" defer></script>
+<link rel="stylesheet" href="theme.css?v=47">
+<script src="theme.js?v=47" defer></script>
 </head>
 <body>
 <div class="wrap">
-<div class="top"><a class="back" href="index.html">← Volver</a><span class="ver" data-version-prefix="Capitán Rodolfo · v">Capitán Rodolfo · v…</span></div>
+<div class="top"><a class="back" href="nucleo.html">← Volver a Núcleo</a><span class="ver" data-version-prefix="Capitán Rodolfo · v">Capitán Rodolfo · v…</span></div>
 <section class="card">
 <h1>Conectar SQL</h1>
 <p class="muted">La conexión SQL ahora corre localmente en tu PC, usando el mismo enfoque de <b>System.Data.SqlClient</b> que ya te funcionaba. La página pública no intenta entrar a <code>127.0.0.1</code>, por eso desaparecen CORS, “Acceso a la red local” y <i>Failed to fetch</i>.</p>
