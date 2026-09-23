@@ -691,7 +691,7 @@ try {
 
 $listener = $null
 $requestedPort = $Port
-$portCandidates = @($requestedPort,8797,18787,27877,37877) | Select-Object -Unique
+$portCandidates = @($requestedPort,8797,18787,27877,37877,48787,57877) | Select-Object -Unique
 $bindErrors = @()
 foreach($candidatePort in $portCandidates){
   try {
