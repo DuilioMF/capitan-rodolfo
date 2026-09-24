@@ -158,7 +158,12 @@ h1 em{font-weight:500;color:#d9ae65}
   <select id="stationId" aria-label="Elegir estación"></select>
   <button id="reloadCircuit" type="button">Actualizar circuito SQL</button>
 </div>
-<div class="station-error" id="stationError" role="status" aria-live="polite"></div>
+<div class="station-error" id="stationError" role="status" aria-live="polite"></div><div class="station-error" id="circuitInstallStatus" role="status" aria-live="polite"></div>
+<div id="circuitInstallHelp" class="station-error" hidden>
+  Si tu usuario SQL no tiene permisos para instalar el procedimiento,
+  <a href="https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql" target="_blank" rel="noopener noreferrer">descargá el instalador para un administrador de SiSRL</a>.
+  Después reabrí DoingLio desde el cerebro.
+</div>
 <div class="company-card" id="companyCard" hidden aria-live="polite">
   <div><span class="company-ey">EMPRESA · PARAMSTOCK</span><h2 id="stationName">Estación</h2></div>
   <div class="company-meta" id="stationCompanyInfo"></div>
@@ -398,6 +403,27 @@ h1 em{font-weight:500;color:#d9ae65}
      warn('No pude leer tanques/surtidores desde el SP: '+e.message+' · Núcleo → Datos para verificar el SP.');
    }finally{loading=false}
  }
+ async function refreshInstallState(base){
+   const label=document.getElementById('circuitInstallStatus');
+   const help=document.getElementById('circuitInstallHelp');
+   if(!base){label.textContent='';help.hidden=true;return}
+   try{
+     const state=await read(base,'/api/circuit/install-state');
+     if(state.state==='installed'){
+       label.textContent='SP: instalado y autorizado en '+(state.database||'SiSRL')+'.';
+       help.hidden=true;
+     }else if(state.state==='pending_permission'||state.state==='deployment_error'){
+       label.textContent='SP pendiente: '+String(state.message||'Revisar permisos de SQL Server.');
+       help.hidden=false;
+     }else{
+       label.textContent='SP: '+String(state.message||'Esperando instalación al conectar SiSRL.');
+       help.hidden=true;
+     }
+   }catch(e){
+     label.textContent='No se pudo consultar el estado del instalador automático: '+e.message;
+     help.hidden=true;
+   }
+ }
  async function refreshStation(){
    if(loading)return;
    let found=null,lastError='';
@@ -407,11 +433,13 @@ h1 em{font-weight:500;color:#d9ae65}
    }
    if(!found){
      activeBridge=desktop?bridges[0]:null;
+     await refreshInstallState(null);
      clearCircuit();
      warn(lastError||'No hay conexión SQL. Abrí Núcleo → Datos.');
      return;
    }
    activeBridge=found.base;
+   await refreshInstallState(activeBridge);
    const data=found.data;
    if(activeDatabase!==data.database){
      activeDatabase=data.database||'';
