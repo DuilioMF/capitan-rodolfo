@@ -206,6 +206,28 @@ jobs:
           }
           if(testedIsla({Cara:'SIN DATOS'})!==null)throw Error('Cara desconocida no puede generar una isla');
           console.log('Navegación Tanques / Surtidores / Carga y cálculo Isla: OK');
+          // El cierre debe quedar a la izquierda en TODAS las ventanas
+          // (camión, tanques, surtidores, carga, producto y comprobantes).
+          if(!index.includes('.tank-head .tank-close{order:-1'))throw Error('Cruz no está ubicada a la izquierda');
+          for(const id of ['truckClose','tankClose','pumpClose','dispatchClose','productClose','receiptClose']){
+            if(!index.includes('id="'+id+'"'))throw Error('Ventana sin cierre: '+id);
+          }
+          for(const id of ['paymentStep','dispatchShowAll','dispatchShowPaid','dispatchShowPending',
+             'dispatchCountAll','dispatchCountPaid','dispatchCountPending']){
+            if(!index.includes('id="'+id+'"'))throw Error('Falta filtro de cobros: '+id);
+          }
+          const stateStart=index.indexOf(' const paymentState=r=>'),stateEnd=index.indexOf(' function loads(',stateStart);
+          if(stateStart<0||stateEnd<=stateStart)throw Error('Falta regla de cobro');
+          const parseState=require('vm').runInNewContext(index.slice(stateStart,stateEnd)+'\npaymentState');
+          for(const [v,expect] of [[1,'paid'],['1','paid'],[0,'pending'],['0','pending'],[null,'unknown'],[undefined,'unknown'],['?', 'unknown']]){
+            if(parseState({EstadoVta:v})!==expect)throw Error('Estado de cobro incorrecto: '+v);
+          }
+          if(!index.includes("paymentStep.addEventListener('click',()=>loads('paid'))")||
+             !index.includes("action:r=>showReceipt(r.IdSale??r.Venta,dispatchModal)")){
+               throw Error('Cobro no abre las ventas cobradas o su comprobante');
+          }
+          console.log('Cierres izquierda y cobros: estados, filtros y navegación OK');
+
           const explorer=fs.readFileSync('conexion-sql.html','utf8');
           const bridge=fs.readFileSync('bridge/capitan_rodolfo_local.ps1','utf8');
           if(explorer.includes('Procedimientos habilitados'))throw Error('La interfaz antigua sigue visible');
