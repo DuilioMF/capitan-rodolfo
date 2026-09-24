@@ -1,4 +1,4 @@
-param(
+﻿param(
   [int]$Port = 8787,
   [string]$DefaultServer = "",
   [string]$AppDir = "",
