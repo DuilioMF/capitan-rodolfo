@@ -169,9 +169,9 @@ jobs:
           // y su estructura fiscal, sin escribir en la base de datos.
           const vm=require('vm');
           const reader=fs.readFileSync('documentos.html','utf8');
-          const match=reader.match(/ function classify\(data\)\{[\s\S]*?\n \}\n function render\(/);
-          if(!match)throw Error('No existe el transformador compartido');
-          const isolated=match[0].slice(0,-' function render('.length);
+          const a=reader.indexOf(' function classify(data){'),b=reader.indexOf(' function render(data){',a);
+          if(a<0||b<=a)throw Error('No existe el transformador de Revalsoft');
+          const isolated=reader.slice(a,b);
           const classify=vm.runInNewContext(isolated+'\nclassify');
           for(const [tipo,expected] of [['FACTURA','Factura'],['RECIBO','Recibo'],['TRANSFERENCIA','Transferencia']]){
             const result=classify({tipo_documento:tipo,fecha:'2026-09-24',numero_operacion:'42',total:'120',items:[{descripcion:'Producto'}],iva:[{importe:'21'}]});
