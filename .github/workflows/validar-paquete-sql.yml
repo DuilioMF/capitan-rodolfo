@@ -100,7 +100,7 @@ jobs:
           for(const marker of ['id="sqlObjectName"','id="sqlObjectType"','id="inspectSql"','id="executeSp"','/api/sql/object','confirm:']){
             if(!explorer.includes(marker))throw Error('Falta explorador SQL: '+marker);
           }
-          for(const marker of ["function Resolve-UserSqlObject","function Read-SqlObjectForUser","'/api/sql/object'","SELECT TOP (200)","Invoke-AllowedStoredProcedure"]){
+          for(const marker of ["function Lookup-NamedSqlObject","'/api/sql/object'","SELECT TOP (200)","Invoke-AllowedStoredProcedure"]){
             if(!bridge.includes(marker))throw Error('Falta el endpoint SQL: '+marker);
           }
           if(!bridge.includes('function Lookup-NamedSqlObject'))throw Error('Falta resolver de objetos SQL');
