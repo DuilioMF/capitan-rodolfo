@@ -16,7 +16,7 @@
 <body>
 <main class="wrap">
   <div class="top">
-    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v67</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
+    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v68</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
     <a href="nucleo.html">← Volver a Núcleo</a>
   </div>
 
@@ -25,12 +25,12 @@
     <div id="bridgeStatus" class="status">Buscando conector en este equipo…</div>
     <div id="installBox" class="install hidden">
       <p class="muted">No encuentro el conector. Descargalo o actualizalo una vez: se instala en <strong>C:\Sistemas\DoingLioConnector</strong>, queda oculto y se inicia con Windows.</p>
-      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=67" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
+      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=68" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
     </div>
   </section>
 
   <section class="card">
-    <h2>Diagnóstico · v67</h2>
+    <h2>Diagnóstico · v68</h2>
     <div class="diagpaths">Si algo falla, leeme las últimas líneas de abajo. También quedan archivos en:<br><strong>C:\Sistemas\DoingLioConnector\install.log</strong><br><strong>C:\Sistemas\DoingLioLauncher\launcher.log</strong></div>
     <pre id="diagLog" class="diag">Iniciando diagnóstico…</pre>
     <div class="actions"><button class="ghost" id="copyDiag" type="button">Copiar diagnóstico</button><button class="ghost" id="clearDiag" type="button">Limpiar</button></div>
@@ -72,12 +72,12 @@
 (()=>{
  const $=id=>document.getElementById(id);
  const logDiag=msg=>{const el=$('diagLog');if(!el)return;const ts=new Date().toLocaleTimeString('es-AR',{hour12:false});if(el.textContent==='Iniciando diagnóstico…')el.textContent='';el.textContent+='['+ts+'] '+msg+'\n';el.scrollTop=el.scrollHeight};
- logDiag('Página v67 · '+location.href);
+ logDiag('Página v68 · '+location.href);
  logDiag('Origen: '+location.origin);
- const candidates=[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+ const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
  let bridge=null,profile=null,state=null,sessionId=null,currentDb='',procedures=[]; const preferredDb='SISRL';
 
- const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),800);try{return await fetch(url,{cache:'no-store',...options,targetAddressSpace:'local',signal:ac.signal})}finally{clearTimeout(timer)}};
+ const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:25000);try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
  async function get(path){const r=await localFetch(bridge+path);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  async function post(path,body){const r=await localFetch(bridge+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  function setStatus(el,msg,kind=''){el.className='status '+kind;el.textContent=msg}
@@ -89,13 +89,13 @@
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
  async function findBridge(){
-   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),'Buscando conector en este equipo · v67…');
-   logDiag('Inicio búsqueda del conector');
+   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),desktop?'Comprobando SQL local · v68…':'Buscando conector en este equipo · v68…');
+   logDiag(desktop?'Modo escritorio: ruta SQL fija; sin búsqueda de puertos':'Modo web: buscando conector en puertos locales');
    for(const base of candidates){
      try{
        logDiag('Probando '+base+'/health');
        const r=await localFetch(base+'/health');
-       logDiag(base+' respondió HTTP '+r.status);
+       logDiag(base+' respondió HTTP '+r.status);if(!r.ok){try{const d=await r.json();if(d.error)logDiag('DETALLE '+d.error)}catch(_){}}
        if(r.ok){
          const d=await r.json();
          logDiag('Health: ok='+String(d.ok)+' service='+(d.service||'?')+' version='+(d.version||'?'));
@@ -109,9 +109,9 @@
        logDiag('FALLÓ '+base+' · '+(e&&e.name?e.name+': ':'')+(e&&e.message?e.message:String(e)));
      }
    }
-   setStatus($('bridgeStatus'),'Conector no detectado · página v67. Leeme el diagnóstico de abajo.','bad');
+   setStatus($('bridgeStatus'),'Conector no detectado · página v68. Leeme el diagnóstico de abajo.','bad');
    $('installBox').classList.remove('hidden');
-   logDiag('FIN: no se encontró ningún conector');
+   logDiag(desktop?'FIN: no arrancó SQL. Abrí el archivo bridge.err.log de DoingLioConnector y launcher.log de DoingLioLauncher':'FIN: no se encontró ningún conector');
    return false;
  }
 
