@@ -1,0 +1,66 @@
+name: Validar paquete SQL Capitan
+on:
+  push:
+    paths:
+      - "sql/**"
+      - "sp_allowlist.json"
+      - "bridge/capitan_rodolfo_local.ps1"
+      - "VERSION"
+      - "nucleo.html"
+      - "conexion-sql.html"
+      - ".github/workflows/validar-paquete-sql.yml"
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar PowerShell del conector
+        shell: powershell
+        run: |
+          $file="bridge/capitan_rodolfo_local.ps1"
+          $t=$null;$errors=$null
+          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$t,[ref]$errors)|Out-Null
+          if($errors.Count){
+            $errors|Select-Object -First 8|ForEach-Object{Write-Host ("L"+$_.Extent.StartLineNumber+": "+$_.Message)}
+            throw "Conector no compila"
+          }
+          Write-Host "Conector PowerShell: sintaxis OK"
+      - name: Comprobar versiones y autorizaciones
+        shell: powershell
+        run: |
+          $version=(Get-Content VERSION -Raw).Trim()
+          $bat=Get-Content CAPITAN_RODOLFO.bat -Raw
+          $nucleo=Get-Content nucleo.html -Raw
+          $datos=Get-Content conexion-sql.html -Raw
+          if($bat -notmatch ('EXPECTED_VERSION='+[regex]::Escape($version))){throw "BAT desfasado"}
+          if($nucleo -notmatch ('v'+[regex]::Escape($version))){throw "Nucleo desfasado"}
+          if($datos -notmatch ('v'+[regex]::Escape($version))){throw "Datos desfasado"}
+          $cfg=Get-Content sp_allowlist.json -Raw|ConvertFrom-Json
+          foreach($name in @('dbo.PA_VentasFormasPago','dbo.PA_CapitanRodolfo_CircuitoEstacion')){
+            if(@($cfg.procedures) -notcontains $name){throw "SP no habilitado: $name"}
+          }
+          Write-Host "Version $version y allowlist: OK"
+      - name: Verificar paquete SQL sin ejecutar la base privada
+        shell: powershell
+        run: |
+          $p='sql/PA_CapitanRodolfo_CircuitoEstacion.sql'
+          if(!(Test-Path $p)){throw "Falta SQL"}
+          $sql=Get-Content $p -Raw
+          foreach($required in @(
+            'CREATE OR ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion',
+            '@IdEstacion',
+            '@EstadoVta',
+            'dbo.Tanque',
+            'dbo.Prod',
+            'dbo.Surpla',
+            'dbo.Surtan',
+            'dbo.Despachos',
+            'dbo.RelacionCptsDespachos',
+            'sys.sp_executesql'
+          )){
+            if(!$sql.Contains($required)){throw "Falta contenido SQL: $required"}
+          }
+          if(!(Test-Path 'sql/README_CircuitoEstacion.md')){throw "Falta guia de despliegue"}
+          Write-Host "Paquete SQL: estructura y archivos OK. Ejecucion con esquema real pendiente."
