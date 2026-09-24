@@ -195,13 +195,17 @@ jobs:
           for(const marker of ['id="installCircuit"','id="runCircuit"','id="adminInstallCircuit"',
              'id="circuitAdminPass"','/api/circuit/install','/api/circuit/admin-install',
              '/api/station/circuit','INSTALAR Y HABILITAR SP',
-             '/sql/PA_CapitanRodolfo_CircuitoEstacion.sql',
-             '/sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql']){
+             'sql/PA_CapitanRodolfo_CircuitoEstacion.sql',
+             'sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql']){
              if(!dataUi.includes(marker))throw Error('Falta ejecución SQL desde la página: '+marker);
           }
           const adminRoute=bridge.split("'/api/circuit/admin-install'")[1]?.split("'/api/circuit/install-state'")[0]||'';
           if(!adminRoute.includes('New-SqlConnection')||!adminRoute.includes('GRANT EXECUTE')||adminRoute.includes('Save-SqlProfile')){
             throw Error('Instalación temporal insegura o incompleta');
+          }
+          if(!dataUi.includes('download="PA_CapitanRodolfo_CircuitoEstacion.sql"')||
+             !dataUi.includes('download="INSTALAR_Y_HABILITAR_CIRCUITO.sql"')){
+               throw Error('Los botones deben descargar archivos .sql y no solo abrirlos');
           }
           console.log('Instalación web con permisos y archivos descargables: OK');
 
