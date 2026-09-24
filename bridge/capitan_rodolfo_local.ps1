@@ -861,21 +861,24 @@ try {
 
 $listener = $null
 $requestedPort = $Port
-$portCandidates = @($requestedPort,8797,18787,27877,37877,48787,57877) | Select-Object -Unique
+# Windows elige el puerto cuando todas las alternativas fijas estan ocupadas.
+# 0 es un puerto efimero asignado por TCPListener, NO otro puerto fijo.
+$portCandidates = @($requestedPort,8787,8797,18787,27877,37877,48787,57877,0) | Select-Object -Unique
 $bindErrors = @()
 foreach($candidatePort in $portCandidates){
   try {
     $testListener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,[int]$candidatePort)
     $testListener.Start()
     $listener = $testListener
-    $Port = [int]$candidatePort
+    $Port = [int]$testListener.LocalEndpoint.Port
+    if($candidatePort -eq 0){ Write-Host ("Puertos habituales ocupados. Windows asigno puerto libre "+$Port) }
     break
   } catch {
     $bindErrors += ("{0}: {1}" -f $candidatePort,$_.Exception.Message)
   }
 }
 if($null -eq $listener){
-  throw ("No pude abrir ningún puerto local. Probé: " + ($bindErrors -join " | "))
+  throw ("No se pudo iniciar el servicio local. Intentos: " + ($bindErrors -join " | "))
 }
 try {
   $stateNow = Ensure-ActiveSession
