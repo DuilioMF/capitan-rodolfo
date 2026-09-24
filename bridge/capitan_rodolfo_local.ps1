@@ -33,6 +33,10 @@ $OpenAIKeyPath = Join-Path $DataRoot "openai_key.dat"
 $ServiceStatusPath = Join-Path $DataRoot "estado.json"
 $SpAllowlistPath = Join-Path $DataRoot "sp_allowlist.json"
 $DefaultSpAllowlistPath = Join-Path $AppDir "sp_allowlist.json"
+$CircuitSqlPath = Join-Path $AppDir "sql\PA_CapitanRodolfo_CircuitoEstacion.sql"
+$CircuitInstallStatePath = Join-Path $DataRoot "circuito_instalacion.json"
+$script:CircuitInstallStatus = @{state='pending';database='';message='Esperando conexión a SiSRL';version=$Version}
+
 $TaskName = "CapitanRodolfoLocal"
 $script:LastRestoreError = ""
 
@@ -734,6 +738,107 @@ function Invoke-AllowedStoredProcedure {
     return @{database=$Database;procedure=$Procedure;resultSets=$sets}
 }
 
+function Save-CircuitInstallStatus {
+    param([string]$State,[string]$Database,[string]$Message,[string]$Hash='')
+    $script:CircuitInstallStatus=@{
+        state=$State;database=$Database;message=$Message;hash=$Hash
+        version=$Version;updatedAt=(Get-Date).ToString('o')
+    }
+    try {
+        $script:CircuitInstallStatus | ConvertTo-Json -Depth 4 |
+            Set-Content -Path $CircuitInstallStatePath -Encoding UTF8
+    } catch {}
+    Write-Host ("Circuito SQL: "+$State+" - "+$Message)
+}
+function Get-CircuitDatabasePermission {
+    param($Connection)
+    $q=$Connection.CreateCommand()
+    $q.CommandText=@"
+SELECT
+  CASE WHEN OBJECT_ID('dbo.PA_CapitanRodolfo_CircuitoEstacion','P') IS NULL THEN 0 ELSE 1 END AS ExistsProc,
+  ISNULL(HAS_PERMS_BY_NAME('dbo','SCHEMA','ALTER'),0) AS AlterSchema,
+  ISNULL(HAS_PERMS_BY_NAME(DB_NAME(),'DATABASE','CREATE PROCEDURE'),0) AS CreateProc,
+  ISNULL(HAS_PERMS_BY_NAME('dbo.PA_CapitanRodolfo_CircuitoEstacion','OBJECT','ALTER'),0) AS AlterProc,
+  ISNULL(HAS_PERMS_BY_NAME('dbo.PA_CapitanRodolfo_CircuitoEstacion','OBJECT','EXECUTE'),0) AS CanExec,
+  ISNULL(IS_SRVROLEMEMBER('sysadmin'),0) AS SysAdmin;
+"@
+    $reader=$q.ExecuteReader()
+    try {
+        if(-not $reader.Read()){throw 'No se pudo revisar los permisos del circuito.'}
+        return @{
+          exists=[int]$reader.GetValue(0)
+          schema=[int]$reader.GetValue(1)
+          create=[int]$reader.GetValue(2)
+          alter=[int]$reader.GetValue(3)
+          execute=[int]$reader.GetValue(4)
+          admin=[int]$reader.GetValue(5)
+        }
+    } finally {$reader.Close();$q.Dispose()}
+}
+function Invoke-CircuitAutoInstall {
+    param($Connection,[string]$Database)
+    if([string]::IsNullOrWhiteSpace($Database) -or $Database -ine 'SiSRL'){return}
+    if(-not (Test-Path $CircuitSqlPath)){
+        Save-CircuitInstallStatus -State 'missing_file' -Database $Database -Message 'Falta el archivo SQL descargado con Capitán; reabrí desde el cerebro.'
+        return
+    }
+    $hash=(Get-FileHash -Path $CircuitSqlPath -Algorithm SHA256).Hash
+    $Connection.ChangeDatabase($Database)
+    $rights=Get-CircuitDatabasePermission -Connection $Connection
+    if($rights.exists -eq 1 -and $rights.execute -eq 1 -and (Test-Path $CircuitInstallStatePath)){
+        try {
+            $last=Get-Content $CircuitInstallStatePath -Raw | ConvertFrom-Json
+            if($last.state -eq 'installed' -and $last.database -eq $Database -and $last.hash -eq $hash){
+                Save-CircuitInstallStatus -State 'installed' -Database $Database -Hash $hash -Message 'SP instalado y autorizado; la pantalla ejecuta el circuito al cargar.'
+                return
+            }
+        } catch {}
+    }
+    # Nunca elevar privilegios, instalar como sa, ni pedir credenciales admin.
+    # Un usuario de solo lectura verá los tanques mediante el modo de respaldo.
+    $canModify=($rights.admin -eq 1 -or $rights.schema -eq 1 -or
+       ($rights.exists -eq 1 -and $rights.alter -eq 1))
+    if($rights.exists -eq 0 -and -not ($rights.admin -eq 1 -or
+       ($rights.schema -eq 1 -and $rights.create -eq 1))){$canModify=$false}
+    if(-not $canModify){
+        $msg=if($rights.exists -eq 1 -and $rights.execute -eq 1){
+          'El SP existente se puede ejecutar. Para actualizarlo automáticamente faltan permisos ALTER.'
+        } elseif($rights.exists -eq 1) {
+          'El SP existe, pero falta permiso EXECUTE. Un administrador debe conceder GRANT EXECUTE únicamente sobre ese SP.'
+        } else {
+          'El SP no existe o no es visible; faltan permisos CREATE PROCEDURE y ALTER SCHEMA para instalarlo.'
+        }
+        Save-CircuitInstallStatus -State 'pending_permission' -Database $Database -Hash $hash -Message $msg
+        return
+    }
+    try {
+        $text=[IO.File]::ReadAllText($CircuitSqlPath,[Text.Encoding]::UTF8)
+        if($text -notmatch 'ALTER PROCEDURE dbo\.PA_CapitanRodolfo_CircuitoEstacion' -or
+           $text -match 'TRY_CONVERT\s*\('){
+            throw 'El archivo de despliegue no supera la validación de compatibilidad SQL.'
+        }
+        $batches=[regex]::Split($text,'(?im)^\s*GO\s*(?:\r?\n|$)')
+        foreach($batch in $batches){
+            if([string]::IsNullOrWhiteSpace($batch)){continue}
+            $cmd=$Connection.CreateCommand()
+            $cmd.CommandTimeout=45
+            try {$cmd.CommandText=$batch; $null=$cmd.ExecuteNonQuery()}
+            finally {$cmd.Dispose()}
+        }
+        $now=Get-CircuitDatabasePermission -Connection $Connection
+        if($now.exists -ne 1){throw 'El SP no quedó visible después del despliegue.'}
+        if($now.execute -eq 1){
+            Save-CircuitInstallStatus -State 'installed' -Database $Database -Hash $hash -Message 'SP instalado/actualizado y listo para ejecutar.'
+        }else{
+            Save-CircuitInstallStatus -State 'pending_permission' -Database $Database -Hash $hash -Message 'SP actualizado, pero falta GRANT EXECUTE al usuario de la conexión.'
+        }
+    } catch {
+        $message=$_.Exception.Message
+        # Los errores del script deben quedar visibles sin afectar las lecturas.
+        Save-CircuitInstallStatus -State 'deployment_error' -Database $Database -Hash $hash -Message $message
+    }
+}
+
 function Open-SqlSession {
     param([string]$Server,[string]$Auth,[string]$User,[string]$Password)
     $cn = New-SqlConnection -Server $Server -Auth $Auth -User $User -Password $Password
@@ -940,6 +1045,7 @@ try {
         $savedDb = [string]$profile.database
         if(-not [string]::IsNullOrWhiteSpace($savedDb) -and $restored.databases -contains $savedDb){
             $Sessions[$restored.sessionId]["database"] = $savedDb
+            Invoke-CircuitAutoInstall -Connection $Sessions[$restored.sessionId].connection -Database $savedDb
         }
         Write-Host "Conexion SQL restaurada: $([string]$profile.server) / $savedDb"
     }
@@ -1095,6 +1201,9 @@ try {
         } catch {
           Send-Json $stream 500 @{error=('No pude consultar el catálogo real de SP: '+$_.Exception.Message)}
         }
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/circuit/install-state'){
+        Send-Json $stream 200 $script:CircuitInstallStatus
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/station/ids'){
         try {
@@ -2043,6 +2152,7 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
             }
           }
           Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database $selectedDb
+          if($selectedDb -eq 'SiSRL'){Invoke-CircuitAutoInstall -Connection $Sessions[$state.sessionId].connection -Database $selectedDb}
           $script:LastRestoreError = ""
           Write-ServiceStatus -State "running-connected" -Database $selectedDb -Server $server -User $user
           Send-Json $stream 200 @{sessionId=$state.sessionId;server=$state.server;auth=$state.auth;user=$state.user;databases=$state.databases;database=$selectedDb}
@@ -2074,6 +2184,7 @@ ORDER BY s.name,t.name;
           $reader.Close()
           $sess["database"] = $database
           Save-SqlProfile -Server ([string]$sess.server) -Auth ([string]$sess.auth) -User ([string]$sess.user) -Password "" -Database $database
+          if($database -eq 'SiSRL'){Invoke-CircuitAutoInstall -Connection $cn -Database $database}
           Write-ServiceStatus -State "running-connected" -Database $database -Server ([string]$sess.server) -User ([string]$sess.user)
           Send-Json $stream 200 @{database=$database;tables=$rows}
         } catch {
