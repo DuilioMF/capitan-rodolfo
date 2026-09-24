@@ -92,6 +92,16 @@ jobs:
           for(const marker of ['id="truckStep"','id="truckModal"','id="truckReader"','documentos.html?truck=1','/api/station/circuit','/api/station/ids','id="pumpModal"']){
             if(!index.includes(marker))throw Error('Falta integración con Estación: '+marker);
           }
+          const explorer=fs.readFileSync('conexion-sql.html','utf8');
+          const bridge=fs.readFileSync('bridge/capitan_rodolfo_local.ps1','utf8');
+          if(explorer.includes('Procedimientos habilitados'))throw Error('La interfaz antigua sigue visible');
+          for(const marker of ['id="sqlObjectName"','id="sqlObjectType"','id="inspectSql"','id="executeSp"','/api/sql/object','confirm:']){
+            if(!explorer.includes(marker))throw Error('Falta explorador SQL: '+marker);
+          }
+          for(const marker of ["function Resolve-UserSqlObject","function Read-SqlObjectForUser","'/api/sql/object'","SELECT TOP (200)","Invoke-AllowedStoredProcedure"]){
+            if(!bridge.includes(marker))throw Error('Falta el endpoint SQL: '+marker);
+          }
+          console.log('Explorador SQL por nombre: controles y ruta backend OK');
           console.log('Camión y circuito enlazados: OK');
           '@ | Set-Content -Encoding UTF8 ($testFile=Join-Path $env:RUNNER_TEMP 'validate-pages.cjs')
           node "$testFile"
