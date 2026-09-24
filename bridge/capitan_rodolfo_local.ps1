@@ -432,6 +432,95 @@ ORDER BY prm.parameter_id;
     return $result
 }
 
+function Lookup-NamedSqlObject {
+    param($Connection,[string]$Database,[string]$FullName,[string]$Type,[string]$Action,$Parameters)
+    if([string]::IsNullOrWhiteSpace($FullName)){throw 'Escribí un nombre de tabla, vista o SP.'}
+    $parts=$FullName.Trim().Split('.')
+    if($parts.Count -eq 1){$schema='dbo';$name=$parts[0]}
+    elseif($parts.Count -eq 2){$schema=$parts[0];$name=$parts[1]}
+    else{throw 'Usá objeto o esquema.objeto, por ejemplo dbo.Tanque.'}
+    if($schema -notmatch '^[A-Za-z_][A-Za-z0-9_]*$' -or $name -notmatch '^[A-Za-z_][A-Za-z0-9_]*$'){
+        throw 'Escribí solo el nombre del objeto, sin SQL libre.'
+    }
+    if($Type -notin @('auto','tabla','vista','sp')){throw 'Tipo inválido.'}
+    $Connection.ChangeDatabase($Database)
+    $meta=$Connection.CreateCommand()
+    $meta.CommandText=@"
+SELECT TOP 1 s.name,o.name,o.type
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id=s.schema_id
+WHERE s.name=@schema AND o.name=@name AND o.type IN ('U','V','P')
+AND (@type='auto' OR (@type='tabla' AND o.type='U') OR
+(@type='vista' AND o.type='V') OR (@type='sp' AND o.type='P'));
+"@
+    $null=$meta.Parameters.Add('@schema',[System.Data.SqlDbType]::NVarChar,128)
+    $meta.Parameters['@schema'].Value=$schema
+    $null=$meta.Parameters.Add('@name',[System.Data.SqlDbType]::NVarChar,128)
+    $meta.Parameters['@name'].Value=$name
+    $null=$meta.Parameters.Add('@type',[System.Data.SqlDbType]::VarChar,12)
+    $meta.Parameters['@type'].Value=$Type
+    $reader=$meta.ExecuteReader()
+    try{
+        if(-not $reader.Read()){throw "No se encontró $FullName en $Database."}
+        $schema=[string]$reader.GetString(0)
+        $name=[string]$reader.GetString(1)
+        $kind=[string]$reader.GetString(2)
+    }finally{$reader.Close()}
+    $object=$schema+'.'+$name
+    if($kind -eq 'P'){
+        $allowed=$false
+        foreach($entry in @(Get-SpAllowlist)){
+            if([string]::Equals($object,$entry,[StringComparison]::OrdinalIgnoreCase)){$allowed=$true;break}
+        }
+        $pcmd=$Connection.CreateCommand()
+        $pcmd.CommandText=@"
+SELECT prm.name,TYPE_NAME(prm.user_type_id),prm.is_output,prm.has_default_value
+FROM sys.parameters prm WHERE prm.object_id=OBJECT_ID(@object,'P')
+ORDER BY prm.parameter_id;
+"@
+        $null=$pcmd.Parameters.Add('@object',[System.Data.SqlDbType]::NVarChar,257)
+        $pcmd.Parameters['@object'].Value=$object
+        $pr=$pcmd.ExecuteReader();$paramRows=@()
+        try{
+            while($pr.Read()){
+                $paramRows+=@{
+                    name=[string]$pr.GetString(0)
+                    type=if($pr.IsDBNull(1)){'unknown'}else{[string]$pr.GetString(1)}
+                    output=if($pr.IsDBNull(2)){$false}else{[bool]$pr.GetBoolean(2)}
+                    hasDefault=if($pr.IsDBNull(3)){$false}else{[bool]$pr.GetBoolean(3)}
+                }
+            }
+        }finally{$pr.Close()}
+        if($Action -eq 'execute'){
+            if(-not $allowed){throw 'Este SP existe, pero no está autorizado para ejecutarse desde el conector local.'}
+            $value=Invoke-AllowedStoredProcedure -Connection $Connection -Database $Database -Procedure $object -Parameters $Parameters
+            return @{name=$object;type='sp';allowed=$true;parameters=$paramRows;resultSets=$value.resultSets}
+        }
+        return @{name=$object;type='sp';allowed=$allowed;parameters=$paramRows;resultSets=@()}
+    }
+    if($Action -eq 'execute'){throw 'La ejecución sólo está disponible para SP autorizados.'}
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandTimeout=25
+    $cmd.CommandText='SELECT TOP (200) * FROM ['+$schema+'].['+$name+'];'
+    $reader=$cmd.ExecuteReader()
+    $cols=@();$rows=New-Object System.Collections.Generic.List[object]
+    try{
+        for($i=0;$i -lt $reader.FieldCount;$i++){$cols += [string]$reader.GetName($i)}
+        while($reader.Read()){
+            $row=[ordered]@{}
+            for($i=0;$i -lt $reader.FieldCount;$i++){
+                $v=$reader.GetValue($i)
+                if($v -is [DBNull]){$v=$null}
+                elseif($v -is [DateTime]){$v=$v.ToString('yyyy-MM-dd HH:mm:ss')}
+                elseif($v -is [byte[]]){$v='[binario]'}
+                $row[$cols[$i]]=$v
+            }
+            $rows.Add([pscustomobject]$row)
+        }
+    }finally{$reader.Close()}
+    $kindLabel=if($kind -eq 'U'){'tabla'}else{'vista'}
+    return @{name=$object;type=$kindLabel;resultSets=@(@{columns=$cols;rows=@($rows.ToArray());rowCount=$rows.Count})}
+}
+
 function Get-DatabaseProcedureCatalog {
     param($Connection,[string]$Database)
     $Connection.ChangeDatabase($Database)
@@ -864,6 +953,30 @@ try {
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/ai/sql-read'){
         try {$data=$req.Body|ConvertFrom-Json;Send-Json $stream 200 (Invoke-ReadOnlySql -SessionId ([string]$data.sessionId) -Database ([string]$data.database) -Sql ([string]$data.sql))} catch {Send-Json $stream 400 @{error=$_.Exception.Message}}
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/sql/object'){
+        try{
+            $data=$req.Body|ConvertFrom-Json
+            $sid=[string]$data.sessionId
+            $db=[string]$data.database
+            if(-not $Sessions.ContainsKey($sid)){
+                Send-Json $stream 401 @{error='Sesión SQL vencida. Volvé a conectar.'}
+                continue
+            }
+            $sess=$Sessions[$sid]
+            if($sess.databases -notcontains $db){
+                Send-Json $stream 403 @{error='Base SQL no autorizada.'}
+                continue
+            }
+            $action=[string]$data.action
+            if($action -notin @('read','inspect','execute')){throw 'Acción SQL inválida.'}
+            if($action -eq 'execute' -and [string]$data.confirm -cne 'EJECUTAR SP'){
+                Send-Json $stream 400 @{error='Es necesario confirmar explícitamente la ejecución.'}
+                continue
+            }
+            $result=Lookup-NamedSqlObject -Connection $sess.connection -Database $db -FullName ([string]$data.name) -Type ([string]$data.type) -Action $action -Parameters $data.parameters
+            Send-Json $stream 200 $result
+        }catch{Send-Json $stream 400 @{error=$_.Exception.Message}}
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/sp/catalog'){
         try {
