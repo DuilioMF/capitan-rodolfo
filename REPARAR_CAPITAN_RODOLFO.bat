@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions
-title Reparar Capitan Rodolfo v71
+title Reparar Capitan Rodolfo v72
 
 for %%I in ("%~dp0.") do set "APPROOT=%%~fI"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main"
@@ -32,16 +32,16 @@ if errorlevel 1 goto :error
 echo [3/4] Verificando version...
 set "V="
 for /f "usebackq delims=" %%V in ("%APPROOT%\VERSION") do if not defined V set "V=%%V"
-if not "%V%"=="71" (
-  echo ERROR: esperaba VERSION 71 y llego "%V%".
+if not "%V%"=="72" (
+  echo ERROR: esperaba VERSION 72 y llego "%V%".
   goto :error
 )
 
-echo [4/4] Iniciando Capitan Rodolfo v71...
+echo [4/4] Iniciando Capitan Rodolfo v72...
 start "" "%APPROOT%\INICIAR_CAPITAN_RODOLFO.bat"
 
 echo.
-echo OK. Capitan Rodolfo v71 fue reparado e iniciado.
+echo OK. Capitan Rodolfo v72 fue reparado e iniciado.
 echo Esta ventana se cerrara sola.
 timeout /t 2 >nul
 exit /b 0
