@@ -299,14 +299,17 @@ h1 em{font-weight:500;color:#d9ae65}
  const spResultSection=document.getElementById('spResults');
  const spResultTables=document.getElementById('spResultsTables');
  function renderSpResult(data){
-   const sets=[
+   const sets=data.source==='lectura_tablas' ? [
+     ['TANQUES · lectura directa',data.tanks],
+     ['SURTIDORES / CARAS · lectura directa',data.hoses]
+   ] : [
      ['1 · TANQUES',data.tanks],
      ['2 · SURTIDORES Y MANGUERAS',data.hoses],
      ['3 · DESPACHOS',data.dispatches],
      ['4 · RELACIONES CON COMPROBANTES',data.receipts],
      ['5 · EMPRESA / ESTACIÓN (ParamStock)',data.company]
    ];
-   document.getElementById('spResultStatus').textContent='Base '+(data.database||activeDatabase)+' · Estación '+data.station+' · EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion @IdEstacion='+data.station+' · Respuesta real del conector local';
+   document.getElementById('spResultStatus').textContent=data.source==='lectura_tablas' ? ('Base '+(data.database||activeDatabase)+' · Estación '+data.station+' · Lectura directa autorizada de Tanque / Surpla. SP pendiente de permiso EXECUTE.') : ('Base '+(data.database||activeDatabase)+' · Estación '+data.station+' · EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion @IdEstacion='+data.station+' · Resultado del SP');
    spResultTables.replaceChildren();
    for(const [title,set] of sets){
      const details=document.createElement('details');
@@ -366,10 +369,11 @@ h1 em{font-weight:500;color:#d9ae65}
      company?.Localidad||null,
      company?.Telefono?'Tel.: '+company.Telefono:null
    ].filter(Boolean);
-   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):'ParamStock: actualizá el SP para ver la empresa (quinto resultado).';
+   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):(data.source==='lectura_tablas'?'Empresa y circuito completo disponibles cuando SQL permita ejecutar el SP.':'ParamStock: actualizá el SP para ver la empresa (quinto resultado).');
    const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));const islands=new Set(hoses.map(x=>String(x.Isla??'')).filter(x=>x&&x!=='null'));
-   stationError.textContent='';
-   connection.innerHTML='<span class="dot"></span> SQL conectado · '+esc(activeDatabase)+' · Estación '+data.station+' · SP v'+esc(data.version||'?');
+   const isDirect=data.source==='lectura_tablas';
+   stationError.textContent=isDirect?String(data.warning||'Lectura directa disponible. El SP necesita permiso EXECUTE.'):'';
+   connection.innerHTML='<span class="dot"></span> SQL conectado · '+esc(activeDatabase)+' · Estación '+data.station+' · '+(isDirect?'Tanques desde tabla (SP pendiente de permiso)':'Circuito SP v'+esc(data.version||'?'));
    set('liveTanks',nf.format(tanksRows.length)+' tanques');
    set('liveHoses',nf.format(hoses.length)+' mangueras asociadas');
    set('livePumps',nf.format(islands.size||Math.ceil(faces.size/2))+' surtidores · '+nf.format(faces.size)+' caras');
