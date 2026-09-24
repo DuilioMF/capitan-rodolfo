@@ -210,6 +210,15 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="kpi"><small>Despachos</small><strong id="liveDispatches">—</strong></div>
   <div class="kpi"><small>Base SQL</small><strong class="ok" id="liveDbKpi">Sin conexión</strong></div>
 </section>
+<section id="spResults" hidden style="margin-top:18px;border:1px solid #97623d;border-radius:16px;padding:16px;background:#141a1c">
+  <details id="spResultsDetails" open>
+    <summary style="cursor:pointer;color:#ffb67e;font-weight:800;font-size:18px">Datos reales de la estación · Resultado completo del SP</summary>
+    <p id="spResultStatus" style="color:#c7d5db;overflow-wrap:anywhere"></p>
+    <div id="spResultsTables"></div>
+    <button type="button" id="spCopy" style="cursor:pointer;background:#ef923e;color:#1b1208;padding:10px 14px;border:0;border-radius:9px;font-weight:bold;margin-top:12px">Copiar respuesta JSON del SP</button>
+    <span id="spCopyStatus" style="margin-left:12px;color:#b9cbd0"></span>
+  </details>
+</section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
 <div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">55</span></div>
@@ -287,7 +296,52 @@ h1 em{font-weight:500;color:#d9ae65}
    if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
    return data;
  }
+ const spResultSection=document.getElementById('spResults');
+ const spResultTables=document.getElementById('spResultsTables');
+ function renderSpResult(data){
+   const sets=[
+     ['1 · TANQUES',data.tanks],
+     ['2 · SURTIDORES Y MANGUERAS',data.hoses],
+     ['3 · DESPACHOS',data.dispatches],
+     ['4 · RELACIONES CON COMPROBANTES',data.receipts],
+     ['5 · EMPRESA / ESTACIÓN (ParamStock)',data.company]
+   ];
+   document.getElementById('spResultStatus').textContent='Base '+(data.database||activeDatabase)+' · Estación '+data.station+' · EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion @IdEstacion='+data.station+' · Respuesta real del conector local';
+   spResultTables.replaceChildren();
+   for(const [title,set] of sets){
+     const details=document.createElement('details');
+     details.style.cssText='margin-top:12px;padding:10px;border:1px solid #405868;border-radius:10px;background:#0d1720';
+     const rows=Array.isArray(set?.rows)?set.rows:[];
+     const cols=Array.isArray(set?.columns)?set.columns:[];
+     const summary=document.createElement('summary');
+     summary.style.cssText='cursor:pointer;color:#f4bb8b;font-weight:750';
+     summary.textContent=title+' · '+(set?rows.length+' registros':'resultado no disponible');
+     details.appendChild(summary);
+     const wrap=document.createElement('div');
+     wrap.className='tank-table-wrap';
+     wrap.style.marginTop='10px';
+     if(!set){wrap.textContent='Este resultado no llegó desde el procedimiento instalado. Revisá la versión del SP en SiSRL.'}
+     else if(!rows.length){wrap.textContent='La consulta no devolvió registros para esta estación.'}
+     else{
+       const columns=cols.length?cols:Object.keys(rows[0]);
+       const head='<thead><tr>'+columns.map(col=>'<th>'+esc(col)+'</th>').join('')+'</tr></thead>';
+       const body='<tbody>'+rows.map(row=>'<tr>'+columns.map(col=>'<td>'+esc(row[col]??'')+'</td>').join('')+'</tr>').join('')+'</tbody>';
+       wrap.innerHTML='<table class="tank-table">'+head+body+'</table>';
+     }
+     details.appendChild(wrap);
+     spResultTables.appendChild(details);
+   }
+   spResultSection.hidden=false;
+   document.getElementById('spResultsDetails').open=true;
+ }
+ document.getElementById('spCopy').addEventListener('click',async()=>{
+   const label=document.getElementById('spCopyStatus');
+   if(!circuit){label.textContent='Todavía no hay respuesta real del SP.';return}
+   try{await navigator.clipboard.writeText(JSON.stringify(circuit,null,2));label.textContent='Respuesta copiada.'}
+   catch(e){label.textContent='No se pudo copiar: '+e.message}
+ });
  function clearCircuit(){
+   spResultSection.hidden=true;spResultTables.replaceChildren();
    circuit=null;stationConnected=false;
    document.getElementById('companyCard').hidden=true;
    set('liveTanks','—');set('liveHoses','Sin datos de tanques');
@@ -298,6 +352,7 @@ h1 em{font-weight:500;color:#d9ae65}
  function paint(data){
    if(!data.tanks||!data.hoses||!data.dispatches||!data.receipts)throw new Error('El SP no devolvió cuatro resultados completos.');
    circuit=data;stationConnected=true;activeDatabase=data.database||activeDatabase;
+   renderSpResult(data);
    const tanksRows=Array.isArray(data.tanks.rows)?data.tanks.rows:[];
    const hoses=Array.isArray(data.hoses.rows)?data.hoses.rows:[];
    const dispatches=Array.isArray(data.dispatches.rows)?data.dispatches.rows:[];
