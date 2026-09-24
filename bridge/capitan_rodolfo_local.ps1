@@ -1206,6 +1206,44 @@ try {
           Send-Json $stream 500 @{error=('No pude consultar el catálogo real de SP: '+$_.Exception.Message)}
         }
       }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/circuit/install'){
+        # A request alone never grants SQL rights and never runs untrusted SQL.
+        # The installer only reads the fixed, repo-shipped circuit file.
+        try {
+          $data=$req.Body | ConvertFrom-Json
+          $sid=[string]$data.sessionId
+          if(-not $Sessions.ContainsKey($sid)){
+            Send-Json $stream 401 @{error='La sesión SQL venció. Volvé a conectar desde Núcleo → Datos.'}
+            continue
+          }
+          $session=$Sessions[$sid]
+          $db=[string]$session.database
+          if([string]$data.database -ine 'SiSRL' -or $db -ine 'SiSRL' -or
+             $session.databases -notcontains $db){
+            Send-Json $stream 403 @{error='Solo se puede instalar el circuito en la base SiSRL seleccionada y autorizada.'}
+            continue
+          }
+          if([string]$data.confirm -cne 'INSTALAR SP'){
+            Send-Json $stream 400 @{error='Se necesita confirmación explícita para instalar o actualizar un procedimiento.'}
+            continue
+          }
+          try{
+            Invoke-CircuitAutoInstall -Connection $session.connection -Database $db
+          }catch{
+            Save-CircuitInstallStatus -State 'deployment_error' -Database $db -Message $_.Exception.Message
+          }
+          $current=$script:CircuitInstallStatus
+          Send-Json $stream 200 @{
+            state=[string]$current.state
+            message=[string]$current.message
+            database=[string]$current.database
+            version=$Version
+            success=([string]$current.state -eq 'installed')
+          }
+        }catch{
+          Send-Json $stream 500 @{error=('No se pudo iniciar la instalación del SP: '+$_.Exception.Message)}
+        }
+      }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/circuit/install-state'){
         Send-Json $stream 200 $script:CircuitInstallStatus
       }
