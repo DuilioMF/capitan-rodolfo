@@ -104,7 +104,8 @@ BEGIN
         @RSucursal SYSNAME, @RNumero SYSNAME, @RTurno SYSNAME,
         @RelVentaExpr NVARCHAR(300), @RelLetraExpr NVARCHAR(300),
         @RelSucExpr NVARCHAR(300), @RelNumExpr NVARCHAR(300),
-        @RelTurnoExpr NVARCHAR(300),
+        @RelTurnoExpr NVARCHAR(300), @ComprobanteJoin NVARCHAR(MAX),
+        @MfEst SYSNAME,
         @ParamHasRow BIT = 0, @Ambiguo BIT = 0;
 
     -- Acepta ID_ESTACION e ID_ESTAICION (error de tipeo mencionado);
@@ -242,8 +243,7 @@ BEGIN
 
     -- Relación explícita indicada por la instalación: DI_DESPACHO -> ID_SALE.
     -- Solo se acepta si ambas columnas están presentes.
-    IF @RKey IS NULL
-       AND COL_LENGTH('dbo.RelacionCptsDespachos','DI_DESPACHO') IS NOT NULL
+    IF COL_LENGTH('dbo.RelacionCptsDespachos','DI_DESPACHO') IS NOT NULL
        AND COL_LENGTH('dbo.Despachos','ID_SALE') IS NOT NULL
     BEGIN
       SET @RKey='DI_DESPACHO';
@@ -268,7 +268,7 @@ BEGIN
       WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
         AND REPLACE(LOWER(c.name),'_','')='turno';
 
-    SET @RelVentaExpr=CASE WHEN @RKey IS NOT NULL AND @DKey='ID_SALE'
+    SET @RelVentaExpr=CASE WHEN @RKey IS NOT NULL AND REPLACE(LOWER(@DKey),'_','')='idsale'
       THEN N'r.'+QUOTENAME(@RKey) ELSE N'CAST(NULL AS INT)' END;
     SET @RelLetraExpr=CASE WHEN @RLetra IS NOT NULL
       THEN N'r.'+QUOTENAME(@RLetra) ELSE N'CAST(NULL AS NVARCHAR(10))' END;
@@ -276,8 +276,37 @@ BEGIN
       THEN N'r.'+QUOTENAME(@RSucursal) ELSE N'CAST(NULL AS NVARCHAR(20))' END;
     SET @RelNumExpr=CASE WHEN @RNumero IS NOT NULL
       THEN N'r.'+QUOTENAME(@RNumero) ELSE N'CAST(NULL AS NVARCHAR(30))' END;
+    SET @ComprobanteJoin=N'';
     SET @RelTurnoExpr=CASE WHEN @RTurno IS NOT NULL
       THEN N'r.'+QUOTENAME(@RTurno) ELSE N'CAST(NULL AS NVARCHAR(30))' END;
+    -- Si turno no está en la relación, buscarlo en MAEFAC solo cuando
+    -- letra + sucursal + número y el ID de estación estén verificados.
+    IF @RTurno IS NULL
+       AND @RLetra IS NOT NULL AND @RSucursal IS NOT NULL AND @RNumero IS NOT NULL
+       AND OBJECT_ID(N'dbo.MaeFac',N'U') IS NOT NULL
+       AND COL_LENGTH('dbo.MaeFac','LETRA') IS NOT NULL
+       AND COL_LENGTH('dbo.MaeFac','SUCURSAL') IS NOT NULL
+       AND COL_LENGTH('dbo.MaeFac','NCOMPRO') IS NOT NULL
+       AND COL_LENGTH('dbo.MaeFac','TURNO') IS NOT NULL
+    BEGIN
+      SELECT TOP(1) @MfEst=c.name
+        FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.MaeFac')
+          AND REPLACE(LOWER(c.name),'_','') IN ('idestacion','idestaicion')
+        ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
+      IF @MfEst IS NOT NULL
+      BEGIN
+        SET @ComprobanteJoin=N' OUTER APPLY (
+          SELECT CASE WHEN COUNT(DISTINCT CONVERT(NVARCHAR(30),mf.TURNO))=1
+             THEN MAX(CONVERT(NVARCHAR(30),mf.TURNO)) ELSE NULL END AS Turno
+          FROM dbo.MaeFac mf
+          WHERE mf.LETRA=r.'+QUOTENAME(@RLetra)+N'
+            AND mf.SUCURSAL=r.'+QUOTENAME(@RSucursal)+N'
+            AND mf.NCOMPRO=r.'+QUOTENAME(@RNumero)+N'
+            AND mf.'+QUOTENAME(@MfEst)+N'=@IdEstacion
+        ) mfTurno';
+        SET @RelTurnoExpr=N'mfTurno.Turno';
+      END;
+    END;
 
     IF @REst IS NULL AND @RKey IS NULL
     BEGIN
@@ -338,10 +367,14 @@ BEGIN
       THEN N'CONVERT(NVARCHAR(100),s.CONTROLADOR)' ELSE N'CAST(NULL AS NVARCHAR(100))' END;
     IF @TipoConexionKey IS NOT NULL
     BEGIN
-      SET @ControladorJoin=N' LEFT JOIN dbo.MP_TipoConexion mp ON
-          CONVERT(NVARCHAR(100),mp.'+QUOTENAME(@TipoConexionKey)+N')
-          =CONVERT(NVARCHAR(100),s.CONTROLADOR)';
-      SET @ControladorExpr=N'COALESCE(CONVERT(NVARCHAR(100),mp.[Name]),CONVERT(NVARCHAR(100),s.CONTROLADOR))';
+      SET @ControladorJoin=N' OUTER APPLY (
+        SELECT CASE WHEN COUNT(*)=1 THEN MAX(CONVERT(NVARCHAR(100),mpx.[Name]))
+                    ELSE NULL END AS [Name]
+        FROM dbo.MP_TipoConexion mpx
+        WHERE CONVERT(NVARCHAR(100),mpx.'+QUOTENAME(@TipoConexionKey)+N')
+              =CONVERT(NVARCHAR(100),s.CONTROLADOR)
+      ) mp';
+      SET @ControladorExpr=N'COALESCE(mp.[Name],CONVERT(NVARCHAR(100),s.CONTROLADOR))';
     END;
 
     -- Resultado 1: TANQUES
@@ -448,6 +481,7 @@ BEGIN
           '+@RelNumExpr+N' AS Numero,
           '+@RelTurnoExpr+N' AS Turno
       FROM dbo.RelacionCptsDespachos r
+      '+@ComprobanteJoin+N'
       WHERE '+@WhereRel+N';';
     EXEC sys.sp_executesql @Sql,
          N'@IdEstacion INT,@EstadoVta BIT,@MaxRelaciones INT',
