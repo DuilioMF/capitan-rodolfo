@@ -137,6 +137,7 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 #truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
+<link rel="stylesheet" href="cobros.css?v=83">
 <link rel="stylesheet" href="theme.css?v=62">
 <script src="theme.js?v=62" defer></script>
 </head>
@@ -254,6 +255,49 @@ h1 em{font-weight:500;color:#d9ae65}
     <button type="button" id="receiptBack" class="linked-back">← Volver a Carga</button>
   </div>
 </div>
+<div class="tank-modal" id="paymentsModal" role="dialog" aria-modal="true" aria-labelledby="paymentsTitle" aria-hidden="true">
+  <div class="tank-dialog payments-dialog">
+    <div class="tank-head payments-head">
+      <div><div class="eyebrow">CAPITÁN RODOLFO · MOVIMIENTOS REALES</div><h2 id="paymentsTitle">Cobros</h2></div>
+      <button class="tank-close" id="paymentsClose" type="button" aria-label="Cerrar Cobros">×</button>
+    </div>
+    <div class="payments-range">
+      <label>Desde <input type="date" id="paymentsFrom" autocomplete="off"></label>
+      <label>Hasta <input type="date" id="paymentsTo" autocomplete="off"></label>
+      <label>Turno desde <input type="number" id="paymentsShiftFrom" value="0" min="0" max="99999"></label>
+      <label>Turno hasta <input type="number" id="paymentsShiftTo" value="99999" min="0" max="99999"></label>
+      <button type="button" id="paymentsSearch">Consultar cobros</button>
+    </div>
+    <p id="paymentsNotice" class="payments-notice" role="status" aria-live="polite">Elegí un período y consultá los cobros reales.</p>
+    <div class="payments-layout">
+      <aside class="payments-left">
+        <div class="payments-left-head">
+          <span class="payments-logo" aria-hidden="true">▱</span>
+          <div><strong>Cobros</strong><small>POR FORMA DE PAGO</small></div>
+        </div>
+        <div id="paymentsMethods" class="payments-methods" aria-label="Seleccionar forma de pago"></div>
+        <p class="payments-footnote">Montos según PA_VentasFormasPago; nunca estimados desde despachos.</p>
+      </aside>
+      <section class="payments-main" aria-label="Detalle de cobros">
+        <div class="payments-main-head">
+          <div><div class="eyebrow">DETALLE DE MOVIMIENTOS</div><h3 id="paymentsMethodTitle">Todas las formas</h3></div>
+          <span id="paymentsSource" class="payments-source">Sin consultar</span>
+        </div>
+        <div class="payments-overview">
+          <div><small>Monto de los registros visibles</small><strong id="paymentsAmount">—</strong></div>
+          <div><small>Movimientos</small><strong id="paymentsCount">—</strong></div>
+          <div><small>Estación</small><strong id="paymentsStation">—</strong></div>
+        </div>
+        <div id="paymentsList" class="payments-list" role="region" aria-live="polite">
+          <p class="payments-empty">Los cobros aparecerán cuando el procedimiento devuelva datos.</p>
+        </div>
+        <button id="paymentsMore" class="payments-more" type="button" hidden>Mostrar 50 más</button>
+        <div id="paymentsEvidence" class="payments-evidence" hidden aria-live="polite"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
 <div class="section-title">LECTURA DEL DÍA</div>
 <section class="kpis">
   <div class="kpi"><small>Litros en despachos</small><strong id="liveLiters">—</strong></div>
@@ -495,9 +539,9 @@ h1 em{font-weight:500;color:#d9ae65}
  for(const [id,view] of [
     ['dispatchShowAll','all'],['dispatchShowPaid','paid'],['dispatchShowPending','pending']
  ])document.getElementById(id).addEventListener('click',()=>loads(view));
- paymentStep.addEventListener('click',()=>loads('paid'));
+ paymentStep.addEventListener('click',()=>window.capitanOpenCobros?.());
  paymentStep.addEventListener('keydown',e=>{
-    if(e.key==='Enter'||e.key===' '){e.preventDefault();loads('paid')}
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();window.capitanOpenCobros?.()}
  });
  tankStep.addEventListener('click',()=>tanks());
  pumpStep.addEventListener('click',()=>pumps());
@@ -590,6 +634,7 @@ h1 em{font-weight:500;color:#d9ae65}
    set('loadCaption',dispatches.length+' despachos · abrí Carga para verlos');
    const paidCount=dispatches.filter(r=>Number(r.EstadoVta)===1).length;
    set('paymentStatus',nf.format(paidCount)+' cobrados');
+   document.dispatchEvent(new CustomEvent('capitan:station-loaded',{detail:{station:data.station,bridge:activeBridge}}));
    set('paymentCaption','Tocá para ver cobrados y comprobantes');
    set('liveDbKpi',company?.NombreEstacion||('Estación '+data.station));
  }
@@ -638,12 +683,14 @@ h1 em{font-weight:500;color:#d9ae65}
    }
    if(!found){
      activeBridge=desktop?bridges[0]:null;
+     window.capitanSqlBridge=null;
      await refreshInstallState(null);
      clearCircuit();
      warn(lastError||'No hay conexión SQL. Abrí Núcleo → Datos.');
      return;
    }
    activeBridge=found.base;
+   window.capitanSqlBridge=activeBridge;
    await refreshInstallState(activeBridge);
    const data=found.data;
    if(activeDatabase!==data.database){
@@ -718,6 +765,7 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 </script>
 
+<script src="cobros.js?v=83"></script>
 
 </body>
 </html>
