@@ -30,6 +30,49 @@ jobs:
             throw "Conector no compila"
           }
           Write-Host "Conector PowerShell: sintaxis OK"
+      - name: Arrancar conector real y verificar ruta Explorador SQL sin base privada
+        shell: powershell
+        run: |
+          $testRoot=Join-Path $env:RUNNER_TEMP 'CapitanSqlTest'
+          New-Item -ItemType Directory -Force -Path $testRoot,(Join-Path $testRoot 'bridge')|Out-Null
+          Copy-Item VERSION,sp_allowlist.json $testRoot
+          Copy-Item 'bridge/capitan_rodolfo_local.ps1' (Join-Path $testRoot 'bridge/capitan_rodolfo_local.ps1')
+          $bridge=Join-Path $testRoot 'bridge/capitan_rodolfo_local.ps1'
+          $stdout=Join-Path $testRoot 'stdout.log'
+          $stderr=Join-Path $testRoot 'stderr.log'
+          $proc=Start-Process powershell.exe -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',$bridge,'-AppDir',$testRoot,'-BackgroundChild')
+          try {
+            $port=0
+            for($attempt=0;$attempt -lt 35;$attempt++){
+              Start-Sleep -Milliseconds 450
+              foreach($candidate in @(8787,8797,18787,27877,37877,48787,57877)){
+                try {
+                  $h=Invoke-RestMethod "http://127.0.0.1:$candidate/health" -TimeoutSec 1
+                  if($h.ok -and $h.service -eq 'Capitan Rodolfo Local'){$port=$candidate;break}
+                } catch {}
+              }
+              if($port){break}
+            }
+            if(-not $port){
+              if(Test-Path $stderr){Get-Content $stderr -Tail 25}
+              throw 'El conector real no respondió /health'
+            }
+            if([string]$h.version -ne '75' -or $h.apiSqlObject -ne $true){throw "Health incompatible: versión=$($h.version), Explorador=$($h.apiSqlObject)"}
+            $uri="http://127.0.0.1:$port/api/sql/object"
+            $body=@{sessionId='sesion-inexistente';database='SiSRL';name='dbo.Tanque';type='tabla';action='read'}|ConvertTo-Json
+            $code=0
+            try {
+              $null=Invoke-WebRequest -UseBasicParsing -Uri $uri -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 5
+              throw 'El endpoint aceptó una sesión inexistente'
+            } catch [System.Net.WebException] {
+              if($_.Exception.Response){$code=[int]$_.Exception.Response.StatusCode}
+              else{throw}
+            }
+            if($code -ne 401){throw "El endpoint debe contestar 401 sin sesión, devolvió HTTP $code (404 indica ruta ausente)."}
+            Write-Host 'Conector real v75: health y ruta POST /api/sql/object OK. Sin SQL privado.'
+          } finally {
+            if($proc){Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue}
+          }
       - name: Comprobar versiones y autorizaciones
         shell: powershell
         run: |
