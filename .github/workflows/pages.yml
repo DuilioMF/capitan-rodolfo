@@ -30,8 +30,8 @@ jobs:
       - name: Prepare canonical GitHub source
         run: |
           mkdir -p dist
-          cp *.html *.svg *.bat VERSION theme.css theme.js dist/
-          cp -R assets bridge connector-node dist/
+          cp *.html *.svg *.bat VERSION theme.css theme.js cobros.css cobros.js dist/
+          cp -R assets bridge connector-node sql dist/
           touch dist/.nojekyll
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
