@@ -78,6 +78,19 @@ jobs:
               else{throw}
             }
             if($code -ne 401){throw "El endpoint debe contestar 401 sin sesión, devolvió HTTP $code (404 indica ruta ausente)."}
+            # Los instaladores deben rechazar peticiones sin sesión real.
+            foreach($endpoint in @('/api/circuit/install','/api/circuit/admin-install')){
+              $code=0
+              try{
+                $payload=@{sessionId='inexistente';database='SiSRL';confirm='INSTALAR SP'}|ConvertTo-Json
+                Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:"+$port+$endpoint) -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 5|Out-Null
+                throw "Ruta sin sesión fue aceptada: $endpoint"
+              } catch [System.Net.WebException]{
+                if($_.Exception.Response){$code=[int]$_.Exception.Response.StatusCode}else{throw}
+              }
+              if($code -ne 401){throw "$endpoint rechazó con HTTP $code en vez de 401"}
+            }
+
 
             $auto=Invoke-RestMethod -Uri ("http://127.0.0.1:"+$port+"/api/circuit/install-state") -TimeoutSec 4
             if($auto.state -ne 'pending'){throw "Sin SQL no debería instalar procedimientos automáticamente"}
@@ -178,6 +191,20 @@ jobs:
             if(!bridge.includes(marker))throw Error('Falta instalación segura automática o lectura de respaldo: '+marker);
           }
           if(!index.includes('id="circuitInstallStatus"'))throw Error('La pantalla no informa si falta permiso de instalacion');
+          const dataUi=fs.readFileSync('conexion-sql.html','utf8');
+          for(const marker of ['id="installCircuit"','id="runCircuit"','id="adminInstallCircuit"',
+             'id="circuitAdminPass"','/api/circuit/install','/api/circuit/admin-install',
+             '/api/station/circuit','INSTALAR Y HABILITAR SP',
+             '/sql/PA_CapitanRodolfo_CircuitoEstacion.sql',
+             '/sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql']){
+             if(!dataUi.includes(marker))throw Error('Falta ejecución SQL desde la página: '+marker);
+          }
+          const adminRoute=bridge.split("'/api/circuit/admin-install'")[1]?.split("'/api/circuit/install-state'")[0]||'';
+          if(!adminRoute.includes('New-SqlConnection')||!adminRoute.includes('GRANT EXECUTE')||adminRoute.includes('Save-SqlProfile')){
+            throw Error('Instalación temporal insegura o incompleta');
+          }
+          console.log('Instalación web con permisos y archivos descargables: OK');
+
 
           console.log('Explorador SQL por nombre: controles y ruta backend OK');
           // La misma función de Revalsoft SaaS debe conservar los tres tipos
