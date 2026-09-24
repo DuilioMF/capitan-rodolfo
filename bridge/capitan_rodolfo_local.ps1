@@ -356,8 +356,20 @@ function Get-SpAllowlist {
     try {
         if(-not (Test-Path $SpAllowlistPath)){ return @() }
         $cfg = Get-Content $SpAllowlistPath -Raw | ConvertFrom-Json
-        if($null -eq $cfg.procedures){ return @() }
-        return @($cfg.procedures | ForEach-Object { [string]$_ })
+        $allowed = @()
+        if($null -ne $cfg.procedures){
+            $allowed = @($cfg.procedures | ForEach-Object { [string]$_ })
+        }
+        # Actualizacion sin tocar el archivo local ni eliminar SP propios.
+        # Solo agrega el nuevo SP pedido cuando el local ya permite el SP base
+        # y la version descargada lo incluye como procedimiento predeterminado.
+        if($allowed -contains 'dbo.PA_VentasFormasPago' -and (Test-Path $DefaultSpAllowlistPath)){
+            $defaults = Get-Content $DefaultSpAllowlistPath -Raw | ConvertFrom-Json
+            if(@($defaults.procedures) -contains 'dbo.PA_CapitanRodolfo_CircuitoEstacion'){
+                $allowed += 'dbo.PA_CapitanRodolfo_CircuitoEstacion'
+            }
+        }
+        return @($allowed | Sort-Object -Unique)
     } catch {
         return @()
     }
