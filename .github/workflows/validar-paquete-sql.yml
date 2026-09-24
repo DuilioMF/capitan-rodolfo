@@ -11,6 +11,9 @@ on:
       - "index.html"
       - "documentos.html"
       - "theme.js"
+      - "cobros.js"
+      - "cobros.css"
+      - ".github/workflows/pages.yml"
       - ".github/workflows/validar-paquete-sql.yml"
   workflow_dispatch:
 
@@ -177,6 +180,41 @@ jobs:
             }
             console.log('Sintaxis JS verificada:',filename);
           }
+          const cobros=fs.readFileSync('cobros.js','utf8');
+          cp.execFileSync('node',['--check','cobros.js'],{stdio:'inherit'});
+          for(const marker of ['/api/station/payments','/api/station/payment-evidence',
+             '/api/station/payment-cards','PA_VentasFormasPago','PA_ListarTarjXTurno',
+             'Mercado Pago','App YPF','Clover','Cuenta Corriente','Tarjetas',
+             'paymentsMethods','paymentsCount']){
+            if(!cobros.includes(marker))throw Error('Tablero Cobros incompleto: '+marker);
+          }
+          const pureA=cobros.indexOf('const norm='),pureB=cobros.indexOf('const today=',pureA);
+          if(pureA<0||pureB<=pureA)throw Error('No se hallaron reglas de montos');
+          const paymentFns=require('vm').runInNewContext(cobros.slice(pureA,pureB)+'\n({parse,pick,norm})');
+          if(paymentFns.parse('12.500,50')!==12500.50||paymentFns.parse(12500.50)!==12500.50){
+            throw Error('Importes con coma decimal o SQL decimal incorrectos');
+          }
+          if(paymentFns.pick({NCOMPRO:105},['n_compro'])!==105||
+             paymentFns.norm('Mercado Pago')!=='mercadopago')throw Error('Clave de factura o medio de pago no normalizada');
+          const bridgeCode=fs.readFileSync('bridge/capitan_rodolfo_local.ps1','utf8');
+          for(const marker of ["'/api/station/payments'","'/api/station/payment-evidence'",
+             "'/api/station/payment-cards'",'Get-VerifiedPaymentEvidence',
+             "dbo.PA_ListarTarjXTurno","dbo.PA_VentasFormasPago",
+             'Find-StationColumn','TryParseExact','-MaxRows 5000']){
+            if(!bridgeCode.includes(marker))throw Error('Conector de Cobros incompleto: '+marker);
+          }
+          const ui=fs.readFileSync('index.html','utf8');
+          for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
+              'id="paymentsMethods"','cobros.css?v=83','cobros.js?v=83',
+              'window.capitanSqlBridge=activeBridge','window.capitanOpenCobros?.()']){
+            if(!ui.includes(marker))throw Error('Pantalla Cobros incompleta: '+marker);
+          }
+          const allowlist=JSON.parse(fs.readFileSync('sp_allowlist.json','utf8'));
+          if(!allowlist.procedures.includes('dbo.PA_ListarTarjXTurno')||
+             !allowlist.procedures.includes('dbo.PA_VentasFormasPago')){
+            throw Error('Lista local no permite ambos SP de cobros');
+          }
+          console.log('Cobros v83: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
           const doc=fs.readFileSync('documentos.html','utf8');
           const index=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="drop"','id="truckWrap"','id="file"','dragover','drop','/functions/v1/extract-document-json','JSON.stringify(extracted,null,2)','Otro (revisar)']){
