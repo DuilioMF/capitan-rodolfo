@@ -64,6 +64,17 @@
       <button id="refreshCircuit" class="ghost" type="button">Comprobar instalación</button>
     </div>
     <div id="circuitStatus" class="status">Consultando instalación del SP…</div>
+    <details id="adminCircuitBox" class="install" style="margin-top:12px">
+      <summary style="cursor:pointer">Si faltan permisos: instalar una sola vez con un administrador SQL</summary>
+      <p class="muted">El usuario habitual solamente lee tablas. Si dispone de una cuenta administradora SQL, podés ingresarla aquí únicamente durante esta instalación. No se guarda ni se reemplaza tu conexión habitual. El sistema autoriza exclusivamente la ejecución de este SP.</p>
+      <div class="grid">
+        <div><label for="circuitAdminUser">Usuario administrador SQL</label><input id="circuitAdminUser" autocomplete="off" placeholder="Cuenta autorizada"></div>
+        <div><label for="circuitAdminPass">Contraseña de esa cuenta</label><input type="password" id="circuitAdminPass" autocomplete="off" placeholder="Solo para esta instalación"></div>
+      </div>
+      <button type="button" id="adminInstallCircuit">Instalar SP y habilitar mi usuario SQL</button>
+      <div class="status" id="adminCircuitStatus">Alternativa: descargar el instalador para administrador y abrirlo en SQL Server Management Studio.</div>
+    </details>
+
     <p class="small">Descargas de SQL Server para conservar o ejecutar desde SSMS:</p>
     <div class="actions">
       <a href="https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/sql/PA_CapitanRodolfo_CircuitoEstacion.sql" target="_blank" rel="noopener noreferrer">Descargar SP del circuito</a>
@@ -300,6 +311,7 @@
      const message=state.message||'Todavía no se ha instalado el circuito.';
      setStatus($('circuitStatus'),message,code==='installed'?'ok':(code==='pending'||code==='missing_file'?'':'bad'));
      logDiag('Instalación SP: '+code+' · '+message);
+     if(code==='pending_permission')$('adminCircuitBox').open=true;
    }catch(e){setStatus($('circuitStatus'),'No pude consultar la instalación: '+e.message,'bad')}
  }
  async function loadCircuitStations(){
@@ -325,6 +337,7 @@
      const result=await post('/api/circuit/install',{sessionId,database:currentDb,confirm:'INSTALAR SP'});
      setStatus($('circuitStatus'),result.message||'Instalación completada.',result.success?'ok':'bad');
      logDiag('Instalación SP: '+result.state+' · '+result.message);
+     if(result.state==='pending_permission')$('adminCircuitBox').open=true;
      if(result.success)await loadCircuitStations();
    }catch(e){
      setStatus($('circuitStatus'),'No pude instalar el SP: '+e.message,'bad');
@@ -332,6 +345,31 @@
    }finally{$('installCircuit').disabled=false}
  });
  $('refreshCircuit').addEventListener('click',refreshCircuitState);
+ $('adminInstallCircuit').addEventListener('click',async()=>{
+   if(!bridge||!sessionId||currentDb.toLowerCase()!=='sisrl')return;
+   const user=$('circuitAdminUser').value.trim();
+   const pass=$('circuitAdminPass').value;
+   if(!user||!pass){setStatus($('adminCircuitStatus'),'Ingresá usuario y contraseña de un administrador SQL.','bad');return}
+   if(!window.confirm('Vas a instalar/actualizar el SP en SiSRL con permisos de administrador y otorgar EXECUTE únicamente a tu usuario SQL habitual. ¿Continuar?'))return;
+   $('adminInstallCircuit').disabled=true;
+   setStatus($('adminCircuitStatus'),'Instalando y autorizando el circuito con credenciales temporales…');
+   try{
+     const d=await post('/api/circuit/admin-install',{
+       sessionId,database:currentDb,confirm:'INSTALAR Y HABILITAR SP',adminUser:user,adminPassword:pass
+     });
+     setStatus($('adminCircuitStatus'),d.message||'Operación finalizada.',d.success?'ok':'bad');
+     setStatus($('circuitStatus'),d.message||'Verificá el resultado.',d.success?'ok':'bad');
+     logDiag('Instalación con administrador temporal: '+d.state);
+     if(d.success)await loadCircuitStations();
+   }catch(e){
+     setStatus($('adminCircuitStatus'),'No se pudo instalar con el administrador: '+e.message,'bad');
+     logDiag('ERROR instalación temporal: '+e.message);
+   }finally{
+     $('circuitAdminPass').value='';
+     $('adminInstallCircuit').disabled=false;
+   }
+ });
+
  $('runCircuit').addEventListener('click',async()=>{
    const id=Number($('circuitStation').value);
    if(!Number.isInteger(id)||id<=0){setStatus($('runCircuitStatus'),'Elegí una estación real primero.','bad');return}
