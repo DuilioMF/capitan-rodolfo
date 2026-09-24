@@ -95,17 +95,17 @@
  }
 
  async function openStationMap(){
-   const bridges=['http://127.0.0.1:8787','http://localhost:8787'];
+   const desktop=['127.0.0.1','localhost'].includes(location.hostname);const bridges=desktop?[location.origin+'/_doinglio_sql']:['http://127.0.0.1:8787','http://localhost:8787'];
    for(const base of bridges){
      try{
        const r=await fetch(base+'/api/state',{cache:'no-store',targetAddressSpace:'local'});
        if(!r.ok) continue;
        const d=await r.json();
        if(d.connected&&d.sessionId&&d.database){
-         location.href=base+'/mapa-vivo?sessionId='+encodeURIComponent(d.sessionId)+'&database='+encodeURIComponent(d.database);
+         if(desktop){const cfg=await(await fetch('/connector.json',{cache:'no-store'})).json();location.href='http://127.0.0.1:'+cfg.port+'/mapa-vivo?sessionId='+encodeURIComponent(d.sessionId)+'&database='+encodeURIComponent(d.database)}else location.href=base+'/mapa-vivo?sessionId='+encodeURIComponent(d.sessionId)+'&database='+encodeURIComponent(d.database);
          return;
        }
-       location.href=base+'/';
+       if(desktop){const cfg=await(await fetch('/connector.json',{cache:'no-store'})).json();location.href='http://127.0.0.1:'+cfg.port+'/'}else location.href=base+'/';
        return;
      }catch(_){}
    }
