@@ -1,7 +1,8 @@
 /*
  CAPITAN RODOLFO - CIRCUITO DE ESTACION
  Archivo de despliegue. Ejecutar en SSMS sobre la base SiSRL.
- Requiere SQL Server 2016 SP1 o superior (CREATE OR ALTER).
+ Compatible con SQL Server 2008+ y bases de compatibilidad anterior a 110.
+ El script usa creacion condicional y ALTER PROCEDURE.
  NO borra ni modifica datos de negocio.
  Se ejecuta con el contexto del propietario para leer las tablas del circuito.
  Requiere que el propietario tenga permisos y que el usuario del sistema
@@ -19,7 +20,12 @@
 USE [SiSRL];
 GO
 
-CREATE OR ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion
+-- Crear firma vacia unicamente si es la primera instalacion.
+IF OBJECT_ID(N'dbo.PA_CapitanRodolfo_CircuitoEstacion',N'P') IS NULL
+    EXEC(N'CREATE PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion AS BEGIN SET NOCOUNT ON; END');
+GO
+
+ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion
     @IdEstacion    INT,
     @EstadoVta     BIT = NULL,   -- NULL=todos; 0=pendientes; 1=cobrados
     @MaxDespachos  INT = 500,
@@ -89,6 +95,8 @@ BEGIN
         @TipoExpr NVARCHAR(600), @NombreExpr NVARCHAR(600),
         @DomicilioExpr NVARCHAR(600), @TelefonoExpr NVARCHAR(600),
         @LocalidadExpr NVARCHAR(600),
+        @SCaraType SYSNAME, @DCaraType SYSNAME,
+        @IslaSurplaExpr NVARCHAR(400), @IslaDespachosExpr NVARCHAR(400),
         @ParamHasRow BIT = 0, @Ambiguo BIT = 0;
 
     -- Acepta ID_ESTACION e ID_ESTAICION (error de tipeo mencionado);
@@ -178,7 +186,7 @@ BEGIN
 
     -- Comprobar que el ID seleccionado realmente existe en ParamStock.
     SET @Sql=N'SELECT @found=CASE WHEN EXISTS (
-      SELECT 1 FROM dbo.ParamStock WHERE TRY_CONVERT(INT,'+QUOTENAME(@ParamEst)+N')=@IdEstacion
+      SELECT 1 FROM dbo.ParamStock WHERE CONVERT(VARCHAR(30),'+QUOTENAME(@ParamEst)+N')=CONVERT(VARCHAR(30),@IdEstacion)
     ) THEN 1 ELSE 0 END;';
     EXEC sys.sp_executesql @Sql,N'@IdEstacion INT,@found BIT OUTPUT',
          @IdEstacion=@IdEstacion,@found=@ParamHasRow OUTPUT;
@@ -235,6 +243,21 @@ BEGIN
         RETURN;
     END;
 
+    -- Solo calcular isla cuando SURTIDOR es numerico entero.
+    -- Si es texto, no se inventa una relacion: el campo Isla sera NULL.
+    SELECT @SCaraType=TYPE_NAME(c.system_type_id)
+      FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.Surpla') AND c.name='SURTIDOR';
+    SELECT @DCaraType=TYPE_NAME(c.system_type_id)
+      FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.Despachos') AND c.name='SURTIDOR';
+    SET @IslaSurplaExpr=CASE WHEN @SCaraType IN ('tinyint','smallint','int','bigint')
+      THEN N'CASE WHEN s.SURTIDOR BETWEEN 1 AND 9999 THEN (CONVERT(INT,s.SURTIDOR)+1)/2 ELSE NULL END'
+      ELSE N'CAST(NULL AS INT)' END;
+    SET @IslaDespachosExpr=CASE WHEN @DCaraType IN ('tinyint','smallint','int','bigint')
+      THEN N'CASE WHEN d.SURTIDOR BETWEEN 1 AND 9999 THEN (CONVERT(INT,d.SURTIDOR)+1)/2 ELSE NULL END'
+      ELSE N'CAST(NULL AS INT)' END;
+
     -- Resultado 1: TANQUES
     SET @JoinProd=N'INNER JOIN dbo.Prod p ON p.CODART=t.CODART';
     IF @PEst IS NOT NULL
@@ -268,8 +291,7 @@ BEGIN
     SET @Sql=N'
       SELECT s.'+QUOTENAME(@SEst)+N' AS IdEstacion,
              s.SURTIDOR AS Cara,
-             CASE WHEN TRY_CONVERT(INT,s.SURTIDOR)>0
-               THEN (TRY_CONVERT(INT,s.SURTIDOR)+1)/2 ELSE NULL END AS Isla,
+             '+@IslaSurplaExpr+N' AS Isla,
              s.MANGUERA AS Manguera, s.CODART AS CodArt,
              p.'+QUOTENAME(@ProdDesc)+N' AS Producto,
              st.N_TANQUE AS NTanque, t.DENOMINACION AS Tanque,
@@ -293,8 +315,7 @@ BEGIN
       SELECT TOP(@MaxDespachos)
              d.'+QUOTENAME(@DEst)+N' AS IdEstacion,
              d.ID_SALE AS IdSale, d.SURTIDOR AS Cara,
-             CASE WHEN TRY_CONVERT(INT,d.SURTIDOR)>0
-               THEN (TRY_CONVERT(INT,d.SURTIDOR)+1)/2 ELSE NULL END AS Isla,
+             '+@IslaDespachosExpr+N' AS Isla,
              '+@DManguera+N' AS Manguera, d.CODART AS CodArt,
              p.'+QUOTENAME(@ProdDesc)+N' AS Producto,
              d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,
@@ -340,30 +361,30 @@ BEGIN
     -- Los campos no detectados vuelven como NULL, nunca como un dato supuesto.
     SET @TipoExpr=CASE WHEN @TipoEstCol IS NULL
       THEN N'CAST(NULL AS NVARCHAR(200))'
-      ELSE N'TRY_CONVERT(NVARCHAR(200),ps.'+QUOTENAME(@TipoEstCol)+N')' END;
+      ELSE N'CONVERT(NVARCHAR(200),ps.'+QUOTENAME(@TipoEstCol)+N')' END;
     SET @NombreExpr=CASE WHEN @NombreEstCol IS NULL
       THEN N'CAST(NULL AS NVARCHAR(250))'
-      ELSE N'TRY_CONVERT(NVARCHAR(250),ps.'+QUOTENAME(@NombreEstCol)+N')' END;
+      ELSE N'CONVERT(NVARCHAR(250),ps.'+QUOTENAME(@NombreEstCol)+N')' END;
     SET @DomicilioExpr=CASE WHEN @DomicilioCol IS NULL
       THEN N'CAST(NULL AS NVARCHAR(250))'
-      ELSE N'TRY_CONVERT(NVARCHAR(250),ps.'+QUOTENAME(@DomicilioCol)+N')' END;
+      ELSE N'CONVERT(NVARCHAR(250),ps.'+QUOTENAME(@DomicilioCol)+N')' END;
     SET @TelefonoExpr=CASE WHEN @TelefonoCol IS NULL
       THEN N'CAST(NULL AS NVARCHAR(100))'
-      ELSE N'TRY_CONVERT(NVARCHAR(100),ps.'+QUOTENAME(@TelefonoCol)+N')' END;
+      ELSE N'CONVERT(NVARCHAR(100),ps.'+QUOTENAME(@TelefonoCol)+N')' END;
     SET @LocalidadExpr=CASE WHEN @LocalidadCol IS NULL
       THEN N'CAST(NULL AS NVARCHAR(200))'
-      ELSE N'TRY_CONVERT(NVARCHAR(200),ps.'+QUOTENAME(@LocalidadCol)+N')' END;
+      ELSE N'CONVERT(NVARCHAR(200),ps.'+QUOTENAME(@LocalidadCol)+N')' END;
 
     SET @Sql=N'
       SELECT TOP (1)
-             TRY_CONVERT(INT,ps.'+QUOTENAME(@ParamEst)+N') AS IdEstacion,
+             @IdEstacion AS IdEstacion,
              '+@TipoExpr+N' AS TipoEstacion,
              '+@NombreExpr+N' AS NombreEstacion,
              '+@DomicilioExpr+N' AS Domicilio,
              '+@TelefonoExpr+N' AS Telefono,
              '+@LocalidadExpr+N' AS Localidad
       FROM dbo.ParamStock ps
-      WHERE TRY_CONVERT(INT,ps.'+QUOTENAME(@ParamEst)+N')=@IdEstacion;';
+      WHERE CONVERT(VARCHAR(30),ps.'+QUOTENAME(@ParamEst)+N')=CONVERT(VARCHAR(30),@IdEstacion);';
     EXEC sys.sp_executesql @Sql,N'@IdEstacion INT',@IdEstacion=@IdEstacion;
 END;
 GO
