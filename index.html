@@ -111,6 +111,11 @@ h1 em{font-weight:500;color:#d9ae65}
 .tank-empty{padding:28px 20px;color:var(--muted)}
 @media(max-width:700px){.tank-modal{padding:8px}.tank-dialog{max-height:94vh}.tank-head h2{font-size:24px}.tank-table th,.tank-table td{padding:9px 10px;font-size:11px}}
 
+.station-picker{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#22190d99;border:1px solid #b76c3577;padding:11px 14px}
+.station-picker[hidden]{display:none}.station-picker label{font-size:11px;font-weight:800;letter-spacing:.09em;color:#ffcb8d}
+.station-picker select,.station-picker button{min-width:130px;max-width:280px;background:#19140e;color:#ffd09b;border:1px solid #b76c3588;padding:9px;border-radius:7px;cursor:pointer}
+.station-error{margin-top:8px;font-size:12px;line-height:1.45;color:#ffb36b;overflow-wrap:anywhere;max-width:720px}
+.step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 </style>
 <link rel="stylesheet" href="theme.css?v=62">
 <script src="theme.js?v=62" defer></script>
@@ -146,6 +151,12 @@ h1 em{font-weight:500;color:#d9ae65}
     <h1>Capitán Rodolfo<br><em>· Estación</em></h1>
     <div class="sub">Flujo: combustible → despacho → venta → cobro</div>
     <div class="live" id="stationConnection"><span class="dot"></span> Buscando conexión SQL local…</div>
+<div class="station-picker" id="stationPicker" hidden>
+  <label for="stationId">ESTACIÓN ACTIVA</label>
+  <select id="stationId" aria-label="Elegir estación"></select>
+  <button id="reloadCircuit" type="button">Actualizar circuito SQL</button>
+</div>
+<div class="station-error" id="stationError" role="status" aria-live="polite"></div>
     <div class="annotation">“Todo movimiento deja una huella.”</div>
   </div>
   <div class="voice" aria-labelledby="voice-title">
@@ -160,9 +171,9 @@ h1 em{font-weight:500;color:#d9ae65}
 <section class="flow">
   <div class="step"><span class="symbol">I</span><small>CAMIÓN</small><b>Descarga combustible</b><span>Ingreso al circuito</span></div>
   <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
-  <div class="step"><span class="symbol">III</span><small>SURTIDORES</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
+  <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
-  <div class="step"><span class="symbol">V</span><small>COBRO</small><b>$ 48.920</b><span class="ok">PAGADO ✓</span></div>
+  <div class="step"><span class="symbol">V</span><small>COBRO</small><b id="paymentStatus">—</b><span>Formas de pago: pendiente de enlazar</span></div>
 </section>
 
 <div class="tank-modal" id="tankModal" role="dialog" aria-modal="true" aria-labelledby="tankModalTitle">
@@ -170,6 +181,13 @@ h1 em{font-weight:500;color:#d9ae65}
     <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques de la estación</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
     <div class="tank-status" id="tankStatus">Esperando conexión SQL…</div>
     <div class="tank-table-wrap" id="tankTableWrap"><div class="tank-empty">Hacé clic en TANQUES para consultar dbo.Tanque.</div></div>
+  </div>
+</div>
+<div class="tank-modal" id="pumpModal" role="dialog" aria-modal="true" aria-labelledby="pumpModalTitle">
+  <div class="tank-dialog">
+    <div class="tank-head"><div><div class="eyebrow">SQL · SURTIDORES</div><h2 id="pumpModalTitle">Caras, mangueras y tanques</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="pumpStatus">Esperando SP de la estación…</div>
+    <div class="tank-table-wrap" id="pumpTableWrap"><div class="tank-empty">Seleccioná una estación.</div></div>
   </div>
 </div>
 
@@ -194,94 +212,141 @@ h1 em{font-weight:500;color:#d9ae65}
 
 (function(){
  const bridges=(['127.0.0.1','localhost'].includes(location.hostname))?[location.origin+'/_doinglio_sql']:['http://127.0.0.1:8787','http://localhost:8787','http://127.0.0.1:8797','http://localhost:8797','http://127.0.0.1:18787','http://localhost:18787','http://127.0.0.1:27877','http://localhost:27877','http://127.0.0.1:37877','http://localhost:37877','http://127.0.0.1:48787','http://localhost:48787','http://127.0.0.1:57877','http://localhost:57877'];
+
  const connection=document.getElementById('stationConnection');
+ const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
  const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
  const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
- const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
- const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,...(['127.0.0.1','localhost'].includes(location.hostname)?{}:{targetAddressSpace:'local'})});
- let activeBridge=null,stationConnected=false;
- const tankStep=document.getElementById('tankStep'),tankModal=document.getElementById('tankModal'),tankClose=document.getElementById('tankClose'),tankStatus=document.getElementById('tankStatus'),tankTableWrap=document.getElementById('tankTableWrap');
- const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function closeTanks(){tankModal.classList.remove('open')}
- function renderTanks(d){
-   const rows=Array.isArray(d.rows)?d.rows:[];
-   const columns=Array.isArray(d.columns)&&d.columns.length?d.columns:(rows[0]?Object.keys(rows[0]):[]);
-   tankStatus.className='tank-status ok';
-   tankStatus.textContent='SQL CONECTADO · '+(d.database||'')+' · '+rows.length+' tanque'+(rows.length===1?'':'s')+' · dbo.Tanque';
-   if(!rows.length){tankTableWrap.innerHTML='<div class="tank-empty">La tabla dbo.Tanque existe pero no devolvió registros.</div>';return}
-   const head='<thead><tr>'+columns.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead>';
-   const body='<tbody>'+rows.map(r=>'<tr>'+columns.map(c=>'<td>'+esc(r[c])+'</td>').join('')+'</tr>').join('')+'</tbody>';
-   tankTableWrap.innerHTML='<table class="tank-table">'+head+body+'</table>';
- }
- async function openTanks(){
-   tankModal.classList.add('open');
-   tankStatus.className='tank-status';
-   tankStatus.textContent='Consultando tanques…';
-   tankTableWrap.innerHTML='<div class="tank-empty">Leyendo dbo.Tanque desde la base conectada…</div>';
-   if(!stationConnected||!activeBridge){
-     tankStatus.className='tank-status warn';
-     tankStatus.textContent=activeBridge?'CONECTOR ACTIVO · falta una base SQL activa. Abrí Núcleo → Datos una vez.':'SQL SIN CONEXIÓN · volvé a abrir DoingLio desde C:\\Sistemas\\DOINGLIO.bat.';
-     tankTableWrap.innerHTML='<div class="tank-empty">No hay una base SQL activa todavía.</div>';
+ const desktop=['127.0.0.1','localhost'].includes(location.hostname);
+ const bridges=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+ const localFetch=(url,opts={})=>fetch(url,{cache:'no-store',...opts,...(desktop?{}:{targetAddressSpace:'local'})});
+ const stationSelect=document.getElementById('stationId');
+ const stationPicker=document.getElementById('stationPicker');
+ const stationError=document.getElementById('stationError');
+ const tankModal=document.getElementById('tankModal'),tankStep=document.getElementById('tankStep');
+ const pumpModal=document.getElementById('pumpModal'),pumpStep=document.getElementById('pumpStep');
+ let activeBridge=null,stationConnected=false,activeDatabase='',stations=[],circuit=null,loading=false;
+ const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'}[ch]));
+ const warn=msg=>{stationError.textContent=msg;connection.innerHTML='<span class="dot" style="background:#ffb36b"></span> '+esc(msg)};
+ function modalRows(modal,statusId,tableId,set,title,empty){
+   const status=document.getElementById(statusId),root=document.getElementById(tableId);
+   modal.classList.add('open');
+   if(!stationConnected||!circuit||!set){
+     status.className='tank-status warn';
+     status.textContent=stationError.textContent||'No hay datos reales del SP para la estación seleccionada.';
+     root.innerHTML='<div class="tank-empty">Abrí Núcleo → Datos si tenés que verificar la conexión o el SP.</div>';
      return;
    }
+   const rows=Array.isArray(set.rows)?set.rows:[];
+   const cols=Array.isArray(set.columns)?set.columns:[];
+   status.className='tank-status ok';status.textContent='SQL '+activeDatabase+' · Estación '+circuit.station+' · '+title+' · '+rows.length+' filas';
+   if(!rows.length){root.innerHTML='<div class="tank-empty">'+empty+'</div>';return}
+   const h='<thead><tr>'+cols.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead>';
+   const b='<tbody>'+rows.map(row=>'<tr>'+cols.map(k=>'<td>'+esc(row[k])+'</td>').join('')+'</tr>').join('')+'</tbody>';
+   root.innerHTML='<table class="tank-table">'+h+b+'</table>';
+ }
+ const tanks=()=>modalRows(tankModal,'tankStatus','tankTableWrap',circuit?.tanks,'Tanques','No hay tanques para esta estación.');
+ const pumps=()=>modalRows(pumpModal,'pumpStatus','pumpTableWrap',circuit?.hoses,'Mangueras','No hay mangueras para esta estación.');
+ function closeModals(){tankModal.classList.remove('open');pumpModal.classList.remove('open')}
+ tankStep.addEventListener('click',tanks);
+ pumpStep.addEventListener('click',pumps);
+ for(const [node,action] of [[tankStep,tanks],[pumpStep,pumps]])node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action()}});
+ document.getElementById('tankClose').addEventListener('click',closeModals);
+ document.getElementById('pumpClose').addEventListener('click',closeModals);
+ tankModal.addEventListener('click',e=>{if(e.target===tankModal)closeModals()});
+ pumpModal.addEventListener('click',e=>{if(e.target===pumpModal)closeModals()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
+ async function read(base,path,opts){
+   const res=await localFetch(base+path,opts);
+   const data=await res.json().catch(()=>({}));
+   if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
+   return data;
+ }
+ function clearCircuit(){
+   circuit=null;stationConnected=false;
+   set('liveTanks','—');set('liveHoses','Sin datos de tanques');
+   set('livePumps','—');set('liveDatabase',activeDatabase||'Sin SQL');
+   set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');
+   set('liveDbKpi',activeDatabase||'Sin conexión');
+ }
+ function paint(data){
+   if(!data.tanks||!data.hoses||!data.dispatches||!data.receipts)throw new Error('El SP no devolvió cuatro resultados completos.');
+   circuit=data;stationConnected=true;activeDatabase=data.database||activeDatabase;
+   const tanksRows=Array.isArray(data.tanks.rows)?data.tanks.rows:[];
+   const hoses=Array.isArray(data.hoses.rows)?data.hoses.rows:[];
+   const dispatches=Array.isArray(data.dispatches.rows)?data.dispatches.rows:[];
+   const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));
+   stationError.textContent='';
+   connection.innerHTML='<span class="dot"></span> SQL conectado · '+esc(activeDatabase)+' · Estación '+data.station+' · SP v'+esc(data.version||'?');
+   set('liveTanks',nf.format(tanksRows.length)+' tanques');
+   set('liveHoses',nf.format(hoses.length)+' mangueras asociadas');
+   set('livePumps',nf.format(faces.size)+' caras');
+   set('liveDatabase','Estación '+data.station+' · '+activeDatabase);
+   set('liveLiters',nf.format(dispatches.reduce((sum,row)=>sum+Number(row.Litros||0),0))+' L');
+   set('livePesos',money.format(dispatches.reduce((sum,row)=>sum+Number(row.Pesos||0),0)));
+   set('liveDispatches',nf.format(dispatches.length));
+   set('liveDbKpi',activeDatabase);
+ }
+ async function loadCircuit(){
+   if(loading||!activeBridge||!stationSelect.value)return;
+   loading=true;
+   stationError.textContent='Ejecutando dbo.PA_CapitanRodolfo_CircuitoEstacion…';
    try{
-     const r=await localFetch(activeBridge+'/api/tanks');
-     const d=await r.json();
-     if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
-     if(!d.connected) throw new Error('No hay una base SQL activa.');
-     if(d.tableExists===false){
-       tankStatus.className='tank-status warn';
-       tankStatus.textContent='SQL CONECTADO · '+(d.database||'')+' · no existe dbo.Tanque';
-       tankTableWrap.innerHTML='<div class="tank-empty">La base está conectada, pero no encontré la tabla dbo.Tanque.</div>';
-       return;
-     }
-     renderTanks(d);
+     const data=await read(activeBridge,'/api/station/circuit',{
+       method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({idEstacion:Number(stationSelect.value)})
+     });
+     paint(data);
    }catch(e){
-     tankStatus.className='tank-status warn';
-     tankStatus.textContent='No pude leer los tanques: '+e.message;
-     tankTableWrap.innerHTML='<div class="tank-empty">Revisá que el conector local siga abierto.</div>';
-   }
+     clearCircuit();
+     warn('No pude leer tanques/surtidores desde el SP: '+e.message+' · Núcleo → Datos para verificar el SP.');
+   }finally{loading=false}
  }
- tankClose.addEventListener('click',closeTanks);
- tankModal.addEventListener('click',e=>{if(e.target===tankModal)closeTanks()});
- document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTanks()});
- tankStep.addEventListener('click',openTanks);
- tankStep.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTanks()}});
  async function refreshStation(){
-   let found=null;
+   if(loading)return;
+   let found=null,lastError='';
    for(const base of bridges){
-     try{
-       const r=await localFetch(base+'/api/station-summary');
-       if(!r.ok) continue;
-       const d=await r.json();
-       found={base,d}; break;
-     }catch(_){}
+     try{found={base,data:await read(base,'/api/station/ids')};break}
+     catch(e){lastError=e.message;if(desktop)break}
    }
-   if(!found||!found.d.connected){
-     activeBridge=found?found.base:null;stationConnected=false;
-     const d=found?found.d:{};
-     let msg='Servicio SQL local no responde · volvé a abrir DoingLio';
-     if(found&&d.bridge&&d.profileSaved) msg='Servicio SQL activo en segundo plano · conexión SQL guardada pero no pudo reconectar · Núcleo → Datos';
-     else if(found&&d.bridge) msg='Servicio SQL activo en segundo plano · falta conectar una base · Núcleo → Datos';
-     connection.innerHTML='<span class="dot" style="background:#ffb36b;box-shadow:0 0 18px #ffb36b"></span> '+msg;
-     set('liveTanks','—');set('liveHoses','Esperando datos SQL');set('livePumps','—');set('liveDatabase','Base no conectada');
-     set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');set('liveDbKpi',found&&d.bridge?'Conector activo':'Sin conexión');
+   if(!found){
+     activeBridge=desktop?bridges[0]:null;
+     clearCircuit();
+     warn(lastError||'No hay conexión SQL. Abrí Núcleo → Datos.');
      return;
    }
-   const d=found.d;
-   activeBridge=found.base;stationConnected=true;
-   connection.innerHTML='<span class="dot"></span> SQL CONECTADO · '+d.database+' · TANQUES disponible con un clic';
-   set('liveTanks',nf.format(d.tankCount||0)+' tanques');
-   set('liveHoses',nf.format(d.hoseCount||0)+' relaciones tanque → surtidor → manguera');
-   set('livePumps',nf.format(d.pumpCount||0)+' surtidores');
-   set('liveDatabase',d.database||'Base conectada');
-   set('liveLiters',nf.format(Number(d.liters||0))+' L');
-   set('livePesos',money.format(Number(d.pesos||0)));
-   set('liveDispatches',nf.format(d.dispatchCount||0));
-   set('liveDbKpi',d.database||'Conectada');
+   activeBridge=found.base;
+   const data=found.data;
+   if(activeDatabase!==data.database){
+     activeDatabase=data.database||'';
+     circuit=null;stationConnected=false;
+     stationSelect.innerHTML='<option value="">Elegí una estación…</option>';
+     stations=[];
+   }
+   const next=Array.isArray(data.stations)?data.stations.map(Number):[];
+   stationPicker.hidden=false;
+   if(next.join(',')!==stations.join(',')){
+     stations=next;const old=stationSelect.value;stationSelect.innerHTML='<option value="">Elegí una estación…</option>';
+     for(const id of stations){const o=document.createElement('option');o.value=id;o.textContent='Estación '+id;stationSelect.appendChild(o)}
+     const saved=localStorage.getItem('capitan.station.'+activeDatabase);
+     const proposed=stations.includes(Number(old))?old:(stations.includes(Number(saved))?saved:(stations.length===1?String(stations[0]):''));
+     stationSelect.value=proposed||'';
+   }
+   if(!stations.length){clearCircuit();warn('La base '+activeDatabase+' no tiene tanques con ID de estación reconocido.');return}
+   if(!stationSelect.value){
+     clearCircuit();warn('SQL conectado a '+activeDatabase+' · elegí la estación para no mezclar datos.');
+     return;
+   }
+   await loadCircuit();
  }
+ stationSelect.addEventListener('change',()=>{
+   clearCircuit();
+   if(stationSelect.value)localStorage.setItem('capitan.station.'+activeDatabase,stationSelect.value);
+   loadCircuit();
+ });
+ document.getElementById('reloadCircuit').addEventListener('click',refreshStation);
  refreshStation();
- setInterval(refreshStation,10000);
+ setInterval(refreshStation,60000);
 })();
 
 (function(){
