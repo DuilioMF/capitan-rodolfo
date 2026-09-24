@@ -46,3 +46,18 @@ El repositorio de Capitán v69 incluye el SP en la lista predeterminada de proce
 La visualización de Estación usa el SP y puede mostrar los datos de ParamStock al final. Con los cinco resultados del SP ya confirmados en `SiSRL`, se puede conectar esa visualización al SP sin suponer relaciones incorrectas.
 
 **Estado de verificación:** archivo generado y guardado en GitHub. La ejecución y la verificación de nombres reales de ParamStock en tu SQL Server local requiere que lo despliegues y pruebes allí.
+
+## v74: error SELECT permission was denied
+
+Si el usuario configurado en Núcleo no tiene SELECT en dbo.Tanque,
+la prueba directa `SELECT * FROM dbo.Tanque` seguirá fallando.
+El SP de circuito usa `WITH EXECUTE AS OWNER`; el propietario debe disponer
+de los permisos de lectura sobre las tablas utilizadas. Un administrador
+debe conceder al usuario de la aplicación `EXECUTE` únicamente sobre el SP.
+
+Ejecutá [`DIAGNOSTICO_PERMISOS_CircuitoEstacion.sql`](DIAGNOSTICO_PERMISOS_CircuitoEstacion.sql)
+con las credenciales de Núcleo para identificar `UsuarioBase` y los permisos
+existentes. El archivo contiene ejemplos de GRANT comentados para un DBA.
+No asumas que `UsuarioBase` coincide exactamente con el nombre del login.
+
+No se considera probada la ejecución hasta correrla en `SiSRL` real.
