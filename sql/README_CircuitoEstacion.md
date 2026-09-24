@@ -1,51 +1,63 @@
-# SP del circuito de estación (Capitán Rodolfo v69)
+# Capitán Rodolfo — circuito v81
 
-**Archivo para SQL Server:** [PA_CapitanRodolfo_CircuitoEstacion.sql](PA_CapitanRodolfo_CircuitoEstacion.sql)
+**SP:** [PA_CapitanRodolfo_CircuitoEstacion.sql](PA_CapitanRodolfo_CircuitoEstacion.sql)  
+**Instalador para administrador:** [INSTALAR_Y_HABILITAR_CIRCUITO.sql](INSTALAR_Y_HABILITAR_CIRCUITO.sql)
 
-## Instalación
+Se actualiza automáticamente al abrir DoingLio desde el cerebro **solo cuando
+el usuario SQL configurado posee los permisos correspondientes**. Desde
+**Capitán → Núcleo → Datos** también se puede instalar o ejecutar el SP
+manualmente sin abrir SSMS. Si faltan permisos, puede usarse una cuenta
+administradora temporal desde la página, sin guardarla, o el archivo del
+instalador en SSMS.
 
-1. En la PC con SQL Server, abrí **SQL Server Management Studio** y conectate a `DUILIO\\SQLEXPRESS`.
-2. Abrí el archivo `.sql`. Confirmá que la línea `USE [SiSRL]` corresponde a tu base (respetá el nombre real).
-3. Ejecutá todo el script. Solo crea o actualiza **`dbo.PA_CapitanRodolfo_CircuitoEstacion`**; no modifica registros de negocio.
-4. Para probar, reemplazá el ID por el de tu estación:
-   ```sql
-   EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion
-     @IdEstacion = 1,
-     @EstadoVta = NULL;  -- todos los despachos
-   ```
-   Si querés solo despachos pendientes, pasá `@EstadoVta = 0`; cobrados, `1`.
-5. Confirmá que se devuelvan **cinco resultados**: tanques, mangueras/caras, despachos, relación con comprobantes y empresa/estación desde ParamStock. Guardá únicamente errores y nombres de columnas; **nunca compartas credenciales**.
+Los cinco resultados mantienen este orden, necesario para versiones anteriores:
 
-El SP acepta `@MaxDespachos` (500 por defecto) y `@MaxRelaciones` (1000 por defecto), con un máximo de 10000 para cada uno.
+1. **Tanques:** NTanque, Denominacion, Producto, Capacidad, Litros opcionales,
+   Costo = PRECOMPRA y Precio = PRECIOCONIVA + IMPUESTOS + TasaOtrosImpue
+   cuando esos campos existen en Prod.
+2. **Surtidores:** Cara, Isla = (Cara+1)/2, Manguera, Producto, Costo, Precio,
+   NTanque, Tanque, Controlador.
+   Cuando se puede identificar una clave entre Surpla.CONTROLADOR y
+   MP_TipoConexion, el nombre procede de MP_TipoConexion.Name. En otro
+   caso queda el código sin inventar la asociación. La relación Surtan y
+   Tanque está filtrada por estación y se detiene ante ambigüedades.
+3. **Carga/Despachos:** IdSale, Isla, Cara, Manguera, Producto, Costo,
+   PrecioProducto, Litros, PPU, Pesos, EstadoVta y Hora (desde ULTIME).
+   EstadoVta 1 indica cobrado; 0 indica pendiente.
+4. **Relación comprobante–despacho:** Venta, Letra, Sucursal, Numero y Turno.
+   Se prioriza el vínculo documentado DI_DESPACHO -> ID_SALE si ambas
+   columnas existen. Los nombres de comprobante se detectan mediante los
+   metadatos de la base; Turno puede obtenerse de MaeFac solamente si
+   letra, sucursal, número y estación permiten una relación inequívoca.
+5. **Empresa / estación:** ParamStock filtrado por @IdEstacion.
 
-## Validaciones
+La pantalla presenta solamente columnas operativas. Se puede tocar un
+producto para ver costo y precio; un tanque para abrir Tanques; una isla,
+cara o manguera para ir a Surtidores; y una venta cobrada para ver
+su comprobante. Las filas no asociadas nunca se adjudican por suposición.
 
-- Filtra por estación y une `Prod` por `CODART` y también por estación cuando existe esa columna.
-- Detecta variantes declaradas en la conversación: `ID_ESTACION`/`ID_ESTAICION`, `CAPACIDAD`/`CAPAIDAD`, `DESCRIART`/`DESCRIIMPRESION`.
-- **No inventa** la relación comprobante–despacho. Busca una clave de nombre coincidente `ID_DESPACHO`, `ID_DESPCHO` o `ID_SALE`. Si no existe y no puede filtrar la tabla de relaciones por estación, devuelve un error explicativo.
-- ParamStock proporciona el listado de ID_ESTACION. El SP reconoce las variantes más comunes de tipo, nombre, domicilio, teléfono y localidad; si falta un dato opcional lo devuelve como NULL y no lo inventa.
-- Solo calcula `Isla = (Cara + 1) / 2` si las caras se numeran consecutivamente 1–2, 3–4, etc. Verificar esa convención con la estación real.
-- Si faltan claves o una manguera es ambigua entre estaciones, devuelve error en lugar de mezclar datos.
+**Si el usuario no puede ejecutar el SP**, Capitán intenta consultar
+directamente las tablas autorizadas en modo lectura, validando estación y
+unicidad del producto y de las mangueras. Algunos datos relacionados pueden
+no estar disponibles hasta habilitar el SP. Nunca se inventan filas.
 
-Para encontrar columnas que no coinciden:
+**Instalación de una sola vez, si falta el permiso EXECUTE:** conectate
+como administrador en Núcleo → Datos, o ejecutá el instalador enlazado
+arriba en SQL Server Management Studio. La clave del administrador no se
+guarda. El SP se ejecuta con `WITH EXECUTE AS OWNER`; su propietario debe
+tener los permisos de lectura necesarios. No se requieren permisos
+`db_owner` para el usuario habitual.
+
+**Prueba real antes de dar por terminado:**
 
 ```sql
-SELECT t.name AS Tabla, c.name AS Columna,
-       TYPE_NAME(c.user_type_id) AS Tipo
-FROM sys.tables t
-JOIN sys.columns c ON c.object_id = t.object_id
-WHERE t.name IN ('Tanque','Prod','Surpla','Surtan',
-                 'Despachos','RelacionCptsDespachos')
-ORDER BY t.name,c.column_id;
+USE SiSRL;
+EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion @IdEstacion=1,@EstadoVta=NULL;
 ```
 
-## Integración con Núcleo
-
-El repositorio de Capitán v69 incluye el SP en la lista predeterminada de procedimientos permitidos, **sin sacar** `dbo.PA_VentasFormasPago`. El conector reconoce esa autorización al actualizar desde el acceso del cerebro. El SP aparece en Núcleo → Datos **cuando ya esté creado en SQL Server**.
-
-La visualización de Estación usa el SP y puede mostrar los datos de ParamStock al final. Con los cinco resultados del SP ya confirmados en `SiSRL`, se puede conectar esa visualización al SP sin suponer relaciones incorrectas.
-
-**Estado de verificación:** archivo generado y guardado en GitHub. La ejecución y la verificación de nombres reales de ParamStock en tu SQL Server local requiere que lo despliegues y pruebes allí.
+Las pruebas automatizadas verifican sintaxis e integración sin conectarse a
+la instancia privada `DUILIO\SQLEXPRESS`. Es necesario confirmar la
+ejecución y las relaciones de comprobantes y controladores en esa base.
 
 ## v74: error SELECT permission was denied
 
