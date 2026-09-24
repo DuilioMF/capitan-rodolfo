@@ -10,13 +10,13 @@
 :root{--bg:#090806;--panel:#12100d;--line:#6e583a55;--ink:#f1eadc;--muted:#9d9486;--orange:#dc8623;--green:#5ee6a8;--bad:#ff7d7d}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0,#2a180d,transparent 35%),#090806;color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}
 .wrap{width:min(1120px,94vw);margin:26px auto 60px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.top a{color:#ffb57b;text-decoration:none;border:1px solid var(--line);padding:10px 13px;border-radius:10px}
-.card{padding:22px;border:1px solid var(--line);border-radius:18px;background:#12100de8;margin-bottom:16px}.ey{font-size:9px;letter-spacing:.22em;color:var(--orange);font-weight:900}h1,h2{margin:8px 0 10px}h2{font-size:20px}.muted{color:var(--muted);line-height:1.55;font-size:13px}.status{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:10px}.ok{color:var(--green)}.bad{color:var(--bad)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.full{grid-column:1/-1}label{display:block;font-size:11px;color:var(--muted);margin:0 0 6px}input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #6e583a66;background:#0b0a08;color:var(--ink);font:inherit}button{cursor:pointer;background:linear-gradient(135deg,#dc8623,#f0a14c);color:#160d07;font-weight:900;border:0}.ghost{background:transparent;color:#ffb57b;border:1px solid #b76c358f}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions>*{flex:1;min-width:180px}.summary{display:flex;gap:10px;flex-wrap:wrap}.pill{border:1px solid var(--line);padding:8px 10px;border-radius:999px;font-size:12px;color:#cfc5b5}.pill strong{color:var(--green)}.hidden{display:none!important}.params{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:14px 0}.tableWrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:12px;margin-top:14px}table{border-collapse:collapse;width:100%;min-width:680px;font-size:12px}th,td{padding:9px 10px;border-bottom:1px solid #342a1d;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:#1b140d;color:#ffbd82}.install{padding:16px;border:1px dashed #b76c3575;border-radius:12px}.small{font-size:11px;color:var(--muted)}@media(max-width:760px){.grid,.params{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+.card{padding:22px;border:1px solid var(--line);border-radius:18px;background:#12100de8;margin-bottom:16px}.ey{font-size:9px;letter-spacing:.22em;color:var(--orange);font-weight:900}h1,h2{margin:8px 0 10px}h2{font-size:20px}.muted{color:var(--muted);line-height:1.55;font-size:13px}.status{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:10px}.ok{color:var(--green)}.bad{color:var(--bad)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.full{grid-column:1/-1}label{display:block;font-size:11px;color:var(--muted);margin:0 0 6px}input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #6e583a66;background:#0b0a08;color:var(--ink);font:inherit}button{cursor:pointer;background:linear-gradient(135deg,#dc8623,#f0a14c);color:#160d07;font-weight:900;border:0}.ghost{background:transparent;color:#ffb57b;border:1px solid #b76c358f}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions>*{flex:1;min-width:180px}.summary{display:flex;gap:10px;flex-wrap:wrap}.pill{border:1px solid var(--line);padding:8px 10px;border-radius:999px;font-size:12px;color:#cfc5b5}.pill strong{color:var(--green)}.hidden{display:none!important}.params{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:14px 0}.tableWrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:12px;margin-top:14px}table{border-collapse:collapse;width:100%;min-width:680px;font-size:12px}th,td{padding:9px 10px;border-bottom:1px solid #342a1d;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:#1b140d;color:#ffbd82}.install{padding:16px;border:1px dashed #b76c3575;border-radius:12px}.small{font-size:11px;color:var(--muted)}.diag{background:#070604;border:1px solid #6e583a66;border-radius:12px;padding:12px;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto;font:12px/1.45 Consolas,monospace;color:#d8cfbf}.diagpaths{font-size:11px;color:var(--muted);line-height:1.6}@media(max-width:760px){.grid,.params{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="top">
-    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
+    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v67</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
     <a href="nucleo.html">← Volver a Núcleo</a>
   </div>
 
@@ -25,8 +25,15 @@
     <div id="bridgeStatus" class="status">Buscando conector en este equipo…</div>
     <div id="installBox" class="install hidden">
       <p class="muted">No encuentro el conector. Descargalo o actualizalo una vez: se instala en <strong>C:\Sistemas\DoingLioConnector</strong>, queda oculto y se inicia con Windows.</p>
-      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=66" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
+      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=67" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
     </div>
+  </section>
+
+  <section class="card">
+    <h2>Diagnóstico · v67</h2>
+    <div class="diagpaths">Si algo falla, leeme las últimas líneas de abajo. También quedan archivos en:<br><strong>C:\Sistemas\DoingLioConnector\install.log</strong><br><strong>C:\Sistemas\DoingLioLauncher\launcher.log</strong></div>
+    <pre id="diagLog" class="diag">Iniciando diagnóstico…</pre>
+    <div class="actions"><button class="ghost" id="copyDiag" type="button">Copiar diagnóstico</button><button class="ghost" id="clearDiag" type="button">Limpiar</button></div>
   </section>
 
   <section class="card" id="connectionCard">
@@ -64,6 +71,9 @@
 <script>
 (()=>{
  const $=id=>document.getElementById(id);
+ const logDiag=msg=>{const el=$('diagLog');if(!el)return;const ts=new Date().toLocaleTimeString('es-AR',{hour12:false});if(el.textContent==='Iniciando diagnóstico…')el.textContent='';el.textContent+='['+ts+'] '+msg+'\n';el.scrollTop=el.scrollHeight};
+ logDiag('Página v67 · '+location.href);
+ logDiag('Origen: '+location.origin);
  const candidates=[
   'http://127.0.0.1:8787','http://localhost:8787',
   'http://127.0.0.1:8797','http://localhost:8797',
@@ -87,11 +97,30 @@
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
  async function findBridge(){
-   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),'Buscando conector en este equipo…');
+   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),'Buscando conector en este equipo · v67…');
+   logDiag('Inicio búsqueda del conector');
    for(const base of candidates){
-     try{const r=await localFetch(base+'/health');if(r.ok){const d=await r.json();bridge=base;setStatus($('bridgeStatus'),'Conector activo · v'+d.version,'ok');return true}}catch(_){}
+     try{
+       logDiag('Probando '+base+'/health');
+       const r=await localFetch(base+'/health');
+       logDiag(base+' respondió HTTP '+r.status);
+       if(r.ok){
+         const d=await r.json();
+         logDiag('Health: ok='+String(d.ok)+' service='+(d.service||'?')+' version='+(d.version||'?'));
+         if(!d.ok)continue;
+         bridge=base;
+         setStatus($('bridgeStatus'),'Conector activo · v'+(d.version||'?')+' · puerto '+new URL(base).port,'ok');
+         logDiag('CONECTOR ENCONTRADO en '+base);
+         return true;
+       }
+     }catch(e){
+       logDiag('FALLÓ '+base+' · '+(e&&e.name?e.name+': ':'')+(e&&e.message?e.message:String(e)));
+     }
    }
-   setStatus($('bridgeStatus'),'El conector local no está instalado o no está ejecutándose.','bad');$('installBox').classList.remove('hidden');return false;
+   setStatus($('bridgeStatus'),'Conector no detectado · página v67. Leeme el diagnóstico de abajo.','bad');
+   $('installBox').classList.remove('hidden');
+   logDiag('FIN: no se encontró ningún conector');
+   return false;
  }
 
  async function boot(){
@@ -176,6 +205,8 @@
    });
  }
 
+ $('copyDiag').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('diagLog').textContent);logDiag('Diagnóstico copiado al portapapeles')}catch(e){logDiag('No pude copiar: '+e.message)}});
+ $('clearDiag').addEventListener('click',()=>{$('diagLog').textContent='';logDiag('Log limpiado')});
  $('auth').addEventListener('change',authUi);
  $('retryBridge').addEventListener('click',boot);
  $('changePassword').addEventListener('click',()=>{$('connectionForm').classList.remove('hidden');$('passwordWrap').classList.remove('hidden');$('password').focus()});
