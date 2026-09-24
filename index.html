@@ -207,14 +207,14 @@ h1 em{font-weight:500;color:#d9ae65}
 </div>
 <div class="tank-modal" id="tankModal" role="dialog" aria-modal="true" aria-labelledby="tankModalTitle">
   <div class="tank-dialog">
-    <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques de la estación</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
     <div class="tank-status" id="tankStatus">Esperando conexión SQL…</div>
     <div class="tank-table-wrap" id="tankTableWrap"><div class="tank-empty">Hacé clic en TANQUES para consultar dbo.Tanque.</div></div>
   </div>
 </div>
 <div class="tank-modal" id="pumpModal" role="dialog" aria-modal="true" aria-labelledby="pumpModalTitle">
   <div class="tank-dialog">
-    <div class="tank-head"><div><div class="eyebrow">SQL · SURTIDORES</div><h2 id="pumpModalTitle">Caras, mangueras y tanques</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-head"><div><div class="eyebrow">SQL · SURTIDORES</div><h2 id="pumpModalTitle">Surtidores</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
     <div class="tank-status" id="pumpStatus">Esperando SP de la estación…</div>
     <div class="tank-table-wrap" id="pumpTableWrap"><div class="tank-empty">Seleccioná una estación.</div></div>
   </div>
@@ -248,7 +248,7 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="kpi"><small>Litros en despachos</small><strong id="liveLiters">—</strong></div>
   <div class="kpi"><small>Importe en despachos</small><strong id="livePesos">—</strong></div>
   <div class="kpi"><small>Despachos</small><strong id="liveDispatches">—</strong></div>
-  <div class="kpi"><small>Base SQL</small><strong class="ok" id="liveDbKpi">Sin conexión</strong></div>
+  <div class="kpi"><small>Estación</small><strong class="ok" id="liveDbKpi">Sin conexión</strong></div>
 </section>
 <section id="spResults" hidden style="margin-top:18px;border:1px solid #97623d;border-radius:16px;padding:16px;background:#141a1c">
   <details id="spResultsDetails">
@@ -514,11 +514,11 @@ h1 em{font-weight:500;color:#d9ae65}
    spResultSection.hidden=true;spResultTables.replaceChildren();
    circuit=null;stationConnected=false;
    document.getElementById('companyCard').hidden=true;
-   set('liveTanks','—');set('liveHoses','Sin datos de tanques');
-   set('livePumps','—');set('liveDatabase',activeDatabase||'Sin SQL');
+   set('liveTanks','—');set('liveHoses','Esperando tanques…');
+   set('livePumps','—');set('liveDatabase','Esperando surtidores…');
    set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');
    set('loadCaption','Despachos, importe y cobro');
-   set('liveDbKpi',activeDatabase||'Sin conexión');
+   set('liveDbKpi',stationSelect.value?('Estación '+stationSelect.value):'Sin conexión');
  }
  function paint(data){
    if(!data.tanks||!data.hoses||!data.dispatches||!data.receipts)throw new Error('El SP no devolvió cuatro resultados completos.');
@@ -540,17 +540,17 @@ h1 em{font-weight:500;color:#d9ae65}
    document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):(data.source==='lectura_tablas'?'Empresa y circuito completo disponibles cuando SQL permita ejecutar el SP.':'ParamStock: actualizá el SP para ver la empresa (quinto resultado).');
    const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));const islands=new Set(hoses.map(x=>String(x.Isla??'')).filter(x=>x&&x!=='null'));
    const isDirect=data.source==='lectura_tablas';
-   stationError.textContent=isDirect?'Los tanques están disponibles. Para completar Carga y Cobros, autorizá el SP desde Núcleo → Datos.':'';
+   stationError.textContent=isDirect&&!dispatches.length?'Tanques y surtidores disponibles. Para completar Carga y Cobros, autorizá el SP desde Núcleo → Datos.':'';
    connection.innerHTML='<span class="dot"></span> Estación activa · '+esc(company?.NombreEstacion||('Estación '+data.station))+(isDirect?' · lectura parcial':' · circuito conectado');
    set('liveTanks',nf.format(tanksRows.length)+' tanques');
-   set('liveHoses',nf.format(hoses.length)+' mangueras asociadas');
+   set('liveHoses','Tocá para ver cada tanque');
    set('livePumps',nf.format(islands.size||Math.ceil(faces.size/2))+' surtidores · '+nf.format(faces.size)+' caras');
-   set('liveDatabase','Estación '+data.station+' · '+activeDatabase);
+   set('liveDatabase',nf.format(hoses.length)+' mangueras');
    set('liveLiters',nf.format(dispatches.reduce((sum,row)=>sum+Number(row.Litros||0),0))+' L');
    set('livePesos',money.format(dispatches.reduce((sum,row)=>sum+Number(row.Pesos||0),0)));
    set('liveDispatches',nf.format(dispatches.length));
    set('loadCaption',dispatches.length+' despachos · abrí Carga para verlos');
-   set('liveDbKpi',activeDatabase);
+   set('liveDbKpi',company?.NombreEstacion||('Estación '+data.station));
  }
  async function loadCircuit(){
    if(loading||!activeBridge||!stationSelect.value)return;
