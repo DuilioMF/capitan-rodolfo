@@ -369,8 +369,8 @@ function Get-SpAllowlist {
         # y la version descargada lo incluye como procedimiento predeterminado.
         if($allowed -contains 'dbo.PA_VentasFormasPago' -and (Test-Path $DefaultSpAllowlistPath)){
             $defaults = Get-Content $DefaultSpAllowlistPath -Raw | ConvertFrom-Json
-            if(@($defaults.procedures) -contains 'dbo.PA_CapitanRodolfo_CircuitoEstacion'){
-                $allowed += 'dbo.PA_CapitanRodolfo_CircuitoEstacion'
+            foreach($name in @('dbo.PA_CapitanRodolfo_CircuitoEstacion','dbo.PA_ListarTarjXTurno')){
+              if(@($defaults.procedures) -contains $name){$allowed += $name}
             }
         }
         return @($allowed | Sort-Object -Unique)
@@ -1613,6 +1613,64 @@ try {
           }
         }catch{
           Send-Json $stream 500 @{error=('Error al buscar evidencia del cobro: '+$_.Exception.Message)}
+        }
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payment-cards'){
+        # PA_ListarTarjXTurno has its own filter signature. Never link a
+        # card transaction to an invoice unless the returned keys match.
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
+             Send-Json $stream 409 @{error='Primero conectá SiSRL.'};continue
+          }
+          $d=$req.Body | ConvertFrom-Json
+          $station=0;$td=0;$tt=99999
+          if(-not [int]::TryParse([string]$d.idEstacion,[ref]$station) -or $station -le 0){
+             Send-Json $stream 400 @{error='Estación inválida.'};continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+             Send-Json $stream 403 @{error='Estación no autorizada.'};continue
+          }
+          $culture=[Globalization.CultureInfo]::InvariantCulture
+          $style=[Globalization.DateTimeStyles]::None
+          $from=[datetime]::MinValue;$to=[datetime]::MinValue
+          if(-not [datetime]::TryParseExact([string]$d.fechaDesde,'yyyy-MM-dd',$culture,$style,[ref]$from) -or
+             -not [datetime]::TryParseExact([string]$d.fechaHasta,'yyyy-MM-dd',$culture,$style,[ref]$to) -or
+             $to -lt $from -or ($to-$from).TotalDays -gt 31){
+             Send-Json $stream 400 @{error='Fechas inválidas o período mayor a 32 días.'};continue
+          }
+          if($null -ne $d.turnoDesde -and [string]$d.turnoDesde -ne '' -and
+             -not [int]::TryParse([string]$d.turnoDesde,[ref]$td)){
+             Send-Json $stream 400 @{error='Turno desde inválido.'};continue
+          }
+          if($null -ne $d.turnoHasta -and [string]$d.turnoHasta -ne '' -and
+             -not [int]::TryParse([string]$d.turnoHasta,[ref]$tt)){
+             Send-Json $stream 400 @{error='Turno hasta inválido.'};continue
+          }
+          if($td -lt 0 -or $tt -gt 99999 -or $td -gt $tt){
+             Send-Json $stream 400 @{error='Rango de turnos inválido.'};continue
+          }
+          $parameters=[pscustomobject]@{
+            fechainicio=$from
+            fechafin=$to.Date.AddHours(23).AddMinutes(59)
+            idestacion=$station
+            turnodesde=$td
+            turnohasta=$tt
+            codtardesde=0
+            codtarhasta=99999
+            lotedesde=''
+            lotehasta='ZZZZZZZZZZZZZZZZZZZZ'
+            idPosDevice=0
+          }
+          try {
+            $report=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_ListarTarjXTurno' -Parameters $parameters -MaxRows 5000
+            Send-Json $stream 200 @{source='dbo.PA_ListarTarjXTurno';station=$station;resultSets=@($report.resultSets);version=$Version}
+          }catch{
+            Send-Json $stream 422 @{error=('No pude consultar Tarjetas. Verificá el procedimiento, sus parámetros y el permiso EXECUTE: '+$_.Exception.Message)}
+          }
+        }catch{
+          Send-Json $stream 500 @{error=('Error al consultar tarjetas: '+$_.Exception.Message)}
         }
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payments'){
