@@ -8,6 +8,7 @@
  Resultado 2: Caras/surtidores y mangueras con su tanque.
  Resultado 3: Despachos (opcionalmente filtrados por estado de venta).
  Resultado 4: Relaciones con comprobantes (solo si existe una clave de filtro segura).
+ Resultado 5: Empresa / estación desde dbo.ParamStock (mismo @IdEstacion).
 
  NOTA: Isla=(Cara+1)/2 presupone numeracion de caras 1-2, 3-4, etc.
 */
@@ -42,8 +43,9 @@ BEGIN
        OR OBJECT_ID(N'dbo.Surtan',N'U') IS NULL
        OR OBJECT_ID(N'dbo.Despachos',N'U') IS NULL
        OR OBJECT_ID(N'dbo.RelacionCptsDespachos',N'U') IS NULL
+       OR OBJECT_ID(N'dbo.ParamStock',N'U') IS NULL
     BEGIN
-        RAISERROR('Falta una tabla requerida. Verificá esquema dbo de Tanque, Prod, Surpla, Surtan, Despachos y RelacionCptsDespachos.',16,1);
+        RAISERROR('Falta una tabla requerida. Verificá esquema dbo de Tanque, Prod, Surpla, Surtan, Despachos, RelacionCptsDespachos y ParamStock.',16,1);
         RETURN;
     END;
 
@@ -78,7 +80,12 @@ BEGIN
         @JoinSt NVARCHAR(MAX), @JoinTank NVARCHAR(MAX),
         @Controlador NVARCHAR(200), @DManguera NVARCHAR(200),
         @Fecha NVARCHAR(200), @WhereRel NVARCHAR(MAX),
-        @Ambiguo BIT = 0;
+        @ParamEst SYSNAME, @TipoEstCol SYSNAME, @NombreEstCol SYSNAME,
+        @DomicilioCol SYSNAME, @TelefonoCol SYSNAME, @LocalidadCol SYSNAME,
+        @TipoExpr NVARCHAR(600), @NombreExpr NVARCHAR(600),
+        @DomicilioExpr NVARCHAR(600), @TelefonoExpr NVARCHAR(600),
+        @LocalidadExpr NVARCHAR(600),
+        @ParamHasRow BIT = 0, @Ambiguo BIT = 0;
 
     -- Acepta ID_ESTACION e ID_ESTAICION (error de tipeo mencionado);
     -- NUNCA supone que un ID de otra tabla corresponde a esta estación.
@@ -125,6 +132,57 @@ BEGIN
     BEGIN
         RAISERROR('Falta identificar descripción de Prod o capacidad de Tanque. Ejecutá el diagnóstico de columnas.',16,1);
         RETURN;
+    END;
+
+    -- Identificar la estación y sus datos de ParamStock antes de emitir resultados.
+    -- Los campos de texto pueden tener variantes de nombre según la instalación.
+    SELECT TOP(1) @ParamEst=c.name
+      FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock')
+      AND REPLACE(LOWER(c.name),'_','') IN ('idestacion','idestaicion')
+      ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
+
+    SELECT TOP(1) @TipoEstCol=c.name
+      FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock')
+      AND REPLACE(LOWER(c.name),'_','') IN ('tipoestacion','tipoestaicion','tipoestaicon','tipoestac')
+      ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='tipoestacion' THEN 0 ELSE 1 END;
+
+    SELECT TOP(1) @NombreEstCol=c.name
+      FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock')
+      AND REPLACE(LOWER(c.name),'_','') IN ('nombreestacion','nombestacion','nomestacion','nombre','razonsocial')
+      ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='nombreestacion' THEN 0 ELSE 1 END;
+
+    SELECT TOP(1) @DomicilioCol=c.name
+      FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock')
+      AND REPLACE(LOWER(c.name),'_','') IN ('domicilio','direccion')
+      ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='domicilio' THEN 0 ELSE 1 END;
+
+    SELECT TOP(1) @TelefonoCol=c.name
+      FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock')
+      AND REPLACE(LOWER(c.name),'_','') IN ('telefono','telfono','tel')
+      ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='telefono' THEN 0 ELSE 1 END;
+
+    SELECT TOP(1) @LocalidadCol=c.name
+      FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock')
+      AND REPLACE(LOWER(c.name),'_','') IN ('localidad','ciudad')
+      ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='localidad' THEN 0 ELSE 1 END;
+
+    IF @ParamEst IS NULL
+    BEGIN
+       RAISERROR('ParamStock no tiene un ID_ESTACION identificable. Revisá los nombres de las columnas; no se mostrarán datos de otra estación.',16,1);
+       RETURN;
+    END;
+
+    -- Comprobar que el ID seleccionado realmente existe en ParamStock.
+    SET @Sql=N'SELECT @found=CASE WHEN EXISTS (
+      SELECT 1 FROM dbo.ParamStock WHERE TRY_CONVERT(INT,'+QUOTENAME(@ParamEst)+N')=@IdEstacion
+    ) THEN 1 ELSE 0 END;';
+    EXEC sys.sp_executesql @Sql,N'@IdEstacion INT,@found BIT OUTPUT',
+         @IdEstacion=@IdEstacion,@found=@ParamHasRow OUTPUT;
+
+    IF @ParamHasRow=0
+    BEGIN
+       RAISERROR('No existe ese ID de estación en ParamStock. Revisá el ID seleccionado.',16,1);
+       RETURN;
     END;
 
     -- Si Prod no tiene ID_ESTACION, CODART debe ser único globalmente.
@@ -272,6 +330,37 @@ BEGIN
          N'@IdEstacion INT,@EstadoVta BIT,@MaxRelaciones INT',
          @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,
          @MaxRelaciones=@MaxRelaciones;
+
+    -- Resultado 5: EMPRESA/ESTACIÓN. Se agrega al final para no alterar el
+    -- orden de los cuatro conjuntos consumidos por las versiones previas.
+    -- Los campos no detectados vuelven como NULL, nunca como un dato supuesto.
+    SET @TipoExpr=CASE WHEN @TipoEstCol IS NULL
+      THEN N'CAST(NULL AS NVARCHAR(200))'
+      ELSE N'TRY_CONVERT(NVARCHAR(200),ps.'+QUOTENAME(@TipoEstCol)+N')' END;
+    SET @NombreExpr=CASE WHEN @NombreEstCol IS NULL
+      THEN N'CAST(NULL AS NVARCHAR(250))'
+      ELSE N'TRY_CONVERT(NVARCHAR(250),ps.'+QUOTENAME(@NombreEstCol)+N')' END;
+    SET @DomicilioExpr=CASE WHEN @DomicilioCol IS NULL
+      THEN N'CAST(NULL AS NVARCHAR(250))'
+      ELSE N'TRY_CONVERT(NVARCHAR(250),ps.'+QUOTENAME(@DomicilioCol)+N')' END;
+    SET @TelefonoExpr=CASE WHEN @TelefonoCol IS NULL
+      THEN N'CAST(NULL AS NVARCHAR(100))'
+      ELSE N'TRY_CONVERT(NVARCHAR(100),ps.'+QUOTENAME(@TelefonoCol)+N')' END;
+    SET @LocalidadExpr=CASE WHEN @LocalidadCol IS NULL
+      THEN N'CAST(NULL AS NVARCHAR(200))'
+      ELSE N'TRY_CONVERT(NVARCHAR(200),ps.'+QUOTENAME(@LocalidadCol)+N')' END;
+
+    SET @Sql=N'
+      SELECT TOP (1)
+             TRY_CONVERT(INT,ps.'+QUOTENAME(@ParamEst)+N') AS IdEstacion,
+             '+@TipoExpr+N' AS TipoEstacion,
+             '+@NombreExpr+N' AS NombreEstacion,
+             '+@DomicilioExpr+N' AS Domicilio,
+             '+@TelefonoExpr+N' AS Telefono,
+             '+@LocalidadExpr+N' AS Localidad
+      FROM dbo.ParamStock ps
+      WHERE TRY_CONVERT(INT,ps.'+QUOTENAME(@ParamEst)+N')=@IdEstacion;';
+    EXEC sys.sp_executesql @Sql,N'@IdEstacion INT',@IdEstacion=@IdEstacion;
 END;
 GO
 
@@ -293,6 +382,6 @@ GO
  FROM sys.tables t
  JOIN sys.columns c ON c.object_id=t.object_id
  WHERE t.name IN ('Tanque','Prod','Surpla','Surtan',
-                  'Despachos','RelacionCptsDespachos')
+                  'Despachos','RelacionCptsDespachos','ParamStock')
  ORDER BY t.name,c.column_id;
 */
