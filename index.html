@@ -115,6 +115,7 @@ h1 em{font-weight:500;color:#d9ae65}
 .station-picker[hidden]{display:none}.station-picker label{font-size:11px;font-weight:800;letter-spacing:.09em;color:#ffcb8d}
 .station-picker select,.station-picker button{min-width:130px;max-width:280px;background:#19140e;color:#ffd09b;border:1px solid #b76c3588;padding:9px;border-radius:7px;cursor:pointer}
 .station-error{margin-top:8px;font-size:12px;line-height:1.45;color:#ffb36b;overflow-wrap:anywhere;max-width:720px}
+.company-card{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:15px 0;padding:17px 19px;border:1px solid #d9823b77;background:linear-gradient(95deg,#21180d,#13120e);border-radius:13px}.company-card[hidden]{display:none}.company-card h2{font-size:22px;margin:3px 0;color:#f8ca92}.company-ey{font-size:10px;letter-spacing:.1em;color:#e9a75d;font-weight:800}.company-meta{display:flex;flex-direction:column;gap:2px;color:#d7c2a8;font-size:12px}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 #truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
@@ -158,6 +159,10 @@ h1 em{font-weight:500;color:#d9ae65}
   <button id="reloadCircuit" type="button">Actualizar circuito SQL</button>
 </div>
 <div class="station-error" id="stationError" role="status" aria-live="polite"></div>
+<div class="company-card" id="companyCard" hidden aria-live="polite">
+  <div><span class="company-ey">EMPRESA · PARAMSTOCK</span><h2 id="stationName">Estación</h2></div>
+  <div class="company-meta" id="stationCompanyInfo"></div>
+</div>
     <div class="annotation">“Todo movimiento deja una huella.”</div>
   </div>
   <div class="voice" aria-labelledby="voice-title">
@@ -284,6 +289,7 @@ h1 em{font-weight:500;color:#d9ae65}
  }
  function clearCircuit(){
    circuit=null;stationConnected=false;
+   document.getElementById('companyCard').hidden=true;
    set('liveTanks','—');set('liveHoses','Sin datos de tanques');
    set('livePumps','—');set('liveDatabase',activeDatabase||'Sin SQL');
    set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');
@@ -295,6 +301,17 @@ h1 em{font-weight:500;color:#d9ae65}
    const tanksRows=Array.isArray(data.tanks.rows)?data.tanks.rows:[];
    const hoses=Array.isArray(data.hoses.rows)?data.hoses.rows:[];
    const dispatches=Array.isArray(data.dispatches.rows)?data.dispatches.rows:[];
+   const company=Array.isArray(data.company?.rows)?data.company.rows[0]:null;
+   const companyCard=document.getElementById('companyCard');
+   companyCard.hidden=false;
+   document.getElementById('stationName').textContent=company?.NombreEstacion||'Estación '+data.station;
+   const details=[
+     company?.TipoEstacion||null,
+     company?.Domicilio||null,
+     company?.Localidad||null,
+     company?.Telefono?'Tel.: '+company.Telefono:null
+   ].filter(Boolean);
+   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):'ParamStock: actualizá el SP para ver la empresa (quinto resultado).';
    const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));const islands=new Set(hoses.map(x=>String(x.Isla??'')).filter(x=>x&&x!=='null'));
    stationError.textContent='';
    connection.innerHTML='<span class="dot"></span> SQL conectado · '+esc(activeDatabase)+' · Estación '+data.station+' · SP v'+esc(data.version||'?');
