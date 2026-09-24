@@ -581,13 +581,23 @@ ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
     }
     $name='['+([string]$col).Replace(']',']]')+']'
     $cmd=$Connection.CreateCommand()
-    $cmd.CommandText='SELECT DISTINCT TRY_CONVERT(INT,'+$name+') AS IdEstacion FROM dbo.ParamStock WHERE TRY_CONVERT(INT,'+$name+') IS NOT NULL ORDER BY IdEstacion;'
+    # Compatibilidad SQL Server antiguo / bases con compatibilidad anterior a 110.
+    # No convertir la columna en SQL: convertir los IDs en memoria y rechazar
+    # cualquier valor que no sea un entero de estación válido.
+    $cmd.CommandText='SELECT DISTINCT '+$name+' AS IdEstacion FROM dbo.ParamStock WHERE '+$name+' IS NOT NULL ORDER BY '+$name+';'
     $reader=$cmd.ExecuteReader()
-    $rows=@()
+    $rows=New-Object 'System.Collections.Generic.List[int]'
     try {
-        while($reader.Read()){if(-not $reader.IsDBNull(0)){$rows += [int]$reader.GetInt32(0)}}
+        while($reader.Read()){
+            if($reader.IsDBNull(0)){continue}
+            $id=0
+            $raw=([string]$reader.GetValue(0)).Trim()
+            if([int]::TryParse($raw,[ref]$id) -and $id -gt 0 -and -not $rows.Contains($id)){
+                $rows.Add($id)
+            }
+        }
     } finally {$reader.Close()}
-    return @($rows)
+    return @($rows.ToArray() | Sort-Object)
 }
 
 function Invoke-AllowedStoredProcedure {
