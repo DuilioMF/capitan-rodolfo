@@ -199,7 +199,7 @@ jobs:
           if(startIsla<0||endIsla<=startIsla)throw Error('No encontré función de Isla');
           const islandSource='const hasValue=x=>x!==null&&x!==undefined&&String(x).trim()!=="";'+
              'const num=x=>hasValue(x)&&Number.isFinite(Number(x))?Number(x):null;'+
-             index.slice(startIsla,endIsla)+'\\ngetIsla';
+             index.slice(startIsla,endIsla)+'\ngetIsla';
           const testedIsla=require('vm').runInNewContext(islandSource);
           for(const [cara,expected] of [[1,1],[2,1],[3,2],[4,2],[7,4],[8,4]]){
              if(testedIsla({Cara:cara})!==expected)throw Error('Cara '+cara+' asignada a isla incorrecta');
