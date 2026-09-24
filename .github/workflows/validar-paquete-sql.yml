@@ -68,6 +68,11 @@ jobs:
             if(!$sql.Contains($required)){throw "Falta contenido SQL: $required"}
           }
           if(!(Test-Path 'sql/README_CircuitoEstacion.md')){throw "Falta guia de despliegue"}
+          if(!$sql.Contains('WITH EXECUTE AS OWNER')){throw "Falta el contexto propietario del SP"}
+          if(!(Test-Path 'sql/DIAGNOSTICO_PERMISOS_CircuitoEstacion.sql')){throw "Falta diagnóstico permisos"}
+          $permissions=Get-Content sql/DIAGNOSTICO_PERMISOS_CircuitoEstacion.sql -Raw
+          if(!$permissions.Contains("HAS_PERMS_BY_NAME('dbo.Tanque'")){throw "Falta prueba SELECT Tanque"}
+          if(!$permissions.Contains("PuedeEjecutarCircuito")){throw "Falta prueba permiso EXECUTE"}
           Write-Host "Paquete SQL: estructura y archivos OK. Ejecucion con esquema real pendiente."
 
       - name: Validar pantalla del camion y JS de las pantallas
