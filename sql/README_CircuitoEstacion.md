@@ -14,7 +14,7 @@
      @EstadoVta = NULL;  -- todos los despachos
    ```
    Si querés solo despachos pendientes, pasá `@EstadoVta = 0`; cobrados, `1`.
-5. Confirmá que se devuelvan **cuatro resultados**: tanques, mangueras/caras, despachos y relación con comprobantes. Guardá únicamente errores y nombres de columnas; **nunca compartas credenciales**.
+5. Confirmá que se devuelvan **cinco resultados**: tanques, mangueras/caras, despachos, relación con comprobantes y empresa/estación desde ParamStock. Guardá únicamente errores y nombres de columnas; **nunca compartas credenciales**.
 
 El SP acepta `@MaxDespachos` (500 por defecto) y `@MaxRelaciones` (1000 por defecto), con un máximo de 10000 para cada uno.
 
@@ -23,6 +23,7 @@ El SP acepta `@MaxDespachos` (500 por defecto) y `@MaxRelaciones` (1000 por defe
 - Filtra por estación y une `Prod` por `CODART` y también por estación cuando existe esa columna.
 - Detecta variantes declaradas en la conversación: `ID_ESTACION`/`ID_ESTAICION`, `CAPACIDAD`/`CAPAIDAD`, `DESCRIART`/`DESCRIIMPRESION`.
 - **No inventa** la relación comprobante–despacho. Busca una clave de nombre coincidente `ID_DESPACHO`, `ID_DESPCHO` o `ID_SALE`. Si no existe y no puede filtrar la tabla de relaciones por estación, devuelve un error explicativo.
+- ParamStock proporciona el listado de ID_ESTACION. El SP reconoce las variantes más comunes de tipo, nombre, domicilio, teléfono y localidad; si falta un dato opcional lo devuelve como NULL y no lo inventa.
 - Solo calcula `Isla = (Cara + 1) / 2` si las caras se numeran consecutivamente 1–2, 3–4, etc. Verificar esa convención con la estación real.
 - Si faltan claves o una manguera es ambigua entre estaciones, devuelve error en lugar de mezclar datos.
 
@@ -42,6 +43,6 @@ ORDER BY t.name,c.column_id;
 
 El repositorio de Capitán v69 incluye el SP en la lista predeterminada de procedimientos permitidos, **sin sacar** `dbo.PA_VentasFormasPago`. El conector reconoce esa autorización al actualizar desde el acceso del cerebro. El SP aparece en Núcleo → Datos **cuando ya esté creado en SQL Server**.
 
-La visualización actual de tanques/surtidores todavía usa sus consultas existentes. Con los cuatro resultados del SP ya confirmados en `SiSRL`, se puede conectar esa visualización al SP sin suponer relaciones incorrectas.
+La visualización de Estación usa el SP y puede mostrar los datos de ParamStock al final. Con los cinco resultados del SP ya confirmados en `SiSRL`, se puede conectar esa visualización al SP sin suponer relaciones incorrectas.
 
-**Estado de verificación:** archivo generado y guardado en GitHub. La ejecución sobre tu SQL Server local requiere que lo despliegues y pruebes allí.
+**Estado de verificación:** archivo generado y guardado en GitHub. La ejecución y la verificación de nombres reales de ParamStock en tu SQL Server local requiere que lo despliegues y pruebes allí.
