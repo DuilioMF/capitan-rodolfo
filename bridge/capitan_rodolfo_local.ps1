@@ -478,19 +478,21 @@ ORDER BY s.name,p.name;
 function Get-StationOptions {
     param($Connection,[string]$Database)
     $Connection.ChangeDatabase($Database)
+    if(-not (Test-Path $SpAllowlistPath)){throw 'Falta configuración local del conector.'}
     $nameCmd=$Connection.CreateCommand()
-    $nameCmd.CommandText = @"
+    $nameCmd.CommandText=@"
 SELECT TOP(1) c.name FROM sys.columns c
-WHERE c.object_id=OBJECT_ID(N'dbo.Tanque','U')
+WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock','U')
 AND REPLACE(LOWER(c.name),'_','') IN ('idestacion','idestaicion')
 ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
 "@
     $col=$nameCmd.ExecuteScalar()
     if($null -eq $col -or $col -is [DBNull]){
-        throw 'No se identifica ID_ESTACION en dbo.Tanque. Mostrá el esquema real para resolverlo sin mezclar estaciones.'
+       throw 'ParamStock no tiene una columna ID_ESTACION identificable. Revisá el esquema real.'
     }
+    $name='['+([string]$col).Replace(']',']]')+']'
     $cmd=$Connection.CreateCommand()
-    $cmd.CommandText='SELECT DISTINCT TRY_CONVERT(INT,'+[string](('['+[string]$col+']'))+') AS IdEstacion FROM dbo.Tanque WHERE TRY_CONVERT(INT,'+[string](('['+[string]$col+']'))+') IS NOT NULL ORDER BY IdEstacion;'
+    $cmd.CommandText='SELECT DISTINCT TRY_CONVERT(INT,'+$name+') AS IdEstacion FROM dbo.ParamStock WHERE TRY_CONVERT(INT,'+$name+') IS NOT NULL ORDER BY IdEstacion;'
     $reader=$cmd.ExecuteReader()
     $rows=@()
     try {
@@ -920,7 +922,7 @@ try {
           $params=[pscustomobject]@{IdEstacion=$station;MaxDespachos=500;MaxRelaciones=1000}
           $result=Invoke-AllowedStoredProcedure -Connection $cn -Database ([string]$state.database) -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params
           $sets=@($result.resultSets)
-          if($sets.Count -ne 4){
+          if($sets.Count -lt 4){
             Send-Json $stream 500 @{error=('El SP debe devolver cuatro conjuntos, pero devolvió '+$sets.Count+'. Verificá que esté instalada la versión del circuito.')}
             continue
           }
@@ -933,6 +935,8 @@ try {
             hoses=$sets[1]
             dispatches=$sets[2]
             receipts=$sets[3]
+            company=if($sets.Count -ge 5){$sets[4]}else{$null}
+            companyAvailable=($sets.Count -ge 5)
             version=$Version
           }
         } catch {
