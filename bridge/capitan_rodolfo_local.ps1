@@ -648,6 +648,17 @@ ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
     return '['+([string]$result).Replace(']',']]')+']'
 }
 
+function Get-SqlColumnExists {
+    param($Connection,[string]$Table,[string]$Name)
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandText='SELECT CASE WHEN COL_LENGTH(@tablename,@columnname) IS NOT NULL THEN 1 ELSE 0 END'
+    $null=$cmd.Parameters.Add('@tablename',[System.Data.SqlDbType]::NVarChar,257)
+    $cmd.Parameters['@tablename'].Value=$Table
+    $null=$cmd.Parameters.Add('@columnname',[System.Data.SqlDbType]::NVarChar,128)
+    $cmd.Parameters['@columnname'].Value=$Name
+    try {return ([int]$cmd.ExecuteScalar() -eq 1)}finally{$cmd.Dispose()}
+}
+
 function Get-StationReadOnlyCircuit {
     param($Connection,[string]$Database,[int]$Station,[string]$Failure)
     $Connection.ChangeDatabase($Database)
@@ -662,6 +673,44 @@ function Get-StationReadOnlyCircuit {
        't.CODART AS CodArt,t.CAPACIDAD AS Capacidad,t.LITROS AS Litros '+
        'FROM dbo.Tanque t WHERE t.'+$tankStation+'=@Station ORDER BY t.N_TANQUE;'
     $tankSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $tankSql -Station $Station
+
+    # En modo lectura, enriquecer Producto SOLO si la relación CODART
+    # es única para la estación seleccionada. No se mezclan productos.
+    $prodOk=$false
+    $prodStation=''
+    $prodJoin=''
+    $costExpr='CAST(NULL AS DECIMAL(18,2))'
+    $priceExpr='CAST(NULL AS DECIMAL(18,2))'
+    try {
+        if((Test-Path $ProfilePath) -and
+           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Prod' -Name 'DESCRIART')){
+            $prodStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Prod'
+            $scope=if($prodStation){' WHERE p.'+$prodStation+'=@Station '}else{' '}
+            $duplicateSql='SELECT TOP (1) p.CODART FROM dbo.Prod p'+$scope+
+                ' GROUP BY p.CODART HAVING COUNT(*)>1;'
+            $dupes=Read-StationReadOnlyQuery -Connection $Connection -Sql $duplicateSql -Station $Station
+            $prodOk=($dupes.rowCount -eq 0)
+            if($prodOk){
+                $prodJoin=' LEFT JOIN dbo.Prod p ON p.CODART={SOURCE}.CODART'
+                if($prodStation){$prodJoin+=' AND p.'+$prodStation+'=@Station'}
+                if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Prod' -Name 'PRECOMPRA'){$costExpr='p.PRECOMPRA'}
+                if((Get-SqlColumnExists -Connection $Connection -Table 'dbo.Prod' -Name 'PRECIOCONIVA') -and
+                   (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Prod' -Name 'IMPUESTOS') -and
+                   (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Prod' -Name 'TasaOtrosImpue')){
+                    $priceExpr='(ISNULL(p.PRECIOCONIVA,0)+ISNULL(p.IMPUESTOS,0)+ISNULL(p.TasaOtrosImpue,0))'
+                }
+                $richTank='SELECT TOP (200) t.'+$tankStation+' AS IdEstacion,'+
+                    't.N_TANQUE AS NTanque,t.DENOMINACION AS Denominacion,'+
+                    't.CODART AS CodArt,t.CAPACIDAD AS Capacidad,t.LITROS AS Litros,'+
+                    'p.DESCRIART AS Producto,'+$costExpr+' AS Costo,'+$priceExpr+' AS Precio '+
+                    'FROM dbo.Tanque t '+$prodJoin.Replace('{SOURCE}','t')+
+                    ' WHERE t.'+$tankStation+'=@Station ORDER BY t.N_TANQUE;'
+                try {
+                    $tankSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $richTank -Station $Station
+                }catch{$warnings.Add('Tanques disponibles, pero no se pudo enriquecer Prod: '+$_.Exception.Message)}
+            }else{$warnings.Add('Prod tiene CODART repetidos dentro de la estación; se omite esa relación.')}
+        }
+    }catch{$warnings.Add('No se pudo validar la relación de Prod: '+$_.Exception.Message)}
     $hoseSet=$blank
     $hoseStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Surpla'
     if($hoseStation){
@@ -673,10 +722,104 @@ function Get-StationReadOnlyCircuit {
                'FROM dbo.Surpla s WHERE s.'+$hoseStation+
                '=@Station ORDER BY s.SURTIDOR,s.MANGUERA;'
             $hoseSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $hoseSql -Station $Station
+            if($prodOk){
+                $hosePrice=$priceExpr
+                $hoseCost=$costExpr
+                $controllerExpr=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Surpla' -Name 'CONTROLADOR'){'s.CONTROLADOR'}else{'CAST(NULL AS NVARCHAR(100))'}
+                $hoseRich='SELECT TOP (200) s.'+$hoseStation+' AS IdEstacion,'+
+                    's.SURTIDOR AS Cara,s.MANGUERA AS Manguera,s.CODART AS CodArt,'+
+                    'p.DESCRIART AS Producto,'+$hoseCost+' AS Costo,'+$hosePrice+' AS Precio,'+
+                    $controllerExpr+' AS Controlador '
+                $hoseRich+=' FROM dbo.Surpla s '+$prodJoin.Replace('{SOURCE}','s')+
+                    ' WHERE s.'+$hoseStation+'=@Station ORDER BY s.SURTIDOR,s.MANGUERA;'
+                try{$hoseSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $hoseRich -Station $Station}
+                catch{$warnings.Add('Surtidores disponibles, pero faltan datos de Prod: '+$_.Exception.Message)}
+            }
+            # Relacionar la manguera al tanque solamente con Surtan de la
+            # misma estación, o si la manguera es única entre estaciones.
+            $surtanStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Surtan'
+            $safeSurtan=[bool]$surtanStation
+            if(-not $safeSurtan){
+                $duplicates='SELECT TOP(1) s.MANGUERA FROM dbo.Surpla s'+
+                  ' GROUP BY s.MANGUERA HAVING COUNT(DISTINCT s.'+$hoseStation+')>1;'
+                try{
+                  $dup=Read-StationReadOnlyQuery -Connection $Connection -Sql $duplicates -Station $Station
+                  $safeSurtan=($dup.rowCount -eq 0)
+                }catch{}
+            }
+            if($safeSurtan){
+                $stJoin='INNER JOIN dbo.Surtan st ON st.MANGUERA=s.MANGUERA '
+                if($surtanStation){$stJoin+=' AND st.'+$surtanStation+'=@Station '}
+                if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Surtan' -Name 'SURTIDOR'){
+                    $stJoin+=' AND st.SURTIDOR=s.SURTIDOR '
+                }
+                $rich=if($prodOk){
+                    'p.DESCRIART AS Producto,'+$costExpr+' AS Costo,'+$priceExpr+' AS Precio,'
+                }else{'CAST(NULL AS NVARCHAR(120)) AS Producto,'+
+                       'CAST(NULL AS DECIMAL(18,2)) AS Costo,'+
+                       'CAST(NULL AS DECIMAL(18,2)) AS Precio,'}
+                $joinProd=if($prodOk){$prodJoin.Replace('{SOURCE}','s')}else{''}
+                $control=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Surpla' -Name 'CONTROLADOR'){'s.CONTROLADOR'}else{'CAST(NULL AS NVARCHAR(100))'}
+                $richHoses='SELECT TOP(200) s.'+$hoseStation+' AS IdEstacion,'+
+                  's.SURTIDOR AS Cara,s.MANGUERA AS Manguera,s.CODART AS CodArt,'+
+                  $rich+'st.N_TANQUE AS NTanque,t.DENOMINACION AS Tanque,'+
+                  $control+' AS Controlador FROM dbo.Surpla s '+
+                  $stJoin+' INNER JOIN dbo.Tanque t ON t.N_TANQUE=st.N_TANQUE'+
+                  ' AND t.'+$tankStation+'=@Station '+$joinProd+
+                  ' WHERE s.'+$hoseStation+'=@Station ORDER BY s.SURTIDOR,s.MANGUERA;'
+                try{
+                   $enriched=Read-StationReadOnlyQuery -Connection $Connection -Sql $richHoses -Station $Station
+                   # A failed mapping must not hide existing Surpla rows.
+                   if($enriched.rowCount -eq $hoseSet.rowCount){$hoseSet=$enriched}
+                   else{$warnings.Add('La relación con Surtan no es unívoca; se muestran mangueras sin tanque hasta verificar las claves.')}
+                }catch{$warnings.Add('No se pudo asociar Surtan: '+$_.Exception.Message)}
+            }
+
         } catch {
             $warnings.Add('No pude consultar las mangueras de Surpla: '+$_.Exception.Message)
         }
     }else{$warnings.Add('No se encontró una columna de estación identificable en Surpla; no se muestran mangueras de otras estaciones.')}
+    # Carga en modo lectura cuando el SP no tenga EXECUTE.
+    $dispatchSet=$blank
+    $receiptSet=$blank
+    $dispatchStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Despachos'
+    if($dispatchStation){
+        $manguera=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'MANGUERA'){'d.MANGUERA'}else{'CAST(NULL AS INT)'}
+        $hora=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULTIME'){'CONVERT(VARCHAR(8),d.ULTIME,108)'}else{'CAST(NULL AS VARCHAR(8))'}
+        $joinProd=if($prodOk){$prodJoin.Replace('{SOURCE}','d')}else{''}
+        $prodFields=if($prodOk){'p.DESCRIART AS Producto,'+$costExpr+' AS Costo,'+$priceExpr+' AS PrecioProducto,'}
+            else{'CAST(NULL AS NVARCHAR(120)) AS Producto,CAST(NULL AS DECIMAL(18,2)) AS Costo,CAST(NULL AS DECIMAL(18,2)) AS PrecioProducto,'}
+        $dispatchSql='SELECT TOP (200) d.ID_SALE AS IdSale,d.SURTIDOR AS Cara,'+
+             $manguera+' AS Manguera,d.CODART AS CodArt,'+
+             $prodFields+'d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,'+
+             'd.ESTADOVTA AS EstadoVta,'+$hora+' AS Hora '+
+             'FROM dbo.Despachos d '+$joinProd+' WHERE d.'+$dispatchStation+
+             '=@Station ORDER BY d.ID_SALE DESC;'
+        try {
+            $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station
+        } catch {$warnings.Add('Carga no disponible en modo lectura: '+$_.Exception.Message)}
+        $receiptStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.RelacionCptsDespachos'
+        if($receiptStation -and
+           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO')){
+            $fields=@()
+            foreach($col in @(
+                @{source='LETRA';target='Letra'},
+                @{source='SUCURSAL';target='Sucursal'},
+                @{source='NCOMPRO';target='Numero'},
+                @{source='TURNO';target='Turno'}
+            )){
+                if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name $col.source){
+                    $fields+=('r.['+$col.source+'] AS ['+$col.target+']')
+                }else{$fields+=('CAST(NULL AS NVARCHAR(30)) AS ['+$col.target+']')}
+            }
+            $receiptSql='SELECT TOP(200) r.DI_DESPACHO AS Venta,'+($fields -join ',')+
+               ' FROM dbo.RelacionCptsDespachos r INNER JOIN dbo.Despachos d ON '+
+               'd.ID_SALE=r.DI_DESPACHO AND d.'+$dispatchStation+'=@Station '+
+               'WHERE r.'+$receiptStation+'=@Station;'
+            try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
+            catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
+        }
+    }
     $warnings.Add('El SP no pudo ejecutarse: '+$Failure+'. Mostrando solamente las tablas autorizadas en modo lectura.')
     return @{
         source='lectura_tablas'
@@ -686,8 +829,8 @@ function Get-StationReadOnlyCircuit {
         procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
         tanks=$tankSet
         hoses=$hoseSet
-        dispatches=$blank
-        receipts=$blank
+        dispatches=$dispatchSet
+        receipts=$receiptSet
         company=$null
         companyAvailable=$false
         version=$Version
