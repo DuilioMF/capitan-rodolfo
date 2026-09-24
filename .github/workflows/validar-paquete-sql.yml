@@ -218,7 +218,7 @@ jobs:
           }
           const stateStart=index.indexOf(' const paymentState=r=>'),stateEnd=index.indexOf(' function loads(',stateStart);
           if(stateStart<0||stateEnd<=stateStart)throw Error('Falta regla de cobro');
-          const parseState=require('vm').runInNewContext(index.slice(stateStart,stateEnd)+'\npaymentState');
+          const parseState=require('vm').runInNewContext('const hasValue=x=>x!==null&&x!==undefined&&String(x).trim()!=="";\n'+index.slice(stateStart,stateEnd)+'\npaymentState');
           for(const [v,expect] of [[1,'paid'],['1','paid'],[0,'pending'],['0','pending'],[null,'unknown'],[undefined,'unknown'],['?', 'unknown']]){
             if(parseState({EstadoVta:v})!==expect)throw Error('Estado de cobro incorrecto: '+v);
           }
