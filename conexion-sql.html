@@ -74,18 +74,10 @@
  const logDiag=msg=>{const el=$('diagLog');if(!el)return;const ts=new Date().toLocaleTimeString('es-AR',{hour12:false});if(el.textContent==='Iniciando diagnóstico…')el.textContent='';el.textContent+='['+ts+'] '+msg+'\n';el.scrollTop=el.scrollHeight};
  logDiag('Página v67 · '+location.href);
  logDiag('Origen: '+location.origin);
- const candidates=[
-  'http://127.0.0.1:8787','http://localhost:8787',
-  'http://127.0.0.1:8797','http://localhost:8797',
-  'http://127.0.0.1:18787','http://localhost:18787',
-  'http://127.0.0.1:27877','http://localhost:27877',
-  'http://127.0.0.1:37877','http://localhost:37877',
-  'http://127.0.0.1:48787','http://localhost:48787',
-  'http://127.0.0.1:57877','http://localhost:57877'
-];
+ const candidates=[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
  let bridge=null,profile=null,state=null,sessionId=null,currentDb='',procedures=[]; const preferredDb='SISRL';
 
- const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,targetAddressSpace:'local'});
+ const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),800);try{return await fetch(url,{cache:'no-store',...options,targetAddressSpace:'local',signal:ac.signal})}finally{clearTimeout(timer)}};
  async function get(path){const r=await localFetch(bridge+path);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  async function post(path,body){const r=await localFetch(bridge+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  function setStatus(el,msg,kind=''){el.className='status '+kind;el.textContent=msg}
