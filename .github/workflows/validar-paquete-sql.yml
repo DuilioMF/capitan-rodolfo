@@ -260,9 +260,9 @@ jobs:
           for(const [v,expect] of [[1,'paid'],['1','paid'],[0,'pending'],['0','pending'],[null,'unknown'],[undefined,'unknown'],['?', 'unknown']]){
             if(parseState({EstadoVta:v})!==expect)throw Error('Estado de cobro incorrecto: '+v);
           }
-          if(!index.includes("paymentStep.addEventListener('click',()=>loads('paid'))")||
+          if(!index.includes("paymentStep.addEventListener('click',()=>window.capitanOpenCobros?.())")||
              !index.includes("action:r=>showReceipt(r.IdSale??r.Venta,dispatchModal)")){
-               throw Error('Cobro no abre las ventas cobradas o su comprobante');
+               throw Error('Cobro no abre panel de medios o la carga no vincula su comprobante');
           }
           console.log('Cierres izquierda y cobros: estados, filtros y navegación OK');
 
