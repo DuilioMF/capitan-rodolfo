@@ -600,6 +600,96 @@ ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
     return @($rows.ToArray() | Sort-Object)
 }
 
+function Read-StationReadOnlyQuery {
+    param($Connection,[string]$Sql,[int]$Station)
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandTimeout=20
+    $cmd.CommandText=$Sql
+    $param=$cmd.Parameters.Add('@Station',[System.Data.SqlDbType]::Int)
+    $param.Value=$Station
+    $reader=$cmd.ExecuteReader()
+    $columns=@()
+    $rows=New-Object System.Collections.Generic.List[object]
+    try {
+        for($i=0;$i -lt $reader.FieldCount;$i++){$columns += [string]$reader.GetName($i)}
+        while($reader.Read()){
+            $row=[ordered]@{}
+            for($i=0;$i -lt $reader.FieldCount;$i++){
+                $value=$reader.GetValue($i)
+                if($value -is [DBNull]){$value=$null}
+                elseif($value -is [DateTime]){$value=$value.ToString('yyyy-MM-dd HH:mm:ss')}
+                elseif($value -is [byte[]]){$value='[binario]'}
+                $row[$columns[$i]]=$value
+            }
+            $rows.Add([pscustomobject]$row)
+        }
+    } finally {$reader.Close();$cmd.Dispose()}
+    return @{columns=@($columns);rows=@($rows.ToArray());rowCount=$rows.Count}
+}
+
+function Find-StationColumn {
+    param($Connection,[string]$ObjectName)
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandText=@"
+SELECT TOP(1) c.name FROM sys.columns c
+WHERE c.object_id=OBJECT_ID(@ObjectName,'U')
+ AND REPLACE(LOWER(c.name),'_','') IN ('idestacion','idestaicion')
+ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
+"@
+    $null=$cmd.Parameters.Add('@ObjectName',[System.Data.SqlDbType]::NVarChar,257)
+    $cmd.Parameters['@ObjectName'].Value=$ObjectName
+    $result=$cmd.ExecuteScalar()
+    $cmd.Dispose()
+    if($null -eq $result -or $result -is [DBNull]){return ''}
+    return '['+([string]$result).Replace(']',']]')+']'
+}
+
+function Get-StationReadOnlyCircuit {
+    param($Connection,[string]$Database,[int]$Station,[string]$Failure)
+    $Connection.ChangeDatabase($Database)
+    $warnings=New-Object System.Collections.Generic.List[string]
+    $blank=@{columns=@();rows=@();rowCount=0}
+    $tankStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Tanque'
+    if(-not $tankStation){throw 'No pude identificar ID_ESTACION en Tanque para leer la estación de manera segura.'}
+    # Exactamente las columnas que aparecen en la tabla Tanque real. Se
+    # parametriza IdEstacion; NUNCA se consultan tanques de otras estaciones.
+    $tankSql='SELECT TOP (200) t.'+$tankStation+' AS IdEstacion,'+
+       't.N_TANQUE AS NTanque,t.DENOMINACION AS Denominacion,'+
+       't.CODART AS CodArt,t.CAPACIDAD AS Capacidad,t.LITROS AS Litros '+
+       'FROM dbo.Tanque t WHERE t.'+$tankStation+'=@Station ORDER BY t.N_TANQUE;'
+    $tankSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $tankSql -Station $Station
+    $hoseSet=$blank
+    $hoseStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Surpla'
+    if($hoseStation){
+        try {
+            # Solo la estación solicitada. No se asocian tanques por manguera
+            # hasta poder validar el vínculo con Surtan y su clave de estación.
+            $hoseSql='SELECT TOP (200) s.'+$hoseStation+' AS IdEstacion,'+
+               's.SURTIDOR AS Cara,s.MANGUERA AS Manguera,s.CODART AS CodArt '+
+               'FROM dbo.Surpla s WHERE s.'+$hoseStation+
+               '=@Station ORDER BY s.SURTIDOR,s.MANGUERA;'
+            $hoseSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $hoseSql -Station $Station
+        } catch {
+            $warnings.Add('No pude consultar las mangueras de Surpla: '+$_.Exception.Message)
+        }
+    }else{$warnings.Add('No se encontró una columna de estación identificable en Surpla; no se muestran mangueras de otras estaciones.')}
+    $warnings.Add('El SP no pudo ejecutarse: '+$Failure+'. Mostrando solamente las tablas autorizadas en modo lectura.')
+    return @{
+        source='lectura_tablas'
+        warning=($warnings -join ' ')
+        database=$Database
+        station=$Station
+        procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
+        tanks=$tankSet
+        hoses=$hoseSet
+        dispatches=$blank
+        receipts=$blank
+        company=$null
+        companyAvailable=$false
+        version=$Version
+    }
+}
+
 function Invoke-AllowedStoredProcedure {
     param($Connection,[string]$Database,[string]$Procedure,$Parameters)
     Assert-AllowedProcedure -Procedure $Procedure
@@ -1046,24 +1136,36 @@ try {
             continue
           }
           $params=[pscustomobject]@{IdEstacion=$station;MaxDespachos=500;MaxRelaciones=1000}
-          $result=Invoke-AllowedStoredProcedure -Connection $cn -Database ([string]$state.database) -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params
-          $sets=@($result.resultSets)
-          if($sets.Count -lt 4){
-            Send-Json $stream 500 @{error=('El SP debe devolver cuatro conjuntos, pero devolvió '+$sets.Count+'. Verificá que esté instalada la versión del circuito.')}
-            continue
-          }
-          Send-Json $stream 200 @{
-            connected=$true
-            database=[string]$state.database
-            station=$station
-            procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
-            tanks=$sets[0]
-            hoses=$sets[1]
-            dispatches=$sets[2]
-            receipts=$sets[3]
-            company=if($sets.Count -ge 5){$sets[4]}else{$null}
-            companyAvailable=($sets.Count -ge 5)
-            version=$Version
+          try {
+              $result=Invoke-AllowedStoredProcedure -Connection $cn -Database ([string]$state.database) -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params
+              $sets=@($result.resultSets)
+              if($sets.Count -lt 4){throw ('El SP devolvió '+$sets.Count+' conjuntos, pero se necesitan cuatro.')}
+              Send-Json $stream 200 @{
+                connected=$true
+                source='sp'
+                database=[string]$state.database
+                station=$station
+                procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
+                tanks=$sets[0]
+                hoses=$sets[1]
+                dispatches=$sets[2]
+                receipts=$sets[3]
+                company=if($sets.Count -ge 5){$sets[4]}else{$null}
+                companyAvailable=($sets.Count -ge 5)
+                version=$Version
+              }
+          } catch {
+              # Una denegación EXECUTE no impide mostrar las tablas para las
+              # que el mismo usuario SI dispone de permiso SELECT. Nunca
+              # se conceden permisos ni se simulan filas.
+              $spFailure=$_.Exception.Message
+              try {
+                  $direct=Get-StationReadOnlyCircuit -Connection $cn -Database ([string]$state.database) -Station $station -Failure $spFailure
+                  $direct.connected=$true
+                  Send-Json $stream 200 $direct
+              } catch {
+                  Send-Json $stream 500 @{error=('El SP no se pudo ejecutar: '+$spFailure+'. La lectura directa también falló: '+$_.Exception.Message)}
+              }
           }
         } catch {
           Send-Json $stream 500 @{error=('Error al ejecutar PA_CapitanRodolfo_CircuitoEstacion: '+$_.Exception.Message)}
