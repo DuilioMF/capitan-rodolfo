@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<title>Capitán Rodolfo · Recepción de comprobantes</title>
+<style>
+:root{color-scheme:dark;--bg:#080e14;--panel:#101922;--gold:#ffad54;--orange:#f47b32;--ink:#ecf6ff;--muted:#98acbb;--line:#415d72;--good:#51d6a1;--bad:#ff9e9e}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:radial-gradient(ellipse at 80% 0,#2b251c 0,transparent 48%),var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",Arial,sans-serif}
+main{max-width:900px;margin:0 auto}.headline{display:flex;gap:16px;justify-content:space-between;align-items:center}.ey{color:var(--orange);font-size:11px;font-weight:800;letter-spacing:.16em}h1{margin:0;font-size:clamp(24px,3vw,35px)}h2{font-size:18px;margin:4px 0 12px}.desc{color:var(--muted);margin:4px 0 14px}button,input{font:inherit}button{cursor:pointer}button:focus-visible,.drop:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.truck-wrap{position:relative;border:1px solid #b76c3566;border-radius:16px;margin:12px 0;background:radial-gradient(circle at 50% 88%,#a8572d22,transparent 60%),#141811;overflow:hidden;display:flex;justify-content:center;align-items:center;min-height:177px}
+.truck{width:min(480px,96%);filter:drop-shadow(0 10px 17px #0008);transition:filter .3s,transform .35s;transform-origin:bottom center}.truck-wrap.feeding .truck{transform:scale(1.035);filter:drop-shadow(0 10px 35px #ff8b54a8)}
+.truck-wrap:after{content:"";position:absolute;bottom:16px;width:80%;height:2px;background:linear-gradient(90deg,transparent,#e28b4d66,transparent)}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed #e88c59aa;border-radius:17px;background:#ff80350a;padding:19px;min-height:140px;text-align:center;cursor:pointer;transition:.2s;gap:6px}
+.drop.drag{border-color:var(--good);background:#51d6a120;transform:scale(1.007)}
+.drop strong{color:#ffbf7c;font-size:17px}.drop small{color:var(--muted);max-width:590px}.drop button,.action{background:var(--orange);border:1px solid var(--gold);color:#160e07;border-radius:8px;font-weight:800;padding:9px 15px;margin-top:5px}
+.status{padding:10px 13px;margin:14px 0;background:#132430;border:1px solid #35566b;border-radius:9px;color:#c5d7e3;white-space:pre-wrap;overflow-wrap:anywhere}.status.bad{color:var(--bad);border-color:#a95151}.status.ok{color:var(--good);border-color:#388963}
+.box{border:1px solid #395161;background:#101a22;border-radius:13px;padding:15px;margin:14px 0}.box[hidden],.drop input{display:none!important}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}.grid>div{border:1px solid #334d5e;border-radius:8px;background:#172633;padding:9px}.grid small{display:block;color:#9ab0bd;font-size:11px}.grid strong{display:block;color:#d8f4e7;overflow-wrap:anywhere;margin-top:4px}
+label{display:block;margin:8px 0;color:#d4dfea}.formrow{display:flex;gap:12px;flex-wrap:wrap}.formrow label{flex:1;min-width:210px}input[type=email],input[type=password]{padding:10px;width:100%;border:1px solid #566776;background:#0d1820;color:var(--ink);border-radius:7px;margin-top:4px}
+pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#bdcfdd;font-size:12px;background:#071017;padding:12px;border-radius:9px}img.preview{max-height:150px;max-width:100%;object-fit:contain;border-radius:9px}.note{color:var(--muted);font-size:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{padding:9px 12px;border-radius:8px;border:1px solid #cb854c;background:#422a1d;color:#ffcc96;font-weight:800}
+.fly{position:fixed;z-index:1000;padding:8px;border:1px solid #ffb37f;background:#fcf2e6;color:#5e2a09;border-radius:6px;font-size:12px;font-weight:800;pointer-events:none;transition:transform .64s ease-in,opacity .64s ease-in}
+@media(max-width:620px){body{padding:10px}.truck-wrap{min-height:130px}}
+</style>
+</head>
+<body>
+<main>
+<div class="ey">CAPITÁN RODOLFO · RECEPCIÓN DIGITAL</div>
+<div class="headline"><h1>Descarga de combustible</h1><span id="docVersion" class="ey">LECTOR</span></div>
+<p class="desc">El camión recibe una factura, recibo o comprobante de transferencia, lo lee y prepara sus datos estructurados para revisar.</p>
+<div class="truck-wrap" id="truckWrap" aria-label="Camión cisterna digital">
+<svg class="truck" viewBox="0 0 550 190" role="img" aria-label="Camión cisterna naranja de Capitán Rodolfo">
+ <defs><linearGradient id="tankGrad" x2="0" y2="1"><stop stop-color="#edb175"/><stop offset=".44" stop-color="#d77f3c"/><stop offset="1" stop-color="#783e23"/></linearGradient><linearGradient id="cabGrad"><stop stop-color="#ef9644"/><stop offset="1" stop-color="#af501e"/></linearGradient></defs>
+ <path fill="#1b2627" d="M45 125h441v18H45z"/><rect x="70" y="47" width="322" height="81" rx="39" fill="url(#tankGrad)" stroke="#f8cf97" stroke-width="3"/>
+ <path d="M75 79h308M139 48v80M323 48v80" stroke="#603d27" opacity=".3" stroke-width="6"/><text x="227" y="96" text-anchor="middle" fill="#fff1d5" font-family="Segoe UI,sans-serif" font-size="20" font-weight="800">DOINGLIO</text>
+ <path fill="#f1b65d" d="M393 72h61l43 35v33h-105z"/><path fill="url(#cabGrad)" stroke="#ffc37d" stroke-width="3" d="M398 66h54l44 38v35H398z"/><path fill="#18485c" stroke="#ddf7ff" stroke-width="3" d="M438 74h13l29 30h-42z"/>
+ <path fill="#f2ca8d" d="M405 116h36v6h-36z"/><rect x="46" y="128" width="450" height="18" fill="#ba5a29" rx="4"/>
+ <g fill="#141b22" stroke="#adb0ab" stroke-width="7"><circle cx="135" cy="151" r="20"/><circle cx="310" cy="151" r="20"/><circle cx="440" cy="151" r="20"/></g>
+ <g fill="#9bafba"><circle cx="135" cy="151" r="5"/><circle cx="310" cy="151" r="5"/><circle cx="440" cy="151" r="5"/></g>
+ <path stroke="#facd78" stroke-width="6" d="M170 43h52M185 34v10M208 34v10"/><path fill="#d77c35" stroke="#ffe3b1" d="M180 29h33v8h-33z"/>
+</svg>
+</div>
+<div id="drop" class="drop" role="button" tabindex="0" aria-label="Arrastrá un comprobante aquí o elegí un archivo">
+ <strong>Arrastrá el comprobante hasta el camión</strong>
+ <span>Factura · Recibo · Transferencia</span>
+ <small>PDF, JPG, PNG o WEBP. Hasta 15 MB. Primero se extraen los datos; no se registra nada en SQL automáticamente.</small>
+ <button id="pick" type="button">Elegir archivo</button>
+ <input id="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp">
+</div>
+<div id="status" class="status" role="status" aria-live="polite">Esperando archivo…</div>
+<section id="login" class="box" hidden>
+ <h2>Conectar lector de Revalsoft IA</h2>
+ <p class="desc">Para interpretar PDFs e imágenes usamos el lector que ya tiene Capitán. Tus credenciales se envían al servicio de autenticación de Revalsoft IA, nunca al SQL.</p>
+ <div class="formrow"><label>Correo electrónico<input id="email" type="email" autocomplete="username"></label>
+ <label>Contraseña<input id="password" type="password" autocomplete="current-password"></label></div>
+ <button id="loginBtn" class="action" type="button">Ingresar y analizar</button>
+</section>
+<section id="previewBox" class="box" hidden><h2>Documento recibido</h2><div id="preview"></div></section>
+<section id="result" class="box" hidden>
+ <h2>Datos extraídos · revisión previa</h2>
+ <div id="summary" class="grid"></div>
+ <p class="note">El reconocimiento puede equivocarse: confirmá tipo, importes, fecha, CUIT y productos antes de utilizarlos en el circuito. No se actualizan existencias, facturas ni movimientos bancarios en esta etapa.</p>
+ <h2>Documento transformado a JSON</h2>
+ <pre id="json"></pre>
+ <div class="actions"><button id="download" type="button">Guardar JSON</button><button id="copy" type="button">Copiar JSON</button></div>
+</section>
+<p class="note">Diagnóstico: <span id="diagnostic">lector inicializado</span></p>
+</main>
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const SB_URL='https://apqgrwudkfytwikrsivd.supabase.co';
+ const SB_KEY='sb_publishable_B9NdjnzOKu9BhZGmTM6LGg_wDB3n8lY';
+ let selected=null,processing=false,extracted=null;
+ const status=(msg,kind='')=>{$('status').textContent=msg;$('status').className='status '+kind;$('diagnostic').textContent=msg};
+ const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ function key(s){return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+ function findField(o,names,depth=0){
+  if(!o||typeof o!=='object'||depth>5)return null;
+  const wanted=names.map(key);
+  for(const [n,v] of Object.entries(o))if(wanted.includes(key(n))&&v!==null&&typeof v!=='object'&&String(v).trim())return v;
+  for(const v of Object.values(o)){if(v&&typeof v==='object'){const f=findField(v,names,depth+1);if(f!==null)return f}}
+  return null;
+ }
+ async function readDataUrl(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('No pude leer el archivo.'));reader.readAsDataURL(file)})}
+ async function refresh(){
+  const refreshToken=localStorage.getItem('rodolfo.sb.refresh_token');if(!refreshToken)return null;
+  try{
+   const r=await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY},body:JSON.stringify({refresh_token:refreshToken})});
+   const d=await r.json();if(!r.ok||!d.access_token)return null;
+   saveToken(d);return d.access_token;
+  }catch(_){return null}
+ }
+ function saveToken(d){
+  localStorage.setItem('rodolfo.sb.access_token',d.access_token);
+  if(d.refresh_token)localStorage.setItem('rodolfo.sb.refresh_token',d.refresh_token);
+  localStorage.setItem('rodolfo.sb.expires_at',String(Date.now()+(Number(d.expires_in||3600)*1000)));
+ }
+ async function token(){
+  const current=localStorage.getItem('rodolfo.sb.access_token');
+  if(current&&Number(localStorage.getItem('rodolfo.sb.expires_at')||0)>Date.now()+30000)return current;
+  return refresh();
+ }
+ function classify(data){
+  const type=String(findField(data,['tipo_documento','tipo_comprobante','tipoDocumento','tipoComprobante','tipo'])||'Sin clasificar');
+  let normalized=type.toLowerCase();
+  normalized=normalized.includes('transf')?'Transferencia':normalized.includes('recib')?'Recibo':normalized.includes('factur')?'Factura':'Comprobante (revisar tipo)';
+  return {
+   tipo:normalized,
+   tipoOriginal:type,
+   emisor:findField(data,['proveedor','emisor','origen_nombre','razon_social_emisor'])||null,
+   receptor:findField(data,['receptor','destino_nombre','cliente','razon_social_receptor'])||null,
+   cuit:findField(data,['proveedor_cuit','emisor_cuit','origen_cuit','cuit'])||null,
+   numero:findField(data,['numero_comprobante','numero_operacion','numero','nro'])||null,
+   fecha:findField(data,['fecha','fecha_emision','fecha_operacion'])||null,
+   moneda:findField(data,['moneda'])||null,
+   total:findField(data,['importe_total','total','monto','importe'])||null,
+   datosExtraidos:data
+  };
+ }
+ function render(data){
+  extracted=classify(data);
+  $('result').hidden=false;
+  const fields=[['Tipo de documento',extracted.tipo],['Emisor',extracted.emisor],['Receptor',extracted.receptor],['CUIT',extracted.cuit],['Número',extracted.numero],['Fecha',extracted.fecha],['Moneda',extracted.moneda],['Importe',extracted.total]];
+  $('summary').innerHTML=fields.map(([n,v])=>'<div><small>'+esc(n)+'</small><strong>'+esc(v??'No detectado')+'</strong></div>').join('');
+  $('json').textContent=JSON.stringify(extracted,null,2);
+ }
+ async function analyze(file){
+  if(processing)return;
+  processing=true;$('result').hidden=true;$('login').hidden=true;
+  try {
+   status('Camión recibió '+file.name+'. Preparando el archivo…');
+   let bearer=await token();
+   if(!bearer){$('login').hidden=false;status('Archivo recibido. Iniciá sesión en Revalsoft IA para leerlo.');return}
+   const encoded=await readDataUrl(file);
+   status('Revalsoft IA está leyendo el documento y convirtiéndolo a datos…');
+   async function request(t){
+    const r=await fetch(SB_URL+'/functions/v1/extract-document-json',{
+     method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+t},
+     body:JSON.stringify({file_name:file.name,mime_type:file.type||'application/octet-stream',base64:encoded})
+    });
+    return r;
+   }
+   let response=await request(bearer);
+   if(response.status===401){localStorage.removeItem('rodolfo.sb.access_token');bearer=await refresh();if(!bearer){$('login').hidden=false;status('Sesión vencida: ingresá nuevamente.');return}response=await request(bearer)}
+   const out=await response.json().catch(()=>({}));
+   if(!response.ok||!out.ok){
+    if(response.status===401)$('login').hidden=false;
+    throw new Error(out.error||('El lector respondió HTTP '+response.status));
+   }
+   if(!out.data||typeof out.data!=='object')throw new Error('El lector no devolvió datos estructurados.');
+   render(out.data);
+   status('Documento leído y convertido a JSON. Revisá los datos antes de registrarlos.','ok');
+  } catch(e){status('No se pudo interpretar el comprobante: '+e.message,'bad')}
+  finally{processing=false}
+ }
+ async function receive(file){
+  if(!file)return;
+  const ok=['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)||/\.(pdf|jpe?g|png|webp)$/i.test(file.name);
+  if(!ok){status('Formato no admitido. Usá PDF, JPG, PNG o WEBP.','bad');return}
+  if(file.size===0||file.size>15*1024*1024){status('El archivo debe medir entre 1 byte y 15 MB.','bad');return}
+  selected=file;extracted=null;$('result').hidden=true;
+  $('previewBox').hidden=false;
+  const url=URL.createObjectURL(file);
+  if(file.type.startsWith('image/')){$('preview').innerHTML='<img class="preview" alt="Comprobante elegido">';$('preview').querySelector('img').src=url;setTimeout(()=>URL.revokeObjectURL(url),120000)}
+  else{$('preview').textContent=file.name+' · PDF ('+Math.ceil(file.size/1024)+' KB)';URL.revokeObjectURL(url)}
+  const wrap=$('truckWrap');wrap.classList.add('feeding');
+  setTimeout(()=>wrap.classList.remove('feeding'),950);
+  await analyze(file);
+ }
+ const dz=$('drop');const fileInput=$('file');
+ function select(){fileInput.click()}
+ dz.addEventListener('click',e=>{if(e.target.id!=='pick')select()});
+ $('pick').addEventListener('click',e=>{e.stopPropagation();select()});
+ dz.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}});
+ fileInput.addEventListener('change',e=>{receive(e.target.files?.[0]);fileInput.value=''});
+ for(const ev of ['dragenter','dragover'])dz.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();dz.classList.add('drag')});
+ for(const ev of ['dragleave','drop'])dz.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();dz.classList.remove('drag')});
+ dz.addEventListener('drop',e=>receive(e.dataTransfer?.files?.[0]));
+ window.addEventListener('dragover',e=>e.preventDefault());
+ window.addEventListener('drop',e=>e.preventDefault());
+ $('loginBtn').addEventListener('click',async()=>{
+  $('loginBtn').disabled=true;
+  try{
+   const email=$('email').value.trim(),password=$('password').value;
+   if(!email||!password)throw new Error('Completá el correo y la contraseña.');
+   status('Iniciando sesión con Revalsoft IA…');
+   const response=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',
+    headers:{'Content-Type':'application/json',apikey:SB_KEY},body:JSON.stringify({email,password})});
+   const data=await response.json();
+   if(!response.ok||!data.access_token)throw new Error(data.error_description||data.msg||data.error||'No se pudo ingresar.');
+   saveToken(data);$('password').value='';$('login').hidden=true;
+   if(selected)await analyze(selected);
+  }catch(e){status('Autenticación: '+e.message,'bad')}
+  finally{$('loginBtn').disabled=false}
+ });
+ $('download').addEventListener('click',()=>{
+  if(!extracted)return;
+  const blob=new Blob([JSON.stringify(extracted,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download='capitan-comprobante-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(url);
+ });
+ $('copy').addEventListener('click',async()=>{if(!extracted)return;try{await navigator.clipboard.writeText(JSON.stringify(extracted,null,2));status('JSON copiado. Revisalo antes de usarlo.','ok')}catch(e){status('No se pudo copiar: '+e.message,'bad')}});
+ fetch('VERSION?ts='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{$('docVersion').textContent='LECTOR · CAPITÁN v'+(v.trim()||'?')}).catch(()=>{});
+})();
+</script>
+</body>
+</html>
