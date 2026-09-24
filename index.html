@@ -455,7 +455,7 @@ h1 em{font-weight:500;color:#d9ae65}
  }
  let dispatchView='all';
  const paymentStep=document.getElementById('paymentStep');
- const paymentState=r=>Number(r?.EstadoVta)===1?'paid':Number(r?.EstadoVta)===0?'pending':'unknown';
+ const paymentState=r=>!hasValue(r?.EstadoVta)?'unknown':Number(r.EstadoVta)===1?'paid':Number(r.EstadoVta)===0?'pending':'unknown';
  function loads(selected=dispatchView){
    dispatchView=selected;
    const all=getRows(circuit?.dispatches);
