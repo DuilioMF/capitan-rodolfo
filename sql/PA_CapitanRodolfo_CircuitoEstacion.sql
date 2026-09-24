@@ -97,6 +97,14 @@ BEGIN
         @LocalidadExpr NVARCHAR(600),
         @SCaraType SYSNAME, @DCaraType SYSNAME,
         @IslaSurplaExpr NVARCHAR(400), @IslaDespachosExpr NVARCHAR(400),
+        @CostoExpr NVARCHAR(400), @PrecioExpr NVARCHAR(700),
+        @LitrosTanqueExpr NVARCHAR(250),
+        @TipoConexionKey SYSNAME, @ControladorJoin NVARCHAR(700),
+        @ControladorExpr NVARCHAR(400), @RLetra SYSNAME,
+        @RSucursal SYSNAME, @RNumero SYSNAME, @RTurno SYSNAME,
+        @RelVentaExpr NVARCHAR(300), @RelLetraExpr NVARCHAR(300),
+        @RelSucExpr NVARCHAR(300), @RelNumExpr NVARCHAR(300),
+        @RelTurnoExpr NVARCHAR(300),
         @ParamHasRow BIT = 0, @Ambiguo BIT = 0;
 
     -- Acepta ID_ESTACION e ID_ESTAICION (error de tipeo mencionado);
@@ -232,6 +240,45 @@ BEGIN
     ORDER BY CASE REPLACE(LOWER(rc.name),'_','')
              WHEN 'iddespacho' THEN 0 WHEN 'iddespcho' THEN 1 ELSE 2 END;
 
+    -- Relación explícita indicada por la instalación: DI_DESPACHO -> ID_SALE.
+    -- Solo se acepta si ambas columnas están presentes.
+    IF @RKey IS NULL
+       AND COL_LENGTH('dbo.RelacionCptsDespachos','DI_DESPACHO') IS NOT NULL
+       AND COL_LENGTH('dbo.Despachos','ID_SALE') IS NOT NULL
+    BEGIN
+      SET @RKey='DI_DESPACHO';
+      SET @DKey='ID_SALE';
+    END;
+
+    -- Nombres de comprobante por metadatos: jamás suponer que TURNO existe.
+    SELECT TOP (1) @RLetra=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
+        AND REPLACE(LOWER(c.name),'_','') IN ('letra') ORDER BY c.name;
+    SELECT TOP (1) @RSucursal=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
+        AND REPLACE(LOWER(c.name),'_','') IN ('sucursal','ptovta')
+      ORDER BY CASE REPLACE(LOWER(c.name),'_','') WHEN 'sucursal' THEN 0 ELSE 1 END;
+    SELECT TOP (1) @RNumero=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
+        AND REPLACE(LOWER(c.name),'_','') IN ('ncompro','ncomp','numero','numerocomprobante','nrocomprobante')
+      ORDER BY CASE REPLACE(LOWER(c.name),'_','')
+        WHEN 'ncompro' THEN 0 WHEN 'ncomp' THEN 1
+        WHEN 'numero' THEN 2 ELSE 3 END;
+    SELECT TOP (1) @RTurno=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
+        AND REPLACE(LOWER(c.name),'_','')='turno';
+
+    SET @RelVentaExpr=CASE WHEN @RKey IS NOT NULL AND @DKey='ID_SALE'
+      THEN N'r.'+QUOTENAME(@RKey) ELSE N'CAST(NULL AS INT)' END;
+    SET @RelLetraExpr=CASE WHEN @RLetra IS NOT NULL
+      THEN N'r.'+QUOTENAME(@RLetra) ELSE N'CAST(NULL AS NVARCHAR(10))' END;
+    SET @RelSucExpr=CASE WHEN @RSucursal IS NOT NULL
+      THEN N'r.'+QUOTENAME(@RSucursal) ELSE N'CAST(NULL AS NVARCHAR(20))' END;
+    SET @RelNumExpr=CASE WHEN @RNumero IS NOT NULL
+      THEN N'r.'+QUOTENAME(@RNumero) ELSE N'CAST(NULL AS NVARCHAR(30))' END;
+    SET @RelTurnoExpr=CASE WHEN @RTurno IS NOT NULL
+      THEN N'r.'+QUOTENAME(@RTurno) ELSE N'CAST(NULL AS NVARCHAR(30))' END;
+
     IF @REst IS NULL AND @RKey IS NULL
     BEGIN
         RAISERROR('RelacionCptsDespachos no tiene ID_ESTACION ni clave compartida confirmada con Despachos. No se envían datos sin filtro.',16,1);
@@ -258,6 +305,45 @@ BEGIN
       THEN N'CASE WHEN d.SURTIDOR BETWEEN 1 AND 9999 THEN (CONVERT(INT,d.SURTIDOR)+1)/2 ELSE NULL END'
       ELSE N'CAST(NULL AS INT)' END;
 
+    -- PRECIOS reales de Prod: sin inventar impuestos que no existan.
+    SET @CostoExpr=CASE WHEN COL_LENGTH('dbo.Prod','PRECOMPRA') IS NOT NULL
+      THEN N'p.PRECOMPRA' ELSE N'CAST(NULL AS DECIMAL(18,2))' END;
+    SET @PrecioExpr=CASE WHEN COL_LENGTH('dbo.Prod','PRECIOCONIVA') IS NOT NULL
+      AND COL_LENGTH('dbo.Prod','IMPUESTOS') IS NOT NULL
+      AND COL_LENGTH('dbo.Prod','TasaOtrosImpue') IS NOT NULL
+      THEN N'(ISNULL(p.PRECIOCONIVA,0)+ISNULL(p.IMPUESTOS,0)+ISNULL(p.TasaOtrosImpue,0))'
+      ELSE N'CAST(NULL AS DECIMAL(18,2))' END;
+    SET @LitrosTanqueExpr=CASE WHEN COL_LENGTH('dbo.Tanque','LITROS') IS NOT NULL
+      THEN N't.LITROS' ELSE N'CAST(NULL AS DECIMAL(18,2))' END;
+
+    -- MP_TipoConexion: identificar clave documentada por metadatos, si existe.
+    -- No relacionar códigos con nombres arbitrariamente cuando falta una clave.
+    IF OBJECT_ID(N'dbo.MP_TipoConexion',N'U') IS NOT NULL
+       AND COL_LENGTH('dbo.MP_TipoConexion','Name') IS NOT NULL
+       AND COL_LENGTH('dbo.Surpla','CONTROLADOR') IS NOT NULL
+    BEGIN
+      SELECT TOP(1) @TipoConexionKey=c.name
+      FROM sys.columns c WHERE c.object_id=OBJECT_ID(N'dbo.MP_TipoConexion')
+        AND REPLACE(LOWER(c.name),'_','') IN
+            ('controlador','idtipoconexion','tipoconexion','idconexion','id','codigo')
+      ORDER BY CASE REPLACE(LOWER(c.name),'_','')
+        WHEN 'controlador' THEN 1
+        WHEN 'idtipoconexion' THEN 2
+        WHEN 'tipoconexion' THEN 3
+        WHEN 'idconexion' THEN 4
+        WHEN 'id' THEN 5 ELSE 6 END;
+    END;
+    SET @ControladorJoin=N'';
+    SET @ControladorExpr=CASE WHEN COL_LENGTH('dbo.Surpla','CONTROLADOR') IS NOT NULL
+      THEN N'CONVERT(NVARCHAR(100),s.CONTROLADOR)' ELSE N'CAST(NULL AS NVARCHAR(100))' END;
+    IF @TipoConexionKey IS NOT NULL
+    BEGIN
+      SET @ControladorJoin=N' LEFT JOIN dbo.MP_TipoConexion mp ON
+          CONVERT(NVARCHAR(100),mp.'+QUOTENAME(@TipoConexionKey)+N')
+          =CONVERT(NVARCHAR(100),s.CONTROLADOR)';
+      SET @ControladorExpr=N'COALESCE(CONVERT(NVARCHAR(100),mp.[Name]),CONVERT(NVARCHAR(100),s.CONTROLADOR))';
+    END;
+
     -- Resultado 1: TANQUES
     SET @JoinProd=N'INNER JOIN dbo.Prod p ON p.CODART=t.CODART';
     IF @PEst IS NOT NULL
@@ -268,7 +354,10 @@ BEGIN
              t.DENOMINACION AS Denominacion,
              t.CODART AS CodArt,
              p.'+QUOTENAME(@ProdDesc)+N' AS Producto,
-             t.'+QUOTENAME(@Capacidad)+N' AS Capacidad
+             '+@CostoExpr+N' AS Costo,
+             '+@PrecioExpr+N' AS Precio,
+             t.'+QUOTENAME(@Capacidad)+N' AS Capacidad,
+             '+@LitrosTanqueExpr+N' AS Litros
       FROM dbo.Tanque t '+@JoinProd+N'
       WHERE t.'+QUOTENAME(@TEst)+N'=@IdEstacion
       ORDER BY t.N_TANQUE;';
@@ -286,19 +375,21 @@ BEGIN
     SET @JoinTank=N'INNER JOIN dbo.Tanque t
                     ON t.N_TANQUE=st.N_TANQUE
                    AND t.'+QUOTENAME(@TEst)+N'=s.'+QUOTENAME(@SEst);
-    SET @Controlador=CASE WHEN COL_LENGTH('dbo.Surpla','CONTROLADOR') IS NOT NULL
-      THEN N's.CONTROLADOR' ELSE N'CAST(NULL AS NVARCHAR(100))' END;
+    SET @Controlador=@ControladorExpr;
     SET @Sql=N'
       SELECT s.'+QUOTENAME(@SEst)+N' AS IdEstacion,
              s.SURTIDOR AS Cara,
              '+@IslaSurplaExpr+N' AS Isla,
              s.MANGUERA AS Manguera, s.CODART AS CodArt,
              p.'+QUOTENAME(@ProdDesc)+N' AS Producto,
+             '+@CostoExpr+N' AS Costo,
+             '+@PrecioExpr+N' AS Precio,
              st.N_TANQUE AS NTanque, t.DENOMINACION AS Tanque,
              '+@Controlador+N' AS Controlador
       FROM dbo.Surpla s '+@JoinProd+N'
       '+@JoinSt+N'
       '+@JoinTank+N'
+      '+@ControladorJoin+N'
       WHERE s.'+QUOTENAME(@SEst)+N'=@IdEstacion
       ORDER BY s.SURTIDOR,s.MANGUERA;';
     EXEC sys.sp_executesql @Sql,N'@IdEstacion INT',@IdEstacion=@IdEstacion;
@@ -310,7 +401,7 @@ BEGIN
     SET @DManguera=CASE WHEN COL_LENGTH('dbo.Despachos','MANGUERA') IS NOT NULL
       THEN N'd.MANGUERA' ELSE N'CAST(NULL AS INT)' END;
     SET @Fecha=CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL
-      THEN N'd.ULTIME' ELSE N'CAST(NULL AS DATETIME)' END;
+      THEN N'CONVERT(VARCHAR(8),d.ULTIME,108)' ELSE N'CAST(NULL AS VARCHAR(8))' END;
     SET @Sql=N'
       SELECT TOP(@MaxDespachos)
              d.'+QUOTENAME(@DEst)+N' AS IdEstacion,
@@ -318,8 +409,10 @@ BEGIN
              '+@IslaDespachosExpr+N' AS Isla,
              '+@DManguera+N' AS Manguera, d.CODART AS CodArt,
              p.'+QUOTENAME(@ProdDesc)+N' AS Producto,
+             '+@CostoExpr+N' AS Costo,
+             '+@PrecioExpr+N' AS PrecioProducto,
              d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,
-             d.ESTADOVTA AS EstadoVta,'+@Fecha+N' AS Fecha
+             d.ESTADOVTA AS EstadoVta,'+@Fecha+N' AS Hora
       FROM dbo.Despachos d '+@JoinProd+N'
       WHERE d.'+QUOTENAME(@DEst)+N'=@IdEstacion
         AND (@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)
@@ -348,7 +441,12 @@ BEGIN
       SET @WhereRel=N'r.'+QUOTENAME(@REst)+N'=@IdEstacion';
 
     SET @Sql=N'
-      SELECT TOP(@MaxRelaciones) r.*
+      SELECT TOP(@MaxRelaciones)
+          '+@RelVentaExpr+N' AS Venta,
+          '+@RelLetraExpr+N' AS Letra,
+          '+@RelSucExpr+N' AS Sucursal,
+          '+@RelNumExpr+N' AS Numero,
+          '+@RelTurnoExpr+N' AS Turno
       FROM dbo.RelacionCptsDespachos r
       WHERE '+@WhereRel+N';';
     EXEC sys.sp_executesql @Sql,
