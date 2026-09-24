@@ -193,7 +193,7 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 
 (function(){
- const bridges=['http://127.0.0.1:8787','http://localhost:8787'];
+ const bridges=['http://127.0.0.1:8787','http://localhost:8787','http://127.0.0.1:8797','http://localhost:8797','http://127.0.0.1:18787','http://localhost:18787','http://127.0.0.1:27877','http://localhost:27877','http://127.0.0.1:37877','http://localhost:37877','http://127.0.0.1:48787','http://localhost:48787','http://127.0.0.1:57877','http://localhost:57877'];
  const connection=document.getElementById('stationConnection');
  const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
  const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
@@ -286,7 +286,7 @@ h1 em{font-weight:500;color:#d9ae65}
 
 (function(){
  const button=document.getElementById('voiceMic'),status=document.getElementById('voiceStatus'),transcript=document.getElementById('voiceTranscript');
- const BRIDGES=['http://127.0.0.1:8787','http://localhost:8787'];
+ const BRIDGES=['http://127.0.0.1:8787','http://localhost:8787','http://127.0.0.1:8797','http://localhost:8797','http://127.0.0.1:18787','http://localhost:18787','http://127.0.0.1:27877','http://localhost:27877','http://127.0.0.1:37877','http://localhost:37877','http://127.0.0.1:48787','http://localhost:48787','http://127.0.0.1:57877','http://localhost:57877'];
  let pc=null,dc=null,stream=null,bridge=null,active=false,assistantLine=null;
  const addLine=(who,text)=>{const p=document.createElement('p');p.className='voice-line';const b=document.createElement('b');b.textContent=who+': ';p.append(b,document.createTextNode(text));transcript.appendChild(p);transcript.scrollTop=transcript.scrollHeight;return p};
  const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,targetAddressSpace:'local'});
