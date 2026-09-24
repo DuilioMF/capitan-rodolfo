@@ -27,7 +27,8 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
 <main>
 <div class="ey">CAPITÁN RODOLFO · RECEPCIÓN DIGITAL</div>
 <div class="headline"><h1>Descarga de combustible</h1><span id="docVersion" class="ey">LECTOR</span></div>
-<p class="desc">El camión recibe una factura, recibo o comprobante de transferencia, lo lee y prepara sus datos estructurados para revisar.</p>
+<p class="desc">El camión utiliza el lector de Revalsoft SaaS: recibe factura, recibo o transferencia y transforma el documento al mismo contrato JSON.</p>
+<p class="note">La función protegida de Supabase obtiene la clave de OpenAI en el servidor. Nunca se copia ni se muestra en el navegador o SiSRL.</p>
 <div class="truck-wrap" id="truckWrap" aria-label="Camión cisterna digital">
 <svg class="truck" viewBox="0 0 550 190" role="img" aria-label="Camión cisterna naranja de Capitán Rodolfo">
  <defs><linearGradient id="tankGrad" x2="0" y2="1"><stop stop-color="#edb175"/><stop offset=".44" stop-color="#d77f3c"/><stop offset="1" stop-color="#783e23"/></linearGradient><linearGradient id="cabGrad"><stop stop-color="#ef9644"/><stop offset="1" stop-color="#af501e"/></linearGradient></defs>
@@ -50,7 +51,7 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
 <div id="status" class="status" role="status" aria-live="polite">Esperando archivo…</div>
 <section id="login" class="box" hidden>
  <h2>Conectar lector de Revalsoft IA</h2>
- <p class="desc">Para interpretar PDFs e imágenes usamos el lector que ya tiene Capitán. Tus credenciales se envían al servicio de autenticación de Revalsoft IA, nunca al SQL.</p>
+ <p class="desc">Usá tu cuenta de Revalsoft SaaS. El servicio autentica al usuario y obtiene la clave de OpenAI en el servidor. No requiere una API key en tu PC.</p>
  <div class="formrow"><label>Correo electrónico<input id="email" type="email" autocomplete="username"></label>
  <label>Contraseña<input id="password" type="password" autocomplete="current-password"></label></div>
  <button id="loginBtn" class="action" type="button">Ingresar y analizar</button>
@@ -60,6 +61,9 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
  <h2>Datos extraídos · revisión previa</h2>
  <div id="summary" class="grid"></div>
  <p class="note">El reconocimiento puede equivocarse: confirmá tipo, importes, fecha, CUIT y productos antes de utilizarlos en el circuito. No se actualizan existencias, facturas ni movimientos bancarios en esta etapa.</p>
+ <h2>Ítems e impuestos reconocidos</h2>
+ <div id="docDetails" class="grid"></div>
+ <div id="reviewNotice" class="status">Revisá el comprobante antes de registrarlo.</div>
  <h2>Documento transformado a JSON</h2>
  <pre id="json"></pre>
  <div class="actions"><button id="download" type="button">Guardar JSON</button><button id="copy" type="button">Copiar JSON</button></div>
@@ -102,28 +106,45 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
   return refresh();
  }
  function classify(data){
-  const type=String(findField(data,['tipo_documento','tipo_comprobante','tipoDocumento','tipoComprobante','tipo'])||'Sin clasificar');
-  let normalized=type.toLowerCase();
-  normalized=normalized.includes('transf')?'Transferencia':normalized.includes('recib')?'Recibo':normalized.includes('factur')?'Factura':'Comprobante (revisar tipo)';
+  const raw=String(data?.tipo_documento||data?.tipo_comprobante||'').toUpperCase();
+  const tipo=raw.includes('TRANSF')?'Transferencia':raw.includes('RECIB')?'Recibo':raw.includes('FACTUR')?'Factura':'Otro (revisar)';
+  const num=data?.numero_comprobante||data?.numero_operacion||null;
+  const total=data?.total||data?.importe||null;
+  const missing=[];
+  if(!data?.fecha)missing.push('fecha');
+  if(!num)missing.push('número');
+  if(!total)missing.push('total');
+  if(tipo==='Otro (revisar)')missing.push('tipo');
   return {
-   tipo:normalized,
-   tipoOriginal:type,
-   emisor:findField(data,['proveedor','emisor','origen_nombre','razon_social_emisor'])||null,
-   receptor:findField(data,['receptor','destino_nombre','cliente','razon_social_receptor'])||null,
-   cuit:findField(data,['proveedor_cuit','emisor_cuit','origen_cuit','cuit'])||null,
-   numero:findField(data,['numero_comprobante','numero_operacion','numero','nro'])||null,
-   fecha:findField(data,['fecha','fecha_emision','fecha_operacion'])||null,
-   moneda:findField(data,['moneda'])||null,
-   total:findField(data,['importe_total','total','monto','importe'])||null,
-   datosExtraidos:data
+   origen:'Revalsoft SaaS · extract-document-json',
+   estado:'pendiente_revision',
+   tipo,tipoOriginal:raw,
+   emisor:data?.proveedor||data?.emisor||data?.origen_nombre||null,
+   receptor:data?.cliente||data?.receptor||data?.destino_nombre||null,
+   cuit:data?.proveedor_cuit||data?.emisor_cuit||data?.origen_cuit||null,
+   numero:num,fecha:data?.fecha||null,moneda:data?.moneda||null,total,
+   iva:Array.isArray(data?.iva)?data.iva:[],
+   items:Array.isArray(data?.items)?data.items:[],
+   faltantes:missing,datosExtraidos:data
   };
  }
  function render(data){
-  extracted=classify(data);
-  $('result').hidden=false;
-  const fields=[['Tipo de documento',extracted.tipo],['Emisor',extracted.emisor],['Receptor',extracted.receptor],['CUIT',extracted.cuit],['Número',extracted.numero],['Fecha',extracted.fecha],['Moneda',extracted.moneda],['Importe',extracted.total]];
-  $('summary').innerHTML=fields.map(([n,v])=>'<div><small>'+esc(n)+'</small><strong>'+esc(v??'No detectado')+'</strong></div>').join('');
-  $('json').textContent=JSON.stringify(extracted,null,2);
+   extracted=classify(data);$('result').hidden=false;
+   const fields=[['Tipo',extracted.tipo],['Emisor',extracted.emisor],['Receptor',extracted.receptor],['CUIT',extracted.cuit],['Número',extracted.numero],['Fecha',extracted.fecha],['Moneda',extracted.moneda],['Total',extracted.total],['Ítems',extracted.items.length]];
+   $('summary').innerHTML=fields.map(([name,value])=>'<div><small>'+esc(name)+'</small><strong>'+esc(value??'No detectado')+'</strong></div>').join('');
+   const details=$('docDetails');details.replaceChildren();
+   const entries=[
+     ...extracted.items.slice(0,60).map(it=>['Ítem '+(it.codigo||''),it.descripcion||'(sin descripción)','Cantidad '+(it.cantidad||'?')+' · Importe '+(it.importe||'?')]),
+     ...extracted.iva.map(t=>['IVA '+(t.alicuota||'?'),t.importe||'No detectado','Base '+(t.base_imponible||'?')])
+   ];
+   for(const [type,label,extra] of entries){
+     const box=document.createElement('div'),small=document.createElement('small'),value=document.createElement('strong'),rest=document.createElement('small');
+     small.textContent=type;value.textContent=label;rest.textContent=extra;box.append(small,value,rest);details.appendChild(box);
+   }
+   const missing=extracted.faltantes;
+   $('reviewNotice').className='status '+(missing.length?'bad':'ok');
+   $('reviewNotice').textContent=missing.length?'Revisar: faltan '+missing.join(', ')+'. No se registró nada en SQL.':'Documento transformado. Confirmá los valores antes de registrar; no se modificó SQL.';
+   $('json').textContent=JSON.stringify(extracted,null,2);
  }
  async function analyze(file){
   if(processing)return;
@@ -150,7 +171,7 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
    }
    if(!out.data||typeof out.data!=='object')throw new Error('El lector no devolvió datos estructurados.');
    render(out.data);
-   status('Documento leído y convertido a JSON. Revisá los datos antes de registrarlos.','ok');
+   status('Procesado por Revalsoft SaaS: '+extracted.tipo+' · revisá los datos antes de registrar.','ok');
   } catch(e){status('No se pudo interpretar el comprobante: '+e.message,'bad')}
   finally{processing=false}
  }
