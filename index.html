@@ -109,6 +109,18 @@ h1 em{font-weight:500;color:#d9ae65}
 .tank-status{padding:12px 20px;color:var(--muted);font-size:12px;border-bottom:1px solid #75603d30}.tank-status.ok{color:var(--green)}.tank-status.warn{color:#ffb36b}
 .tank-table-wrap{overflow:auto;max-height:65vh}.tank-table{width:100%;border-collapse:collapse;font-size:12px}.tank-table th,.tank-table td{padding:10px 12px;border-bottom:1px solid #75603d30;text-align:left;white-space:nowrap}.tank-table th{position:sticky;top:0;background:#18130d;color:#ffd09b;z-index:1}.tank-table tbody tr:hover{background:#ffffff05}
 .tank-empty{padding:28px 20px;color:var(--muted)}
+.link-btn{color:#ffd09b;border:0;border-bottom:1px dashed #c58f55;background:transparent;font:inherit;padding:2px 0;cursor:pointer}
+.link-btn:hover{color:#fff0cb}.link-btn:focus-visible{outline:2px solid #ffd09b}
+.linked-filter{padding:10px 20px;display:flex;gap:12px;align-items:center;color:var(--copper);border-bottom:1px solid #70503355;font-size:12px}
+.linked-filter[hidden]{display:none}.linked-filter button,.linked-back{background:#2d1e12;color:#ffd09b;border:1px solid #d9823b7d;border-radius:7px;padding:8px 12px;cursor:pointer}
+.linked-back{margin:16px 20px;align-self:flex-start}.mini-dialog{width:min(680px,94vw)}
+.product-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:20px}
+.product-facts>div{border:1px solid #c9a05d40;border-radius:9px;padding:13px;background:#261b1047}
+.product-facts small{display:block;color:#c9a05d;margin-bottom:7px}.product-facts strong{font-size:18px;overflow-wrap:anywhere}
+#tankModal .tank-dialog,#pumpModal .tank-dialog,#dispatchModal .tank-dialog{width:min(1340px,98vw)}
+#tankModal .tank-table-wrap,#pumpModal .tank-table-wrap,#dispatchModal .tank-table-wrap{max-height:70vh}
+@media(max-width:600px){.product-facts{grid-template-columns:1fr}}
+
 @media(max-width:700px){.tank-modal{padding:8px}.tank-dialog{max-height:94vh}.tank-head h2{font-size:24px}.tank-table th,.tank-table td{padding:9px 10px;font-size:11px}}
 
 .station-picker{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#22190d99;border:1px solid #b76c3577;padding:11px 14px}
@@ -183,7 +195,7 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="step" id="truckStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="truckModal"><span class="symbol">I</span><small>CAMIÓN · CLIC PARA SUBIR</small><b>Descarga combustible</b><span>Factura, recibo o transferencia · arrastrá un archivo</span></div>
   <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
   <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
-  <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
+  <div class="step" id="loadStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="dispatchModal"><span class="symbol">IV</span><small>CARGA · CLIC PARA VER</small><b>Carga</b><span id="loadCaption">Despachos, importe y cobro</span></div>
   <div class="step"><span class="symbol">V</span><small>COBRO</small><b id="paymentStatus">—</b><span>Formas de pago: pendiente de enlazar</span></div>
 </section>
 
@@ -208,6 +220,29 @@ h1 em{font-weight:500;color:#d9ae65}
   </div>
 </div>
 
+<div class="tank-modal" id="dispatchModal" role="dialog" aria-modal="true" aria-labelledby="dispatchModalTitle">
+  <div class="tank-dialog">
+    <div class="tank-head"><div><div class="eyebrow">CARGA</div><h2 id="dispatchModalTitle">Despachos</h2></div><button class="tank-close" id="dispatchClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="dispatchStatus">Esperando despachos…</div>
+    <div class="linked-filter" id="dispatchFilter" hidden><span id="dispatchFilterText"></span><button type="button" id="dispatchAll">Ver todos</button></div>
+    <div class="tank-table-wrap" id="dispatchTableWrap"></div>
+  </div>
+</div>
+<div class="tank-modal" id="productModal" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+  <div class="tank-dialog mini-dialog">
+    <div class="tank-head"><div><div class="eyebrow">FICHA DE PRODUCTO</div><h2 id="productModalTitle">Producto</h2></div><button class="tank-close" id="productClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="product-facts" id="productFacts"></div>
+    <button type="button" id="productBack" class="linked-back">← Volver</button>
+  </div>
+</div>
+<div class="tank-modal" id="receiptModal" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
+  <div class="tank-dialog mini-dialog">
+    <div class="tank-head"><div><div class="eyebrow">COBRO</div><h2 id="receiptModalTitle">Comprobante</h2></div><button class="tank-close" id="receiptClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="receiptStatus"></div>
+    <div class="tank-table-wrap" id="receiptTableWrap"></div>
+    <button type="button" id="receiptBack" class="linked-back">← Volver a Carga</button>
+  </div>
+</div>
 <div class="section-title">LECTURA DEL DÍA</div>
 <section class="kpis">
   <div class="kpi"><small>Litros en despachos</small><strong id="liveLiters">—</strong></div>
