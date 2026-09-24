@@ -16,7 +16,7 @@
 <body>
 <main class="wrap">
   <div class="top">
-    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v71</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
+    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v72</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
     <a href="nucleo.html">← Volver a Núcleo</a>
   </div>
 
@@ -25,12 +25,12 @@
     <div id="bridgeStatus" class="status">Buscando conector en este equipo…</div>
     <div id="installBox" class="install hidden">
       <p class="muted">No encuentro el conector. Descargalo o actualizalo una vez: se instala en <strong>C:\Sistemas\DoingLioConnector</strong>, queda oculto y se inicia con Windows.</p>
-      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=68" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
+      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=72" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
     </div>
   </section>
 
   <section class="card">
-    <h2>Diagnóstico · v71</h2>
+    <h2>Diagnóstico · v72</h2>
     <div class="diagpaths">Si algo falla, leeme las últimas líneas de abajo. También quedan archivos en:<br><strong>C:\Sistemas\DoingLioConnector\install.log</strong><br><strong>C:\Sistemas\DoingLioLauncher\launcher.log</strong></div>
     <pre id="diagLog" class="diag">Iniciando diagnóstico…</pre>
     <div class="actions"><button class="ghost" id="copyDiag" type="button">Copiar diagnóstico</button><button class="ghost" id="clearDiag" type="button">Limpiar</button></div>
@@ -56,20 +56,24 @@
     <div id="databaseStatus" class="status">—</div>
   </section>
 
-  <section class="card hidden" id="spCard">
-    <h2>Procedimientos habilitados</h2>
-    <p class="muted">La nube no puede enviar SQL libre. Solo puede ejecutar los SP habilitados localmente en <code>C:\Sistemas\DoingLio\data\capitan\sp_allowlist.json</code>.</p>
-    <label for="procedure">Stored procedure</label>
-    <select id="procedure"></select>
-    <div id="params" class="params"></div>
-    <div class="actions"><button id="runSp" type="button">Ejecutar SP</button></div>
-    <div id="spStatus" class="status">Elegí un SP.</div>
-    <div class="actions"><button class="ghost" type="button" id="refreshSp">Actualizar lista desde la base</button></div>
-    <h2>SP encontrados realmente en la base</h2>
-    <p class="muted">La lista siguiente muestra el catálogo de SQL Server. Solo los procedimientos autorizados se pueden ejecutar desde DoingLio.</p>
-    <label for="spSearch">Buscar procedimiento por nombre</label>
-    <input id="spSearch" type="search" placeholder="Ej.: CircuitoEstacion">
-    <div id="spCatalog" class="status" style="max-height:260px;overflow:auto">Consultando SQL…</div>
+  <section class="card hidden" id="sqlExplorerCard">
+    <h2>Explorador SQL</h2>
+    <p class="muted">Escribí el nombre de cualquier tabla, vista o procedimiento de la base seleccionada. Se reconoce su tipo automáticamente. Las tablas y vistas se consultan en modo lectura (máximo 200 filas); para SP se muestran primero los parámetros.</p>
+    <div class="grid">
+      <div><label for="sqlObjectType">Tipo</label><select id="sqlObjectType">
+        <option value="auto">Detectar automáticamente</option>
+        <option value="tabla">Tabla</option>
+        <option value="vista">Vista</option>
+        <option value="sp">Procedimiento almacenado (SP)</option>
+      </select></div>
+      <div><label for="sqlObjectName">Nombre de tabla, vista o SP</label><input id="sqlObjectName" type="text" value="dbo.Tanque" autocomplete="off" spellcheck="false" placeholder="dbo.Tanque / dbo.MiVista / dbo.MiSP"></div>
+    </div>
+    <div class="actions" style="margin-top:14px">
+      <button id="inspectSql" type="button">Buscar y mostrar</button>
+      <button class="ghost hidden" id="executeSp" type="button">Ejecutar SP con confirmación</button>
+    </div>
+    <div id="objectStatus" class="status">Conectá SQL y escribí el objeto que querés consultar.</div>
+    <div id="objectParams" class="params"></div>
     <div id="results"></div>
   </section>
 </main>
@@ -78,10 +82,10 @@
 (()=>{
  const $=id=>document.getElementById(id);
  const logDiag=msg=>{const el=$('diagLog');if(!el)return;const ts=new Date().toLocaleTimeString('es-AR',{hour12:false});if(el.textContent==='Iniciando diagnóstico…')el.textContent='';el.textContent+='['+ts+'] '+msg+'\n';el.scrollTop=el.scrollHeight};
- logDiag('Página v71 · '+location.href);
+ logDiag('Página v72 · '+location.href);
  logDiag('Origen: '+location.origin);
  const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
- let bridge=null,profile=null,state=null,sessionId=null,currentDb='',procedures=[]; const preferredDb='SISRL';
+ let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SISRL';
 
  const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:25000);try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
  async function get(path){const r=await localFetch(bridge+path);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
@@ -95,7 +99,7 @@
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
  async function findBridge(){
-   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),desktop?'Comprobando SQL local · v71…':'Buscando conector en este equipo · v71…');
+   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),desktop?'Comprobando SQL local · v72…':'Buscando conector en este equipo · v72…');
    logDiag(desktop?'Modo escritorio: ruta SQL fija; sin búsqueda de puertos':'Modo web: buscando conector en puertos locales');
    for(const base of candidates){
      try{
@@ -115,7 +119,7 @@
        logDiag('FALLÓ '+base+' · '+(e&&e.name?e.name+': ':'')+(e&&e.message?e.message:String(e)));
      }
    }
-   setStatus($('bridgeStatus'),'Conector no detectado · página v71. Leeme el diagnóstico de abajo.','bad');
+   setStatus($('bridgeStatus'),'Conector no detectado · página v72. Leeme el diagnóstico de abajo.','bad');
    $('installBox').classList.remove('hidden');
    logDiag(desktop?'FIN: no arrancó SQL. Abrí el archivo bridge.err.log de DoingLioConnector y launcher.log de DoingLioLauncher':'FIN: no se encontró ningún conector');
    return false;
@@ -150,7 +154,7 @@
  function showDatabases(list,selected){
    $('databaseCard').classList.remove('hidden');const sel=$('database');sel.innerHTML='<option value="">Elegir base…</option>';
    list.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;if(name===selected)o.selected=true;sel.appendChild(o)});
-   if(selected){currentDb=selected;setStatus($('databaseStatus'),'Base '+selected+' guardada y activa.','ok');loadProcedures()}
+   if(selected){currentDb=selected;setStatus($('databaseStatus'),'Base '+selected+' guardada y activa.','ok');activateExplorer()}
    else if(list.includes(preferredDb)){ sel.value=preferredDb; chooseDatabase(preferredDb); }
    else setStatus($('databaseStatus'),'Elegí una base una sola vez.');
  }
@@ -158,85 +162,99 @@
  async function chooseDatabase(db){
    if(!db)return;
    setStatus($('databaseStatus'),'Validando y guardando '+db+'…');
-   try{await post('/api/tables',{sessionId,database:db});currentDb=db;state.database=db;setStatus($('databaseStatus'),'Base '+db+' guardada. La próxima vez entra directo.','ok');showSummary();await loadProcedures()}
+   try{await post('/api/tables',{sessionId,database:db});currentDb=db;state.database=db;setStatus($('databaseStatus'),'Base '+db+' guardada. La próxima vez entra directo.','ok');showSummary();activateExplorer()}
    catch(e){setStatus($('databaseStatus'),'No pude usar esa base: '+e.message,'bad')}
  }
 
- let dbCatalog=[];
- function paintCatalog(){
-   const root=$('spCatalog');root.replaceChildren();
-   const search=$('spSearch').value.trim().toLocaleLowerCase();
-   const matches=dbCatalog.filter(p=>p.name.toLocaleLowerCase().includes(search));
-   if(!matches.length){root.textContent='No hay procedimientos que coincidan. Revisá la base seleccionada y la búsqueda.';return}
-   matches.forEach(proc=>{
-     const row=document.createElement('div');
-     row.style.padding='7px 3px';row.style.borderBottom='1px solid #59452966';
-     row.textContent=proc.name+(proc.allowed?' · PERMITIDO':' · solo lectura del catálogo');
-     row.style.color=proc.allowed?'#5ee6a8':'#cbbca6';root.appendChild(row);
-   });
- }
- async function loadProcedures(){
-   if(!sessionId||!currentDb)return;
-   $('spCard').classList.remove('hidden');setStatus($('spStatus'),'Leyendo catálogo real de SQL Server…');
-   logDiag('Consultando sys.procedures en '+currentDb);
-   try{
-     const d=await post('/api/sp/catalog',{sessionId,database:currentDb});
-     dbCatalog=Array.isArray(d.procedures)?d.procedures:[];
-     procedures=Array.isArray(d.metadata)?d.metadata:[];
-     const missing=Array.isArray(d.missingAllowed)?d.missingAllowed:[];
-     const sel=$('procedure');sel.replaceChildren();
-     if(!procedures.length){const option=document.createElement('option');option.value='';option.textContent='No hay SP ejecutables';sel.appendChild(option);renderParams(null)}
-     else {
-       procedures.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o)});
-       renderParams(procedures[0]);
-     }
-     paintCatalog();
-     const circuit='dbo.PA_CapitanRodolfo_CircuitoEstacion';
-     const found=dbCatalog.some(p=>p.name.toLowerCase()===circuit.toLowerCase());
-     const eligible=dbCatalog.some(p=>p.name.toLowerCase()===circuit.toLowerCase()&&p.allowed);
-     let msg='Base '+currentDb+': '+dbCatalog.length+' SP reales encontrados; '+procedures.length+' ejecutables.';
-     if(!found)msg+=' ATENCIÓN: '+circuit+' NO EXISTE en esta base. Ejecutá el script sobre '+currentDb+'.';
-     else if(!eligible)msg+=' '+circuit+' existe pero no está autorizado en el conector local.';
-     else if(!procedures.some(p=>p.name.toLowerCase()===circuit.toLowerCase()))
-       msg+=' '+circuit+' está autorizado, pero no pude leer sus parámetros. Revisá los permisos del usuario SQL.';
-     if(missing.length)msg+=' Otros autorizados que faltan: '+missing.join(', ')+'.';
-     const kind=(!found||!eligible||!procedures.some(p=>p.name.toLowerCase()===circuit.toLowerCase()))?'bad':'ok';
-     setStatus($('spStatus'),msg,kind);
-     logDiag('Catálogo: '+msg);
-   }catch(e){
-     dbCatalog=[];procedures=[];paintCatalog();
-     const message=e.message.includes('404')?'Conector antiguo sin catálogo SQL. Cerrá DoingLio y volvé a abrirlo desde el cerebro para actualizar.':e.message;
-     setStatus($('spStatus'),'Error leyendo catálogo: '+message,'bad');logDiag('ERROR catálogo SP: '+message);
-   }
- }
 
- function renderParams(proc){
-   const box=$('params');box.innerHTML='';if(!proc)return;
-   (proc.parameters||[]).filter(p=>!p.output).forEach(p=>{
-     const wrap=document.createElement('div');const label=document.createElement('label');label.textContent=p.name+' · '+p.type;
-     const input=document.createElement('input');input.dataset.param=p.name;input.dataset.type=p.type||'';
+ let inspected=null;
+ const objectName=()=>$('sqlObjectName').value.trim();
+ const status=(message,kind='')=>setStatus($('objectStatus'),message,kind);
+ function activateExplorer(){
+   $('sqlExplorerCard').classList.remove('hidden');
+   $('executeSp').classList.add('hidden');$('objectParams').replaceChildren();$('results').replaceChildren();
+   inspected=null;
+   status('Base '+currentDb+' lista. Escribí tabla, vista o SP y presioná Buscar y mostrar.');
+ }
+ function showParams(proc){
+   const box=$('objectParams');box.replaceChildren();
+   if(!proc||!Array.isArray(proc.parameters))return;
+   proc.parameters.filter(p=>!p.output).forEach(p=>{
+     const cell=document.createElement('div'),label=document.createElement('label');
+     label.textContent=p.name+' · '+p.type;cell.appendChild(label);
+     const input=document.createElement('input');
+     input.dataset.param=p.name;input.dataset.type=p.type||'';
      const t=(p.type||'').toLowerCase();
-     if(['int','bigint','smallint','tinyint','decimal','numeric','float','real','money','smallmoney'].includes(t)) input.type='number';
-     else if(['date','datetime','datetime2','smalldatetime'].includes(t)) input.type='datetime-local';
+     if(['int','bigint','smallint','tinyint','decimal','numeric','float','real','money','smallmoney','bit'].includes(t)){
+       input.type='number';if(t==='bit'){input.min='0';input.max='1'}
+     }else if(t==='date')input.type='date';
+     else if(['datetime','datetime2','smalldatetime','datetimeoffset'].includes(t))input.type='datetime-local';
      else input.type='text';
-     wrap.appendChild(label);wrap.appendChild(input);box.appendChild(wrap);
+     input.placeholder=p.hasDefault?'Opcional · dejar vacío para omitir':'Valor (omitir si tiene predeterminado)';
+     cell.appendChild(input);box.appendChild(cell);
    });
  }
-
  function readParams(){
-   const obj={};document.querySelectorAll('#params input').forEach(i=>{if(i.value==='')return;let v=i.value;const t=(i.dataset.type||'').toLowerCase();if(['int','bigint','smallint','tinyint','decimal','numeric','float','real','money','smallmoney'].includes(t))v=Number(v);obj[i.dataset.param]=v});return obj;
- }
-
- function renderResults(data){
-   const root=$('results');root.innerHTML='';const sets=data.resultSets||[];
-   if(!sets.length){root.innerHTML='<div class="status ok">SP ejecutado. No devolvió filas.</div>';return}
-   sets.forEach((set,idx)=>{
-     const title=document.createElement('div');title.className='small';title.textContent='Resultado '+(idx+1)+' · '+(set.rowCount||0)+' filas';root.appendChild(title);
-     if(!set.rows||!set.rows.length)return;
-     const wrap=document.createElement('div');wrap.className='tableWrap';const table=document.createElement('table');
-     const head=document.createElement('tr');(set.columns||[]).forEach(c=>{const th=document.createElement('th');th.textContent=c;head.appendChild(th)});const thead=document.createElement('thead');thead.appendChild(head);table.appendChild(thead);
-     const tbody=document.createElement('tbody');set.rows.forEach(row=>{const tr=document.createElement('tr');(set.columns||[]).forEach(c=>{const td=document.createElement('td');td.textContent=row[c]??'';tr.appendChild(td)});tbody.appendChild(tr)});table.appendChild(tbody);wrap.appendChild(table);root.appendChild(wrap);
+   const params={};
+   document.querySelectorAll('#objectParams input').forEach(el=>{
+     if(el.value.trim()==='')return;
+     const t=el.dataset.type.toLowerCase();
+     let value=el.value;
+     if(['int','bigint','smallint','tinyint','bit'].includes(t))value=Number(value);
+     params[el.dataset.param]=value;
    });
+   return params;
+ }
+ function renderResults(data){
+   const root=$('results');root.replaceChildren();
+   const sets=Array.isArray(data.resultSets)?data.resultSets:[];
+   if(!sets.length){root.textContent='Sin resultados para mostrar.';return}
+   sets.forEach((set,idx)=>{
+     const title=document.createElement('div');title.className='small';
+     title.style.marginTop='18px';title.textContent='Resultado '+(idx+1)+' · '+(set.rowCount||0)+' filas';
+     root.appendChild(title);
+     const columns=Array.isArray(set.columns)?set.columns:[];
+     const rows=Array.isArray(set.rows)?set.rows:[];
+     if(!rows.length){const note=document.createElement('p');note.textContent='No se encontraron filas.';note.className='muted';root.appendChild(note);return}
+     const outer=document.createElement('div'),table=document.createElement('table'),thead=document.createElement('thead'),tr=document.createElement('tr'),tbody=document.createElement('tbody');
+     outer.className='tableWrap';
+     columns.forEach(col=>{const th=document.createElement('th');th.textContent=col;tr.appendChild(th)});
+     thead.appendChild(tr);table.appendChild(thead);
+     rows.forEach(row=>{
+       const tr=document.createElement('tr');
+       columns.forEach(col=>{const td=document.createElement('td');td.textContent=String(row[col]??'');tr.appendChild(td)});
+       tbody.appendChild(tr);
+     });
+     table.appendChild(tbody);outer.appendChild(table);root.appendChild(outer);
+   });
+ }
+ async function inspectObject(){
+   if(!bridge||!sessionId||!currentDb){status('Conectá SQL y elegí una base primero.','bad');return}
+   const name=objectName();
+   if(!name){status('Escribí el nombre de una tabla, vista o SP.','bad');return}
+   status('Buscando '+name+' en '+currentDb+'…');
+   $('results').replaceChildren();$('objectParams').replaceChildren();$('executeSp').classList.add('hidden');inspected=null;
+   try{
+     const data=await post('/api/sql/object',{sessionId,database:currentDb,name,type:$('sqlObjectType').value,action:'read'});
+     inspected=data;
+     logDiag('Explorador SQL: '+data.name+' ('+data.type+') base '+data.database);
+     if(data.type==='sp'){
+       showParams(data);
+       if(data.allowed){
+         $('executeSp').classList.remove('hidden');
+         status('SP '+data.name+' encontrado. Revisá los parámetros antes de ejecutarlo.','ok');
+       } else {
+         status('SP '+data.name+' encontrado en '+currentDb+'. Se muestran sus parámetros. Para ejecutarlo, tiene que autorizarse expresamente en la configuración local del conector; algunos SP modifican datos.','bad');
+       }
+     }else{
+       renderResults(data);
+       status((data.type==='tabla'?'Tabla ':'Vista ')+data.name+' encontrada: hasta 200 filas en modo lectura.','ok');
+     }
+   }catch(e){
+     const msg=e.message.includes('404')?'El conector necesita actualizarse. Cerrá y volvé a abrir DoingLio desde el cerebro.':e.message;
+     status('No pude consultar '+name+': '+msg,'bad');
+     logDiag('Error en explorador SQL: '+msg);
+   }
  }
 
  $('copyDiag').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('diagLog').textContent);logDiag('Diagnóstico copiado al portapapeles')}catch(e){logDiag('No pude copiar: '+e.message)}});
@@ -254,15 +272,26 @@
    }catch(e){$('connectionForm').classList.remove('hidden');$('passwordWrap').classList.remove('hidden');setStatus($('sqlStatus'),'No se pudo conectar: '+e.message,'bad')}
  });
  $('database').addEventListener('change',e=>chooseDatabase(e.target.value));
- $('procedure').addEventListener('change',e=>renderParams(procedures.find(p=>p.name===e.target.value)));
- $('spSearch').addEventListener('input',paintCatalog);
- $('refreshSp').addEventListener('click',loadProcedures);
- $('runSp').addEventListener('click',async()=>{
-   const proc=$('procedure').value;if(!proc)return;setStatus($('spStatus'),'Ejecutando '+proc+'…');
-   try{const d=await post('/api/sp/execute',{sessionId,database:currentDb,procedure:proc,parameters:readParams()});setStatus($('spStatus'),proc+' ejecutado correctamente.','ok');renderResults(d)}
-   catch(e){setStatus($('spStatus'),'Error al ejecutar '+proc+': '+e.message,'bad')}
+ $('inspectSql').addEventListener('click',inspectObject);
+ $('sqlObjectName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inspectObject()}});
+ $('sqlObjectType').addEventListener('change',()=>{
+   $('executeSp').classList.add('hidden');$('objectParams').replaceChildren();inspected=null;
  });
-
+ $('executeSp').addEventListener('click',async()=>{
+   if(!inspected||inspected.type!=='sp'||!inspected.allowed)return;
+   const name=inspected.name;
+   if(!window.confirm('Ejecutar '+name+' en '+currentDb+'? Un SP puede modificar datos. Confirmá solamente si conocés qué hace.'))return;
+   const args=readParams();
+   $('executeSp').disabled=true;
+   status('Ejecutando '+name+'…');
+   try{
+     const data=await post('/api/sql/object',{sessionId,database:currentDb,name,type:'sp',action:'execute',confirm:'EJECUTAR SP',parameters:args});
+     renderResults(data);
+     status('Ejecutado '+name+'. Revisá los conjuntos de resultados.','ok');
+     logDiag('SP ejecutado: '+name);
+   }catch(e){status('Falló el SP '+name+': '+e.message,'bad');logDiag('Falló SP: '+e.message)}
+   finally{$('executeSp').disabled=false}
+ });
  boot();
 })();
 </script>
