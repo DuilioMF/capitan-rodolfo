@@ -37,6 +37,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path $testRoot,(Join-Path $testRoot 'bridge')|Out-Null
           Copy-Item VERSION,sp_allowlist.json $testRoot
           Copy-Item 'bridge/capitan_rodolfo_local.ps1' (Join-Path $testRoot 'bridge/capitan_rodolfo_local.ps1')
+          $sqlDir=Join-Path $testRoot 'sql'
+          New-Item -ItemType Directory -Force -Path $sqlDir | Out-Null
+          Copy-Item 'sql/PA_CapitanRodolfo_CircuitoEstacion.sql' $sqlDir
           $bridge=Join-Path $testRoot 'bridge/capitan_rodolfo_local.ps1'
           $stdout=Join-Path $testRoot 'stdout.log'
           $stderr=Join-Path $testRoot 'stderr.log'
@@ -75,7 +78,10 @@ jobs:
               else{throw}
             }
             if($code -ne 401){throw "El endpoint debe contestar 401 sin sesión, devolvió HTTP $code (404 indica ruta ausente)."}
-            Write-Host 'Conector real $expectedVersion: health y ruta POST /api/sql/object OK. Sin SQL privado.'
+
+            $auto=Invoke-RestMethod -Uri ("http://127.0.0.1:"+$port+"/api/circuit/install-state") -TimeoutSec 4
+            if($auto.state -ne 'pending'){throw "Sin SQL no debería instalar procedimientos automáticamente"}
+            Write-Host "Conector real v$expectedVersion: health, explorador SQL y estado instalador automático OK"
           } finally {
             if($proc){Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue}
           }
@@ -122,6 +128,10 @@ jobs:
           if($sql -match 'CREATE\s+OR\s+ALTER\s+PROCEDURE'){throw "CREATE OR ALTER no compatible con SQL anterior"}
           if(!$sql.Contains('ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion')){throw "Falta ALTER compatible"}
           if(!(Test-Path 'sql/DIAGNOSTICO_PERMISOS_CircuitoEstacion.sql')){throw "Falta diagnóstico permisos"}
+          if(!(Test-Path 'sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql')){throw "Falta instalación de una sola vez para administrador"}
+          $bootstrap=Get-Content 'sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql' -Raw
+          if(!$bootstrap.Contains('GRANT EXECUTE ON OBJECT::dbo.PA_CapitanRodolfo_CircuitoEstacion')){throw "Falta autorización específica del SP"}
+
           $permissions=Get-Content sql/DIAGNOSTICO_PERMISOS_CircuitoEstacion.sql -Raw
           if(!$permissions.Contains("HAS_PERMS_BY_NAME('dbo.Tanque'")){throw "Falta prueba SELECT Tanque"}
           if(!$permissions.Contains("PuedeEjecutarCircuito")){throw "Falta prueba permiso EXECUTE"}
@@ -164,6 +174,11 @@ jobs:
           if(!bridge.includes('function Get-StationOptions'))throw Error('Falta resolver ParamStock');
           if(!bridge.includes("dbo.ParamStock"))throw Error('Falta consultar ParamStock');
           if(!bridge.includes('companyAvailable=($sets.Count -ge 5)'))throw Error('Falta quinto resultado en bridge');
+          for(const marker of ['function Invoke-CircuitAutoInstall','function Get-CircuitDatabasePermission','/api/circuit/install-state','Get-StationReadOnlyCircuit','Save-CircuitInstallStatus']){
+            if(!bridge.includes(marker))throw Error('Falta instalación segura automática o lectura de respaldo: '+marker);
+          }
+          if(!index.includes('id="circuitInstallStatus"'))throw Error('La pantalla no informa si falta permiso de instalacion');
+
           console.log('Explorador SQL por nombre: controles y ruta backend OK');
           // La misma función de Revalsoft SaaS debe conservar los tres tipos
           // y su estructura fiscal, sin escribir en la base de datos.
