@@ -78,7 +78,7 @@ jobs:
             const html=fs.readFileSync(filename,'utf8');
             for(const [i,match] of [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].entries()){
               const script=match[1].trim();if(!script)continue;
-              const out=path.join(process.env.RUNNER_TEMP,`filename.replace(/[^a-z0-9]/gi,'_')+'-'+i+'.js'`);
+              const out=path.join(process.env.RUNNER_TEMP,filename.replace(/[^a-z0-9]/gi,'_')+'-'+i+'.js');
               fs.writeFileSync(out,script);
               cp.execFileSync('node',['--check',out],{stdio:'inherit'});
             }
@@ -93,6 +93,6 @@ jobs:
             if(!index.includes(marker))throw Error('Falta integración con Estación: '+marker);
           }
           console.log('Camión y circuito enlazados: OK');
-          '@ | Set-Content -Encoding UTF8 "$env:RUNNER_TEMPalidate-pages.cjs"
-          node "$env:RUNNER_TEMPalidate-pages.cjs"
+          '@ | Set-Content -Encoding UTF8 ($testFile=Join-Path $env:RUNNER_TEMP 'validate-pages.cjs')
+          node "$testFile"
           if($LASTEXITCODE -ne 0){throw "El navegador no podrá ejecutar las pantallas"}
