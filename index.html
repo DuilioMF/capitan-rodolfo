@@ -116,6 +116,7 @@ h1 em{font-weight:500;color:#d9ae65}
 .station-picker select,.station-picker button{min-width:130px;max-width:280px;background:#19140e;color:#ffd09b;border:1px solid #b76c3588;padding:9px;border-radius:7px;cursor:pointer}
 .station-error{margin-top:8px;font-size:12px;line-height:1.45;color:#ffb36b;overflow-wrap:anywhere;max-width:720px}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
+#truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
 <link rel="stylesheet" href="theme.css?v=62">
 <script src="theme.js?v=62" defer></script>
@@ -169,13 +170,19 @@ h1 em{font-weight:500;color:#d9ae65}
 
 <div class="section-title">ANATOMÍA DEL CIRCUITO</div>
 <section class="flow">
-  <div class="step"><span class="symbol">I</span><small>CAMIÓN</small><b>Descarga combustible</b><span>Ingreso al circuito</span></div>
+  <div class="step" id="truckStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="truckModal"><span class="symbol">I</span><small>CAMIÓN · CLIC PARA SUBIR</small><b>Descarga combustible</b><span>Factura, recibo o transferencia · arrastrá un archivo</span></div>
   <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
   <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
   <div class="step"><span class="symbol">V</span><small>COBRO</small><b id="paymentStatus">—</b><span>Formas de pago: pendiente de enlazar</span></div>
 </section>
 
+<div class="tank-modal" id="truckModal" role="dialog" aria-modal="true" aria-labelledby="truckTitle">
+  <div class="tank-dialog" style="width:min(1020px,98vw);max-height:96vh">
+    <div class="tank-head"><div><div class="eyebrow">CAPITÁN RODOLFO · RECEPCIÓN DIGITAL</div><h2 id="truckTitle">Camión · lectura de comprobantes</h2></div><button class="tank-close" id="truckClose" type="button" aria-label="Cerrar camión">×</button></div>
+    <iframe id="truckReader" title="Camión · arrastrar y analizar factura, recibo o transferencia" loading="lazy" style="border:0;width:100%;min-height:min(76vh,700px);background:#080e14" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  </div>
+</div>
 <div class="tank-modal" id="tankModal" role="dialog" aria-modal="true" aria-labelledby="tankModalTitle">
   <div class="tank-dialog">
     <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques de la estación</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
@@ -213,6 +220,20 @@ h1 em{font-weight:500;color:#d9ae65}
 (function(){
  const bridges=(['127.0.0.1','localhost'].includes(location.hostname))?[location.origin+'/_doinglio_sql']:['http://127.0.0.1:8787','http://localhost:8787','http://127.0.0.1:8797','http://localhost:8797','http://127.0.0.1:18787','http://localhost:18787','http://127.0.0.1:27877','http://localhost:27877','http://127.0.0.1:37877','http://localhost:37877','http://127.0.0.1:48787','http://localhost:48787','http://127.0.0.1:57877','http://localhost:57877'];
 
+ const truckStep=document.getElementById('truckStep');
+ const truckModal=document.getElementById('truckModal');
+ const truckReader=document.getElementById('truckReader');
+ function openTruck(){
+   if(!truckReader.getAttribute('src'))truckReader.setAttribute('src','documentos.html?truck=1');
+   truckModal.classList.add('open');
+   document.getElementById('truckClose').focus();
+ }
+ function closeTruck(){truckModal.classList.remove('open')}
+ truckStep.addEventListener('click',openTruck);
+ truckStep.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTruck()}});
+ document.getElementById('truckClose').addEventListener('click',closeTruck);
+ truckModal.addEventListener('click',e=>{if(e.target===truckModal)closeTruck()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTruck()});
  const connection=document.getElementById('stationConnection');
  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
  const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
@@ -275,12 +296,12 @@ h1 em{font-weight:500;color:#d9ae65}
    const tanksRows=Array.isArray(data.tanks.rows)?data.tanks.rows:[];
    const hoses=Array.isArray(data.hoses.rows)?data.hoses.rows:[];
    const dispatches=Array.isArray(data.dispatches.rows)?data.dispatches.rows:[];
-   const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));
+   const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));const islands=new Set(hoses.map(x=>String(x.Isla??'')).filter(x=>x&&x!=='null'));
    stationError.textContent='';
    connection.innerHTML='<span class="dot"></span> SQL conectado · '+esc(activeDatabase)+' · Estación '+data.station+' · SP v'+esc(data.version||'?');
    set('liveTanks',nf.format(tanksRows.length)+' tanques');
    set('liveHoses',nf.format(hoses.length)+' mangueras asociadas');
-   set('livePumps',nf.format(faces.size)+' caras');
+   set('livePumps',nf.format(islands.size||Math.ceil(faces.size/2))+' surtidores · '+nf.format(faces.size)+' caras');
    set('liveDatabase','Estación '+data.station+' · '+activeDatabase);
    set('liveLiters',nf.format(dispatches.reduce((sum,row)=>sum+Number(row.Litros||0),0))+' L');
    set('livePesos',money.format(dispatches.reduce((sum,row)=>sum+Number(row.Pesos||0),0)));
