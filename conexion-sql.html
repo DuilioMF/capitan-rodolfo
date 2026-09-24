@@ -16,7 +16,7 @@
 <body>
 <main class="wrap">
   <div class="top">
-    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v80</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
+    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v81</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
     <a href="nucleo.html">← Volver a Núcleo</a>
   </div>
 
@@ -25,12 +25,12 @@
     <div id="bridgeStatus" class="status">Buscando conector en este equipo…</div>
     <div id="installBox" class="install hidden">
       <p class="muted">No encuentro el conector. Descargalo o actualizalo una vez: se instala en <strong>C:\Sistemas\DoingLioConnector</strong>, queda oculto y se inicia con Windows.</p>
-      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=80" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
+      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=81" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
     </div>
   </section>
 
   <section class="card">
-    <h2>Diagnóstico · v80</h2>
+    <h2>Diagnóstico · v81</h2>
     <div class="diagpaths">Si algo falla, leeme las últimas líneas de abajo. También quedan archivos en:<br><strong>C:\Sistemas\DoingLioConnector\install.log</strong><br><strong>C:\Sistemas\DoingLioLauncher\launcher.log</strong></div>
     <pre id="diagLog" class="diag">Iniciando diagnóstico…</pre>
     <div class="actions"><button class="ghost" id="copyDiag" type="button">Copiar diagnóstico</button><button class="ghost" id="clearDiag" type="button">Limpiar</button></div>
@@ -115,7 +115,7 @@
 (()=>{
  const $=id=>document.getElementById(id);
  const logDiag=msg=>{const el=$('diagLog');if(!el)return;const ts=new Date().toLocaleTimeString('es-AR',{hour12:false});if(el.textContent==='Iniciando diagnóstico…')el.textContent='';el.textContent+='['+ts+'] '+msg+'\n';el.scrollTop=el.scrollHeight};
- logDiag('Página v80 · '+location.href);
+ logDiag('Página v81 · '+location.href);
  logDiag('Origen: '+location.origin);
  const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
  let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SISRL';
@@ -132,7 +132,7 @@
  function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
  async function findBridge(){
-   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),desktop?'Comprobando SQL local · v80…':'Buscando conector en este equipo · v80…');
+   bridge=null;$('installBox').classList.add('hidden');setStatus($('bridgeStatus'),desktop?'Comprobando SQL local · v81…':'Buscando conector en este equipo · v81…');
    logDiag(desktop?'Modo escritorio: ruta SQL fija; sin búsqueda de puertos':'Modo web: buscando conector en puertos locales');
    for(const base of candidates){
      try{
@@ -143,7 +143,7 @@
          const d=await r.json();
          logDiag('Health: ok='+String(d.ok)+' service='+(d.service||'?')+' version='+(d.version||'?'));
          if(!d.ok)continue;
-         const expected='80';
+         const expected='81';
          if(String(d.version)!==expected || d.apiSqlObject!==true){
            bridge=null;
            const why='La página necesita conector v'+expected+' con Explorador SQL, pero responde v'+(d.version||'?')+' sin la ruta actualizada. Cerrá las ventanas anteriores y abrí DoingLio desde el ícono del cerebro para actualizar ambos componentes.';
@@ -161,7 +161,7 @@
        logDiag('FALLÓ '+base+' · '+(e&&e.name?e.name+': ':'')+(e&&e.message?e.message:String(e)));
      }
    }
-   setStatus($('bridgeStatus'),'Conector no detectado · página v80. Leeme el diagnóstico de abajo.','bad');
+   setStatus($('bridgeStatus'),'Conector no detectado · página v81. Leeme el diagnóstico de abajo.','bad');
    $('installBox').classList.remove('hidden');
    logDiag(desktop?'FIN: no arrancó SQL. Abrí el archivo bridge.err.log de DoingLioConnector y launcher.log de DoingLioLauncher':'FIN: no se encontró ningún conector');
    return false;
