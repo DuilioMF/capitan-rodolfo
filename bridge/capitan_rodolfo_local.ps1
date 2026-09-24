@@ -905,7 +905,7 @@ try {
         $st = Ensure-ActiveSession
         $db = ""
         if($null -ne $st){ $db = [string]$st.database }
-        Send-Json $stream 200 @{ok=$true;service='Capitan Rodolfo Local';version=$Version;mode='background';scheduledTask=$TaskName;statusFile=$ServiceStatusPath;profileSaved=(Test-Path $ProfilePath);connected=($null -ne $st);database=$db}
+        Send-Json $stream 200 @{ok=$true;service='Capitan Rodolfo Local';version=$Version;apiSqlObject=$true;mode='background';scheduledTask=$TaskName;statusFile=$ServiceStatusPath;profileSaved=(Test-Path $ProfilePath);connected=($null -ne $st);database=$db}
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/profile-status'){
         $p = Load-SqlProfile
