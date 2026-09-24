@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Fuente actual: revisión **47**
+- Versión actual: **76** (código publicado; SQL real pendiente de verificación en el equipo)
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -72,3 +72,7 @@ Cada cambio debe quedar en un commit recuperable antes de publicar. Conservar ro
 ## Publicación vigente — 22/09/2026
 
 GitHub es la fuente de código y GitHub Pages publica `main`. No usar copias de Sites como origen ni destino de navegación. Cada cambio se integra por PR y conserva su commit para rollback. Tema claro/oscuro compartido entre páginas; control arriba y regreso debajo.
+
+## Visualización del SP (v76)
+
+La vista Estación muestra directamente la respuesta de `dbo.PA_CapitanRodolfo_CircuitoEstacion`: tanques, caras/mangueras, despachos, relaciones con comprobantes y ParamStock de la estación seleccionada. También permite copiar el JSON real de los cinco conjuntos. El servicio local consulta `SiSRL` con la sesión guardada. Los datos reales sólo estarán disponibles si el equipo tiene SQL accesible, el SP instalado y los permisos adecuados. Ningún dato real se inventa desde GitHub Pages.

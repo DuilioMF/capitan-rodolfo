@@ -102,10 +102,25 @@ h1 em{font-weight:500;color:#d9ae65}
 @media(max-width:920px){.hero{grid-template-columns:1fr}.manuscript{opacity:.12;right:-160px}.flow{grid-template-columns:1fr 1fr}.flow:before,.step:after{display:none}.kpis{grid-template-columns:1fr 1fr}.scribble{display:none}}
 @media(max-width:560px){header{align-items:flex-start}.nav{flex-direction:column;align-items:flex-end}.flow,.kpis{grid-template-columns:1fr}h1{font-size:58px}.voice{min-height:190px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.step[data-action]{cursor:pointer}.step[data-action]:focus{outline:2px solid var(--copper);outline-offset:3px}.step[data-action]:hover b{color:#ffd09b}
+.tank-modal{position:fixed;inset:0;z-index:5000;background:#050403d9;backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
+.tank-modal.open{display:flex}.tank-dialog{width:min(1180px,96vw);max-height:88vh;overflow:hidden;border:1px solid #b76c357d;background:#100d09;box-shadow:0 30px 100px #000c;display:flex;flex-direction:column}
+.tank-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 20px;border-bottom:1px solid #75603d55}.tank-head h2{margin:0;font:600 30px "Cormorant Garamond",serif}.tank-close{border:1px solid #75603d77;background:#ffffff08;color:var(--ink);width:38px;height:38px;cursor:pointer;font-size:20px}
+.tank-status{padding:12px 20px;color:var(--muted);font-size:12px;border-bottom:1px solid #75603d30}.tank-status.ok{color:var(--green)}.tank-status.warn{color:#ffb36b}
+.tank-table-wrap{overflow:auto;max-height:65vh}.tank-table{width:100%;border-collapse:collapse;font-size:12px}.tank-table th,.tank-table td{padding:10px 12px;border-bottom:1px solid #75603d30;text-align:left;white-space:nowrap}.tank-table th{position:sticky;top:0;background:#18130d;color:#ffd09b;z-index:1}.tank-table tbody tr:hover{background:#ffffff05}
+.tank-empty{padding:28px 20px;color:var(--muted)}
+@media(max-width:700px){.tank-modal{padding:8px}.tank-dialog{max-height:94vh}.tank-head h2{font-size:24px}.tank-table th,.tank-table td{padding:9px 10px;font-size:11px}}
 
+.station-picker{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#22190d99;border:1px solid #b76c3577;padding:11px 14px}
+.station-picker[hidden]{display:none}.station-picker label{font-size:11px;font-weight:800;letter-spacing:.09em;color:#ffcb8d}
+.station-picker select,.station-picker button{min-width:130px;max-width:280px;background:#19140e;color:#ffd09b;border:1px solid #b76c3588;padding:9px;border-radius:7px;cursor:pointer}
+.station-error{margin-top:8px;font-size:12px;line-height:1.45;color:#ffb36b;overflow-wrap:anywhere;max-width:720px}
+.company-card{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:15px 0;padding:17px 19px;border:1px solid #d9823b77;background:linear-gradient(95deg,#21180d,#13120e);border-radius:13px}.company-card[hidden]{display:none}.company-card h2{font-size:22px;margin:3px 0;color:#f8ca92}.company-ey{font-size:10px;letter-spacing:.1em;color:#e9a75d;font-weight:800}.company-meta{display:flex;flex-direction:column;gap:2px;color:#d7c2a8;font-size:12px}
+.step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
+#truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
-<link rel="stylesheet" href="theme.css?v=47">
-<script src="theme.js?v=47" defer></script>
+<link rel="stylesheet" href="theme.css?v=62">
+<script src="theme.js?v=62" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -137,35 +152,76 @@ h1 em{font-weight:500;color:#d9ae65}
     <div class="live"><span class="dot"></span> OPERACIÓN EN VIVO</div>
     <h1>Capitán Rodolfo<br><em>· Estación</em></h1>
     <div class="sub">Flujo: combustible → despacho → venta → cobro</div>
+    <div class="live" id="stationConnection"><span class="dot"></span> Buscando conexión SQL local…</div>
+<div class="station-picker" id="stationPicker" hidden>
+  <label for="stationId">ESTACIÓN ACTIVA</label>
+  <select id="stationId" aria-label="Elegir estación"></select>
+  <button id="reloadCircuit" type="button">Actualizar circuito SQL</button>
+</div>
+<div class="station-error" id="stationError" role="status" aria-live="polite"></div>
+<div class="company-card" id="companyCard" hidden aria-live="polite">
+  <div><span class="company-ey">EMPRESA · PARAMSTOCK</span><h2 id="stationName">Estación</h2></div>
+  <div class="company-meta" id="stationCompanyInfo"></div>
+</div>
     <div class="annotation">“Todo movimiento deja una huella.”</div>
   </div>
   <div class="voice" aria-labelledby="voice-title">
     <button class="voice-mic" id="voiceMic" type="button" aria-label="Iniciar conversación por voz" aria-pressed="false">🎙</button>
     <strong>“Rodolfo, ¿qué pasó hoy?”</strong>
-    <p id="voiceStatus">Tocá el micrófono y hablá. Rodolfo transcribe tu consulta sin salir del tablero.</p>
-    <output id="voiceTranscript" class="voice-transcript" aria-live="polite"></output>
+    <p id="voiceStatus">Tocá el micrófono una vez y conversá naturalmente con Rodolfo.</p>
+    <div id="voiceTranscript" class="voice-transcript" aria-live="polite"></div>
   </div>
 </section>
 
 <div class="section-title">ANATOMÍA DEL CIRCUITO</div>
 <section class="flow">
-  <div class="step"><span class="symbol">I</span><small>CAMIÓN</small><b>Descarga combustible</b><span>Ingreso al circuito</span></div>
-  <div class="step"><span class="symbol">II</span><small>TANQUES</small><b>Súper · Infinia · Diesel</b><span>Niveles y movimiento</span></div>
-  <div class="step"><span class="symbol">III</span><small>SURTIDOR</small><b>38.4 L</b><span>Pico 03 · activo</span></div>
+  <div class="step" id="truckStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="truckModal"><span class="symbol">I</span><small>CAMIÓN · CLIC PARA SUBIR</small><b>Descarga combustible</b><span>Factura, recibo o transferencia · arrastrá un archivo</span></div>
+  <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
+  <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
-  <div class="step"><span class="symbol">V</span><small>COBRO</small><b>$ 48.920</b><span class="ok">PAGADO ✓</span></div>
+  <div class="step"><span class="symbol">V</span><small>COBRO</small><b id="paymentStatus">—</b><span>Formas de pago: pendiente de enlazar</span></div>
 </section>
+
+<div class="tank-modal" id="truckModal" role="dialog" aria-modal="true" aria-labelledby="truckTitle">
+  <div class="tank-dialog" style="width:min(1020px,98vw);max-height:96vh">
+    <div class="tank-head"><div><div class="eyebrow">CAPITÁN RODOLFO · RECEPCIÓN DIGITAL</div><h2 id="truckTitle">Camión · lectura de comprobantes</h2></div><button class="tank-close" id="truckClose" type="button" aria-label="Cerrar camión">×</button></div>
+    <iframe id="truckReader" title="Camión · arrastrar y analizar factura, recibo o transferencia" loading="lazy" style="border:0;width:100%;min-height:min(76vh,700px);background:#080e14" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  </div>
+</div>
+<div class="tank-modal" id="tankModal" role="dialog" aria-modal="true" aria-labelledby="tankModalTitle">
+  <div class="tank-dialog">
+    <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques de la estación</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="tankStatus">Esperando conexión SQL…</div>
+    <div class="tank-table-wrap" id="tankTableWrap"><div class="tank-empty">Hacé clic en TANQUES para consultar dbo.Tanque.</div></div>
+  </div>
+</div>
+<div class="tank-modal" id="pumpModal" role="dialog" aria-modal="true" aria-labelledby="pumpModalTitle">
+  <div class="tank-dialog">
+    <div class="tank-head"><div><div class="eyebrow">SQL · SURTIDORES</div><h2 id="pumpModalTitle">Caras, mangueras y tanques</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="pumpStatus">Esperando SP de la estación…</div>
+    <div class="tank-table-wrap" id="pumpTableWrap"><div class="tank-empty">Seleccioná una estación.</div></div>
+  </div>
+</div>
 
 <div class="section-title">LECTURA DEL DÍA</div>
 <section class="kpis">
-  <div class="kpi"><small>Litros vendidos hoy</small><strong>12.480 L</strong></div>
-  <div class="kpi"><small>Ventas cobradas</small><strong>$ 18,4 M</strong></div>
-  <div class="kpi"><small>Pendiente</small><strong>$ 312.000</strong></div>
-  <div class="kpi"><small>Alertas</small><strong class="warn">1 sin conciliar</strong></div>
+  <div class="kpi"><small>Litros en despachos</small><strong id="liveLiters">—</strong></div>
+  <div class="kpi"><small>Importe en despachos</small><strong id="livePesos">—</strong></div>
+  <div class="kpi"><small>Despachos</small><strong id="liveDispatches">—</strong></div>
+  <div class="kpi"><small>Base SQL</small><strong class="ok" id="liveDbKpi">Sin conexión</strong></div>
+</section>
+<section id="spResults" hidden style="margin-top:18px;border:1px solid #97623d;border-radius:16px;padding:16px;background:#141a1c">
+  <details id="spResultsDetails" open>
+    <summary style="cursor:pointer;color:#ffb67e;font-weight:800;font-size:18px">Datos reales de la estación · Resultado completo del SP</summary>
+    <p id="spResultStatus" style="color:#c7d5db;overflow-wrap:anywhere"></p>
+    <div id="spResultsTables"></div>
+    <button type="button" id="spCopy" style="cursor:pointer;background:#ef923e;color:#1b1208;padding:10px 14px;border:0;border-radius:9px;font-weight:bold;margin-top:12px">Copiar respuesta JSON del SP</button>
+    <span id="spCopyStatus" style="margin-left:12px;color:#b9cbd0"></span>
+  </details>
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">46</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">55</span></div>
 </div>
 <script>
 (async()=>{
@@ -176,29 +232,252 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 
 (function(){
- const button=document.getElementById('voiceMic');
- const status=document.getElementById('voiceStatus');
- const transcript=document.getElementById('voiceTranscript');
- const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SpeechRecognition){
-   button.disabled=true;
-   status.textContent='La conversación por voz necesita un navegador compatible con reconocimiento de voz.';
-   return;
+
+ const truckStep=document.getElementById('truckStep');
+ const truckModal=document.getElementById('truckModal');
+ const truckReader=document.getElementById('truckReader');
+ function openTruck(){
+   if(!truckReader.getAttribute('src'))truckReader.setAttribute('src','documentos.html?truck=1');
+   truckModal.classList.add('open');
+   document.getElementById('truckClose').focus();
  }
- const recognition=new SpeechRecognition();
- recognition.lang='es-AR';
- recognition.continuous=true;
- recognition.interimResults=true;
- let listening=false;
- recognition.onstart=()=>{listening=true;button.classList.add('is-listening');button.setAttribute('aria-pressed','true');status.textContent='Te escucho… tocá nuevamente para detener.'};
- recognition.onresult=event=>{
-   let text='';
-   for(let i=event.resultIndex;i<event.results.length;i++) text+=event.results[i][0].transcript;
-   transcript.textContent=text.trim();
- };
- recognition.onerror=event=>{status.textContent='No pude escuchar: '+event.error+'. Podés intentarlo otra vez.'};
- recognition.onend=()=>{listening=false;button.classList.remove('is-listening');button.setAttribute('aria-pressed','false');if(transcript.textContent)status.textContent='Consulta capturada. El motor predeterminado se configura en Núcleo → Inteligencia.'};
- button.addEventListener('click',()=>{if(listening)recognition.stop();else{transcript.textContent='';recognition.start()}});
+ function closeTruck(){truckModal.classList.remove('open')}
+ truckStep.addEventListener('click',openTruck);
+ truckStep.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTruck()}});
+ document.getElementById('truckClose').addEventListener('click',closeTruck);
+ truckModal.addEventListener('click',e=>{if(e.target===truckModal)closeTruck()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTruck()});
+ const connection=document.getElementById('stationConnection');
+ const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+ const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
+ const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
+ const desktop=['127.0.0.1','localhost'].includes(location.hostname);
+ const bridges=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+ const localFetch=(url,opts={})=>fetch(url,{cache:'no-store',...opts,...(desktop?{}:{targetAddressSpace:'local'})});
+ const stationSelect=document.getElementById('stationId');
+ const stationPicker=document.getElementById('stationPicker');
+ const stationError=document.getElementById('stationError');
+ const tankModal=document.getElementById('tankModal'),tankStep=document.getElementById('tankStep');
+ const pumpModal=document.getElementById('pumpModal'),pumpStep=document.getElementById('pumpStep');
+ let activeBridge=null,stationConnected=false,activeDatabase='',stations=[],circuit=null,loading=false;
+ const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'}[ch]));
+ const warn=msg=>{stationError.textContent=msg;connection.innerHTML='<span class="dot" style="background:#ffb36b"></span> '+esc(msg)};
+ function modalRows(modal,statusId,tableId,set,title,empty){
+   const status=document.getElementById(statusId),root=document.getElementById(tableId);
+   modal.classList.add('open');
+   if(!stationConnected||!circuit||!set){
+     status.className='tank-status warn';
+     status.textContent=stationError.textContent||'No hay datos reales del SP para la estación seleccionada.';
+     root.innerHTML='<div class="tank-empty">Abrí Núcleo → Datos si tenés que verificar la conexión o el SP.</div>';
+     return;
+   }
+   const rows=Array.isArray(set.rows)?set.rows:[];
+   const cols=Array.isArray(set.columns)?set.columns:[];
+   status.className='tank-status ok';status.textContent='SQL '+activeDatabase+' · Estación '+circuit.station+' · '+title+' · '+rows.length+' filas';
+   if(!rows.length){root.innerHTML='<div class="tank-empty">'+empty+'</div>';return}
+   const h='<thead><tr>'+cols.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead>';
+   const b='<tbody>'+rows.map(row=>'<tr>'+cols.map(k=>'<td>'+esc(row[k])+'</td>').join('')+'</tr>').join('')+'</tbody>';
+   root.innerHTML='<table class="tank-table">'+h+b+'</table>';
+ }
+ const tanks=()=>modalRows(tankModal,'tankStatus','tankTableWrap',circuit?.tanks,'Tanques','No hay tanques para esta estación.');
+ const pumps=()=>modalRows(pumpModal,'pumpStatus','pumpTableWrap',circuit?.hoses,'Mangueras','No hay mangueras para esta estación.');
+ function closeModals(){tankModal.classList.remove('open');pumpModal.classList.remove('open')}
+ tankStep.addEventListener('click',tanks);
+ pumpStep.addEventListener('click',pumps);
+ for(const [node,action] of [[tankStep,tanks],[pumpStep,pumps]])node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action()}});
+ document.getElementById('tankClose').addEventListener('click',closeModals);
+ document.getElementById('pumpClose').addEventListener('click',closeModals);
+ tankModal.addEventListener('click',e=>{if(e.target===tankModal)closeModals()});
+ pumpModal.addEventListener('click',e=>{if(e.target===pumpModal)closeModals()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
+ async function read(base,path,opts){
+   const res=await localFetch(base+path,opts);
+   const data=await res.json().catch(()=>({}));
+   if(!res.ok)throw new Error(data.error||('HTTP '+res.status));
+   return data;
+ }
+ const spResultSection=document.getElementById('spResults');
+ const spResultTables=document.getElementById('spResultsTables');
+ function renderSpResult(data){
+   const sets=[
+     ['1 · TANQUES',data.tanks],
+     ['2 · SURTIDORES Y MANGUERAS',data.hoses],
+     ['3 · DESPACHOS',data.dispatches],
+     ['4 · RELACIONES CON COMPROBANTES',data.receipts],
+     ['5 · EMPRESA / ESTACIÓN (ParamStock)',data.company]
+   ];
+   document.getElementById('spResultStatus').textContent='Base '+(data.database||activeDatabase)+' · Estación '+data.station+' · EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion @IdEstacion='+data.station+' · Respuesta real del conector local';
+   spResultTables.replaceChildren();
+   for(const [title,set] of sets){
+     const details=document.createElement('details');
+     details.style.cssText='margin-top:12px;padding:10px;border:1px solid #405868;border-radius:10px;background:#0d1720';
+     const rows=Array.isArray(set?.rows)?set.rows:[];
+     const cols=Array.isArray(set?.columns)?set.columns:[];
+     const summary=document.createElement('summary');
+     summary.style.cssText='cursor:pointer;color:#f4bb8b;font-weight:750';
+     summary.textContent=title+' · '+(set?rows.length+' registros':'resultado no disponible');
+     details.appendChild(summary);
+     const wrap=document.createElement('div');
+     wrap.className='tank-table-wrap';
+     wrap.style.marginTop='10px';
+     if(!set){wrap.textContent='Este resultado no llegó desde el procedimiento instalado. Revisá la versión del SP en SiSRL.'}
+     else if(!rows.length){wrap.textContent='La consulta no devolvió registros para esta estación.'}
+     else{
+       const columns=cols.length?cols:Object.keys(rows[0]);
+       const head='<thead><tr>'+columns.map(col=>'<th>'+esc(col)+'</th>').join('')+'</tr></thead>';
+       const body='<tbody>'+rows.map(row=>'<tr>'+columns.map(col=>'<td>'+esc(row[col]??'')+'</td>').join('')+'</tr>').join('')+'</tbody>';
+       wrap.innerHTML='<table class="tank-table">'+head+body+'</table>';
+     }
+     details.appendChild(wrap);
+     spResultTables.appendChild(details);
+   }
+   spResultSection.hidden=false;
+   document.getElementById('spResultsDetails').open=true;
+ }
+ document.getElementById('spCopy').addEventListener('click',async()=>{
+   const label=document.getElementById('spCopyStatus');
+   if(!circuit){label.textContent='Todavía no hay respuesta real del SP.';return}
+   try{await navigator.clipboard.writeText(JSON.stringify(circuit,null,2));label.textContent='Respuesta copiada.'}
+   catch(e){label.textContent='No se pudo copiar: '+e.message}
+ });
+ function clearCircuit(){
+   spResultSection.hidden=true;spResultTables.replaceChildren();
+   circuit=null;stationConnected=false;
+   document.getElementById('companyCard').hidden=true;
+   set('liveTanks','—');set('liveHoses','Sin datos de tanques');
+   set('livePumps','—');set('liveDatabase',activeDatabase||'Sin SQL');
+   set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');
+   set('liveDbKpi',activeDatabase||'Sin conexión');
+ }
+ function paint(data){
+   if(!data.tanks||!data.hoses||!data.dispatches||!data.receipts)throw new Error('El SP no devolvió cuatro resultados completos.');
+   circuit=data;stationConnected=true;activeDatabase=data.database||activeDatabase;
+   renderSpResult(data);
+   const tanksRows=Array.isArray(data.tanks.rows)?data.tanks.rows:[];
+   const hoses=Array.isArray(data.hoses.rows)?data.hoses.rows:[];
+   const dispatches=Array.isArray(data.dispatches.rows)?data.dispatches.rows:[];
+   const company=Array.isArray(data.company?.rows)?data.company.rows[0]:null;
+   const companyCard=document.getElementById('companyCard');
+   companyCard.hidden=false;
+   document.getElementById('stationName').textContent=company?.NombreEstacion||'Estación '+data.station;
+   const details=[
+     company?.TipoEstacion||null,
+     company?.Domicilio||null,
+     company?.Localidad||null,
+     company?.Telefono?'Tel.: '+company.Telefono:null
+   ].filter(Boolean);
+   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):'ParamStock: actualizá el SP para ver la empresa (quinto resultado).';
+   const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));const islands=new Set(hoses.map(x=>String(x.Isla??'')).filter(x=>x&&x!=='null'));
+   stationError.textContent='';
+   connection.innerHTML='<span class="dot"></span> SQL conectado · '+esc(activeDatabase)+' · Estación '+data.station+' · SP v'+esc(data.version||'?');
+   set('liveTanks',nf.format(tanksRows.length)+' tanques');
+   set('liveHoses',nf.format(hoses.length)+' mangueras asociadas');
+   set('livePumps',nf.format(islands.size||Math.ceil(faces.size/2))+' surtidores · '+nf.format(faces.size)+' caras');
+   set('liveDatabase','Estación '+data.station+' · '+activeDatabase);
+   set('liveLiters',nf.format(dispatches.reduce((sum,row)=>sum+Number(row.Litros||0),0))+' L');
+   set('livePesos',money.format(dispatches.reduce((sum,row)=>sum+Number(row.Pesos||0),0)));
+   set('liveDispatches',nf.format(dispatches.length));
+   set('liveDbKpi',activeDatabase);
+ }
+ async function loadCircuit(){
+   if(loading||!activeBridge||!stationSelect.value)return;
+   loading=true;
+   stationError.textContent='Ejecutando dbo.PA_CapitanRodolfo_CircuitoEstacion…';
+   try{
+     const data=await read(activeBridge,'/api/station/circuit',{
+       method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({idEstacion:Number(stationSelect.value)})
+     });
+     paint(data);
+   }catch(e){
+     clearCircuit();
+     warn('No pude leer tanques/surtidores desde el SP: '+e.message+' · Núcleo → Datos para verificar el SP.');
+   }finally{loading=false}
+ }
+ async function refreshStation(){
+   if(loading)return;
+   let found=null,lastError='';
+   for(const base of bridges){
+     try{found={base,data:await read(base,'/api/station/ids')};break}
+     catch(e){lastError=e.message;if(desktop)break}
+   }
+   if(!found){
+     activeBridge=desktop?bridges[0]:null;
+     clearCircuit();
+     warn(lastError||'No hay conexión SQL. Abrí Núcleo → Datos.');
+     return;
+   }
+   activeBridge=found.base;
+   const data=found.data;
+   if(activeDatabase!==data.database){
+     activeDatabase=data.database||'';
+     circuit=null;stationConnected=false;
+     stationSelect.innerHTML='<option value="">Elegí una estación…</option>';
+     stations=[];
+   }
+   const next=Array.isArray(data.stations)?data.stations.map(Number):[];
+   stationPicker.hidden=false;
+   if(next.join(',')!==stations.join(',')){
+     stations=next;const old=stationSelect.value;stationSelect.innerHTML='<option value="">Elegí una estación…</option>';
+     for(const id of stations){const o=document.createElement('option');o.value=id;o.textContent='Estación '+id;stationSelect.appendChild(o)}
+     const saved=localStorage.getItem('capitan.station.'+activeDatabase);
+     const proposed=stations.includes(Number(old))?old:(stations.includes(Number(saved))?saved:(stations.length===1?String(stations[0]):''));
+     stationSelect.value=proposed||'';
+   }
+   if(!stations.length){clearCircuit();warn('La base '+activeDatabase+' no tiene tanques con ID de estación reconocido.');return}
+   if(!stationSelect.value){
+     clearCircuit();warn('SQL conectado a '+activeDatabase+' · elegí la estación para no mezclar datos.');
+     return;
+   }
+   await loadCircuit();
+ }
+ stationSelect.addEventListener('change',()=>{
+   clearCircuit();
+   if(stationSelect.value)localStorage.setItem('capitan.station.'+activeDatabase,stationSelect.value);
+   loadCircuit();
+ });
+ document.getElementById('reloadCircuit').addEventListener('click',refreshStation);
+ refreshStation();
+ setInterval(refreshStation,60000);
+})();
+
+(function(){
+ const button=document.getElementById('voiceMic'),status=document.getElementById('voiceStatus'),transcript=document.getElementById('voiceTranscript');
+ const BRIDGES=(['127.0.0.1','localhost'].includes(location.hostname))?[location.origin+'/_doinglio_sql']:['http://127.0.0.1:8787','http://localhost:8787','http://127.0.0.1:8797','http://localhost:8797','http://127.0.0.1:18787','http://localhost:18787','http://127.0.0.1:27877','http://localhost:27877','http://127.0.0.1:37877','http://localhost:37877','http://127.0.0.1:48787','http://localhost:48787','http://127.0.0.1:57877','http://localhost:57877'];
+ let pc=null,dc=null,stream=null,bridge=null,active=false,assistantLine=null;
+ const addLine=(who,text)=>{const p=document.createElement('p');p.className='voice-line';const b=document.createElement('b');b.textContent=who+': ';p.append(b,document.createTextNode(text));transcript.appendChild(p);transcript.scrollTop=transcript.scrollHeight;return p};
+ const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,...(['127.0.0.1','localhost'].includes(location.hostname)?{}:{targetAddressSpace:'local'})});
+ async function findBridge(){for(const base of BRIDGES){try{const r=await localFetch(base+'/health');if(r.ok)return base}catch(_){}}throw new Error('Abrí el conector local desde Núcleo → Datos.')}
+ async function callSql(args){
+   const stateResponse=await localFetch(bridge+'/api/state'),state=await stateResponse.json();
+   const sessionId=state.sessionId,database=state.database;
+   if(!state.connected||!sessionId||!database)return {error:'No hay una conexión SQL activa con una base seleccionada. Abrí Núcleo → Datos.'};
+   const r=await localFetch(bridge+'/api/ai/sql-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,database,sql:args.consulta})});return await r.json();
+ }
+ function send(event){if(dc&&dc.readyState==='open')dc.send(JSON.stringify(event))}
+ async function handleTool(item){let result;try{result=await callSql(JSON.parse(item.arguments||'{}'))}catch(e){result={error:e.message}}send({type:'conversation.item.create',item:{type:'function_call_output',call_id:item.call_id,output:JSON.stringify(result)}});send({type:'response.create'})}
+ function onEvent(event){
+   let e;try{e=JSON.parse(event.data)}catch(_){return}
+   if(e.type==='input_audio_buffer.speech_started')status.textContent='Te escucho…';
+   if(e.type==='input_audio_buffer.speech_stopped')status.textContent='Rodolfo está pensando…';
+   if(e.type==='conversation.item.input_audio_transcription.completed'&&e.transcript)addLine('Vos',e.transcript);
+   if(e.type==='response.output_audio_transcript.delta'){if(!assistantLine)assistantLine=addLine('Rodolfo','');assistantLine.append(document.createTextNode(e.delta||''));transcript.scrollTop=transcript.scrollHeight}
+   if(e.type==='response.output_audio_transcript.done'){assistantLine=null;status.textContent='Conversación activa · podés seguir hablando.'}
+   if(e.type==='response.done')for(const item of (e.response?.output||[]))if(item.type==='function_call'&&item.name==='consultar_sql_lectura')handleTool(item);
+   if(e.type==='error')status.textContent='OpenAI: '+(e.error?.message||'error de conversación');
+ }
+ async function start(){
+   button.disabled=true;status.textContent='Conectando con Rodolfo…';transcript.replaceChildren();
+   try{
+     bridge=await findBridge();const tokenResponse=await localFetch(bridge+'/api/openai/realtime-secret',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const data=await tokenResponse.json();
+     if(!tokenResponse.ok)throw new Error(data.error||'No se pudo iniciar OpenAI.');if(!data.value)throw new Error('OpenAI no devolvió la credencial efímera.');
+     pc=new RTCPeerConnection();const audio=document.createElement('audio');audio.autoplay=true;pc.ontrack=e=>audio.srcObject=e.streams[0];stream=await navigator.mediaDevices.getUserMedia({audio:true});pc.addTrack(stream.getTracks()[0]);
+     dc=pc.createDataChannel('oai-events');dc.addEventListener('message',onEvent);dc.addEventListener('open',()=>{active=true;button.disabled=false;button.classList.add('is-listening');button.setAttribute('aria-pressed','true');status.textContent='Conversación activa · hablá cuando quieras.'});
+     const offer=await pc.createOffer();await pc.setLocalDescription(offer);const sdp=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',body:offer.sdp,headers:{Authorization:'Bearer '+data.value,'Content-Type':'application/sdp'}});if(!sdp.ok)throw new Error('OpenAI rechazó la sesión ('+sdp.status+').');await pc.setRemoteDescription({type:'answer',sdp:await sdp.text()});
+   }catch(e){stop();button.disabled=false;status.textContent=e.message}
+ }
+ function stop(){active=false;if(dc)dc.close();if(pc)pc.close();if(stream)stream.getTracks().forEach(t=>t.stop());dc=pc=stream=null;button.classList.remove('is-listening');button.setAttribute('aria-pressed','false');status.textContent='Conversación detenida. Tocá el micrófono para volver a hablar.'}
+ button.addEventListener('click',()=>active?stop():start());
 })();
 </script>
 
