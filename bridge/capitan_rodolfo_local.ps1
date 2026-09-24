@@ -893,6 +893,8 @@ function Get-VerifiedPaymentEvidence {
          @{names=@('Gateway');alias='Gateway'}
        )
     }
+    $linkStation=Find-StationColumn -Connection $Connection -ObjectName $link
+    $masterStation=Find-StationColumn -Connection $Connection -ObjectName $master
     $linkLetter=Find-VerifiedPaymentColumn $Connection $link @('LETRA')
     $linkBranch=Find-VerifiedPaymentColumn $Connection $link @('SUCURSAL')
     $linkNumber=Find-VerifiedPaymentColumn $Connection $link @('NUMERO','NCOMPRO','NCOMP','NCOMPROBANTE')
@@ -909,10 +911,22 @@ function Get-VerifiedPaymentEvidence {
        ' WHERE CONVERT(NVARCHAR(10),pc.'+$linkLetter+')=@Letra'+
        ' AND CONVERT(NVARCHAR(20),pc.'+$linkBranch+')=@Sucursal'+
        ' AND CONVERT(NVARCHAR(40),pc.'+$linkNumber+')=@Numero'+
+       $(if($linkStation){' AND pc.'+$linkStation+'=@Station'}else{''})+
+       $(if($masterStation){' AND m.'+$masterStation+'=@Station'}else{''})+
        ' AND EXISTS (SELECT 1 FROM dbo.MaeFac mf WHERE mf.'+$mfStation+'=@Station'+
        ' AND CONVERT(NVARCHAR(10),mf.'+$mfLetter+')=@Letra'+
        ' AND CONVERT(NVARCHAR(20),mf.'+$mfBranch+')=@Sucursal'+
-       ' AND CONVERT(NVARCHAR(40),mf.'+$mfNumber+')=@Numero);'
+       ' AND CONVERT(NVARCHAR(40),mf.'+$mfNumber+')=@Numero)'
+    if(-not $linkStation -and -not $masterStation){
+        # Invoice numbers are often reused at another station. If neither
+        # gateway table carries an ID_ESTACION, require global uniqueness
+        # for this exact invoice identity; otherwise omit external evidence.
+        $query+=' AND (SELECT COUNT(DISTINCT mf2.'+$mfStation+
+          ') FROM dbo.MaeFac mf2 WHERE CONVERT(NVARCHAR(10),mf2.'+$mfLetter+')=@Letra'+
+          ' AND CONVERT(NVARCHAR(20),mf2.'+$mfBranch+')=@Sucursal'+
+          ' AND CONVERT(NVARCHAR(40),mf2.'+$mfNumber+')=@Numero)=1'
+    }
+    $query+=';'
     $cmd=$Connection.CreateCommand()
     $cmd.CommandTimeout=30;$cmd.CommandText=$query
     foreach($p in @(
