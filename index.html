@@ -302,33 +302,182 @@ h1 em{font-weight:500;color:#d9ae65}
  let activeBridge=null,stationConnected=false,activeDatabase='',stations=[],circuit=null,loading=false;
  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'}[ch]));
  const warn=msg=>{stationError.textContent=msg;connection.innerHTML='<span class="dot" style="background:#ffb36b"></span> '+esc(msg)};
- function modalRows(modal,statusId,tableId,set,title,empty){
-   const status=document.getElementById(statusId),root=document.getElementById(tableId);
+
+ const loadStep=document.getElementById('loadStep'),dispatchModal=document.getElementById('dispatchModal');
+ const productModal=document.getElementById('productModal'),receiptModal=document.getElementById('receiptModal');
+ const allDataModals=[tankModal,pumpModal,dispatchModal,productModal,receiptModal];
+ let productParent=null,receiptParent=null;
+ const getRows=set=>Array.isArray(set?.rows)?set.rows:[];
+ const hasValue=x=>x!==null&&x!==undefined&&String(x).trim()!=='';
+ const num=x=>hasValue(x)&&Number.isFinite(Number(x))?Number(x):null;
+ const fmtNumber=x=>num(x)!==null?nf.format(num(x)):'—';
+ const fmtMoney=x=>num(x)!==null?money.format(num(x)):'No disponible';
+ const getIsla=row=>{
+   if(num(row?.Isla)!==null)return Number(row.Isla);
+   const cara=num(row?.Cara);
+   return cara!==null&&Number.isInteger(cara)&&cara>0?Math.ceil(cara/2):null;
+ };
+ const valueText=x=>hasValue(x)?String(x):'—';
+ const hourText=row=>{
+   const v=row?.Hora??row?.Fecha;
+   if(!hasValue(v))return '—';
+   const time=String(v).match(/(?:T|\s)(\d{2}:\d{2})(?::\d{2})?/);
+   return time?time[1]:String(v).match(/^(\d{2}:\d{2})/)?.[1]||'—';
+ };
+ function openModal(modal){
+   allDataModals.forEach(m=>m.classList.remove('open'));
    modal.classList.add('open');
-   if(!stationConnected||!circuit||!set){
-     status.className='tank-status warn';
-     status.textContent=stationError.textContent||'No hay datos reales del SP para la estación seleccionada.';
-     root.innerHTML='<div class="tank-empty">Abrí Núcleo → Datos si tenés que verificar la conexión o el SP.</div>';
-     return;
-   }
-   const rows=Array.isArray(set.rows)?set.rows:[];
-   const cols=Array.isArray(set.columns)?set.columns:[];
-   status.className='tank-status ok';status.textContent='SQL '+activeDatabase+' · Estación '+circuit.station+' · '+title+' · '+rows.length+' filas';
-   if(!rows.length){root.innerHTML='<div class="tank-empty">'+empty+'</div>';return}
-   const h='<thead><tr>'+cols.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead>';
-   const b='<tbody>'+rows.map(row=>'<tr>'+cols.map(k=>'<td>'+esc(row[k])+'</td>').join('')+'</tr>').join('')+'</tbody>';
-   root.innerHTML='<table class="tank-table">'+h+b+'</table>';
  }
- const tanks=()=>modalRows(tankModal,'tankStatus','tankTableWrap',circuit?.tanks,'Tanques','No hay tanques para esta estación.');
- const pumps=()=>modalRows(pumpModal,'pumpStatus','pumpTableWrap',circuit?.hoses,'Mangueras','No hay mangueras para esta estación.');
- function closeModals(){tankModal.classList.remove('open');pumpModal.classList.remove('open')}
- tankStep.addEventListener('click',tanks);
- pumpStep.addEventListener('click',pumps);
- for(const [node,action] of [[tankStep,tanks],[pumpStep,pumps]])node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action()}});
- document.getElementById('tankClose').addEventListener('click',closeModals);
- document.getElementById('pumpClose').addEventListener('click',closeModals);
- tankModal.addEventListener('click',e=>{if(e.target===tankModal)closeModals()});
- pumpModal.addEventListener('click',e=>{if(e.target===pumpModal)closeModals()});
+ function closeModals(){
+   allDataModals.forEach(m=>m.classList.remove('open'));
+   productParent=null;receiptParent=null;
+ }
+ function tableView(modal,statusId,wrapId,rows,columns,empty,filterNote=''){
+   openModal(modal);
+   const status=document.getElementById(statusId),root=document.getElementById(wrapId);
+   const ready=stationConnected&&circuit;
+   status.className='tank-status '+(ready?'ok':'warn');
+   status.textContent=ready?(rows.length+' registros'+(filterNote?' · '+filterNote:'')):
+     'Todavía no hay datos. Verificá Núcleo → Datos.';
+   root.replaceChildren();
+   if(!ready||!rows.length){
+     const block=document.createElement('div');block.className='tank-empty';
+     block.textContent=ready?empty:'No hay datos disponibles para esta estación.';
+     root.appendChild(block);return;
+   }
+   if(filterNote){
+     const filter=document.createElement('div');filter.className='linked-filter';
+     const label=document.createElement('span');label.textContent=filterNote;
+     const all=document.createElement('button');all.type='button';all.textContent='Ver todos';
+     all.addEventListener('click',()=>{if(modal===tankModal)tanks();else if(modal===pumpModal)pumps();else loads()});
+     filter.append(label,all);root.appendChild(filter);
+   }
+   const table=document.createElement('table');table.className='tank-table';
+   const th=document.createElement('thead'),tr=document.createElement('tr');
+   for(const col of columns){const cell=document.createElement('th');cell.textContent=col.label;tr.appendChild(cell)}
+   th.appendChild(tr);table.appendChild(th);
+   const body=document.createElement('tbody');
+   for(const row of rows){
+     const tr=document.createElement('tr');
+     for(const col of columns){
+       const td=document.createElement('td');
+       const raw=col.value(row);
+       const value=col.format?col.format(raw,row):valueText(raw);
+       if(col.action&&hasValue(raw)){
+         const button=document.createElement('button');button.type='button';
+         button.className='link-btn';button.textContent=value+' ↗';
+         button.title=col.hint||('Abrir '+col.label);
+         button.addEventListener('click',()=>col.action(row,modal));
+         td.appendChild(button);
+       }else td.textContent=value;
+       tr.appendChild(td);
+     }
+     body.appendChild(tr);
+   }
+   table.appendChild(body);root.appendChild(table);
+ }
+ function showProduct(row,parentModal){
+   if(!hasValue(row?.Producto))return;
+   productParent=parentModal;
+   const title=document.getElementById('productModalTitle');
+   title.textContent=String(row.Producto);
+   const facts=document.getElementById('productFacts');facts.replaceChildren();
+   const price=row.Precio??row.PrecioProducto??null;
+   const fields=[['Producto',row.Producto],['Costo',fmtMoney(row.Costo)],['Precio final',fmtMoney(price)]];
+   for(const [label,val] of fields){
+     const item=document.createElement('div'),caption=document.createElement('small'),answer=document.createElement('strong');
+     caption.textContent=label;answer.textContent=val;
+     item.append(caption,answer);facts.appendChild(item);
+   }
+   if(num(row.Costo)===null||num(price)===null){
+     const note=document.createElement('div');note.className='tank-empty';
+     note.textContent='Falta costo o precio en la respuesta actual. Instalá el SP v81 y actualizá el circuito.';
+     facts.appendChild(note);
+   }
+   openModal(productModal);
+ }
+ function tanks(filterTank=null){
+   const all=getRows(circuit?.tanks);
+   const rows=filterTank===null?all:all.filter(row=>String(row.NTanque)===String(filterTank));
+   const cols=[
+     {label:'Nro. Tanque',value:r=>r.NTanque},
+     {label:'Denominación',value:r=>r.Denominacion},
+     {label:'Producto',value:r=>r.Producto,action:showProduct,hint:'Abrir producto y precios'},
+     {label:'Capacidad',value:r=>r.Capacidad,format:fmtNumber},
+     {label:'Litros',value:r=>r.Litros,format:fmtNumber}
+   ];
+   tableView(tankModal,'tankStatus','tankTableWrap',rows,cols,
+     'No hay tanques para esta selección.',filterTank===null?'':'Nro. Tanque '+filterTank);
+ }
+ function pumps(filter=null){
+   const all=getRows(circuit?.hoses);
+   const rows=!filter?all:all.filter(row=>{
+     const v=filter.key==='Isla'?getIsla(row):row[filter.key];
+     return hasValue(v)&&String(v)===String(filter.value);
+   });
+   const cols=[
+     {label:'Isla',value:getIsla},
+     {label:'Cara',value:r=>r.Cara},
+     {label:'Manguera',value:r=>r.Manguera},
+     {label:'Producto',value:r=>r.Producto,action:showProduct,hint:'Ver producto y precios'},
+     {label:'Tanque',value:r=>hasValue(r.NTanque)?('Nº '+r.NTanque+(hasValue(r.Tanque)?' · '+r.Tanque:'')):r.Tanque,
+       action:r=>tanks(r.NTanque),hint:'Ir a Tanques'},
+     {label:'Controlador',value:r=>r.Controlador}
+   ];
+   tableView(pumpModal,'pumpStatus','pumpTableWrap',rows,cols,
+     'No hay surtidores para esta selección.',filter?'Filtrado: '+filter.key+' '+filter.value:'');
+ }
+ function showReceipt(sale,parentModal){
+   receiptParent=parentModal;
+   const records=getRows(circuit?.receipts);
+   const matched=records.filter(r=>{
+     const key=r.Venta??r.DI_DESPACHO??r.Di_Despacho??r.IdSale;
+     return hasValue(key)&&String(key)===String(sale);
+   });
+   document.getElementById('receiptModalTitle').textContent='Venta '+sale+' · comprobante';
+   tableView(receiptModal,'receiptStatus','receiptTableWrap',matched,[
+     {label:'Letra',value:r=>r.Letra??r.letra},
+     {label:'Sucursal',value:r=>r.Sucursal??r.sucursal},
+     {label:'Número',value:r=>r.Numero??r.NCOMPRO??r.NCompro},
+     {label:'Turno',value:r=>r.Turno??r.turno}
+   ],'La venta está cobrada, pero no llegó un comprobante asociado en la respuesta del SP. No se muestra otra venta.');
+ }
+ function loads(){
+   const rows=getRows(circuit?.dispatches);
+   const cols=[
+     {label:'Venta',value:r=>r.IdSale??r.Venta},
+     {label:'Isla',value:getIsla,action:r=>pumps({key:'Isla',value:getIsla(r)}),hint:'Ver surtidores de esta isla'},
+     {label:'Cara',value:r=>r.Cara,action:r=>pumps({key:'Cara',value:r.Cara}),hint:'Ver esta cara'},
+     {label:'Manguera',value:r=>r.Manguera,action:r=>pumps({key:'Manguera',value:r.Manguera}),hint:'Ir a surtidores'},
+     {label:'Producto',value:r=>r.Producto,action:showProduct,hint:'Ver producto y precios'},
+     {label:'Litros',value:r=>r.Litros,format:fmtNumber},
+     {label:'Precio',value:r=>r.PPU,format:fmtMoney},
+     {label:'Pesos',value:r=>r.Pesos,format:fmtMoney},
+     {label:'Cobro',value:r=>Number(r.EstadoVta)===1?(r.IdSale??r.Venta):null,
+       format:(v,r)=>Number(r.EstadoVta)===1?'Cobrado':'Pendiente',
+       action:r=>showReceipt(r.IdSale??r.Venta,dispatchModal),hint:'Ver comprobante del cobro'},
+     {label:'Hora',value:r=>hourText(r)}
+   ];
+   tableView(dispatchModal,'dispatchStatus','dispatchTableWrap',rows,cols,
+     circuit?.source==='lectura_tablas'?
+       'Los despachos estarán disponibles cuando el SP tenga permiso EXECUTE.':'No hay despachos para esta estación.');
+ }
+ tankStep.addEventListener('click',()=>tanks());
+ pumpStep.addEventListener('click',()=>pumps());
+ loadStep.addEventListener('click',loads);
+ for(const [node,fn] of [[tankStep,tanks],[pumpStep,pumps],[loadStep,loads]]){
+   node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fn()}});
+ }
+ for(const [id,fn] of [
+  ['tankClose',closeModals],['pumpClose',closeModals],['dispatchClose',closeModals],
+  ['productClose',()=>{const prev=productParent;productModal.classList.remove('open');if(prev)openModal(prev)}],
+  ['productBack',()=>{const prev=productParent;productModal.classList.remove('open');if(prev)openModal(prev)}],
+  ['receiptClose',()=>{const prev=receiptParent;receiptModal.classList.remove('open');if(prev)openModal(prev)}],
+  ['receiptBack',()=>{const prev=receiptParent;receiptModal.classList.remove('open');if(prev)openModal(prev)}]
+ ])document.getElementById(id).addEventListener('click',fn);
+ for(const modal of allDataModals){
+   modal.addEventListener('click',e=>{if(e.target===modal)closeModals()});
+ }
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
  async function read(base,path,opts){
    const res=await localFetch(base+path,opts);
