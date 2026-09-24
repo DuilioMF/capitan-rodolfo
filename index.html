@@ -105,7 +105,7 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[data-action]{cursor:pointer}.step[data-action]:focus{outline:2px solid var(--copper);outline-offset:3px}.step[data-action]:hover b{color:#ffd09b}
 .tank-modal{position:fixed;inset:0;z-index:5000;background:#050403d9;backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
 .tank-modal.open{display:flex}.tank-dialog{width:min(1180px,96vw);max-height:88vh;overflow:hidden;border:1px solid #b76c357d;background:#100d09;box-shadow:0 30px 100px #000c;display:flex;flex-direction:column}
-.tank-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 20px;border-bottom:1px solid #75603d55}.tank-head h2{margin:0;font:600 30px "Cormorant Garamond",serif}.tank-close{border:1px solid #75603d77;background:#ffffff08;color:var(--ink);width:38px;height:38px;cursor:pointer;font-size:20px}
+ .tank-head{display:flex;justify-content:flex-start;align-items:center;gap:16px;padding:18px 20px;border-bottom:1px solid #75603d55}.tank-head>div{flex:1;min-width:0}.tank-head .tank-close{order:-1;flex:0 0 38px;border-radius:9px}.tank-head h2{margin:0;font:600 30px "Cormorant Garamond",serif}.tank-close{border:1px solid #75603d77;background:#ffffff08;color:var(--ink);width:38px;height:38px;cursor:pointer;font-size:20px}
 .tank-status{padding:12px 20px;color:var(--muted);font-size:12px;border-bottom:1px solid #75603d30}.tank-status.ok{color:var(--green)}.tank-status.warn{color:#ffb36b}
 .tank-table-wrap{overflow:auto;max-height:65vh}.tank-table{width:100%;border-collapse:collapse;font-size:12px}.tank-table th,.tank-table td{padding:10px 12px;border-bottom:1px solid #75603d30;text-align:left;white-space:nowrap}.tank-table th{position:sticky;top:0;background:#18130d;color:#ffd09b;z-index:1}.tank-table tbody tr:hover{background:#ffffff05}
 .tank-empty{padding:28px 20px;color:var(--muted)}
@@ -113,6 +113,12 @@ h1 em{font-weight:500;color:#d9ae65}
 .link-btn:hover{color:#fff0cb}.link-btn:focus-visible{outline:2px solid #ffd09b}
 .linked-filter{padding:10px 20px;display:flex;gap:12px;align-items:center;color:var(--copper);border-bottom:1px solid #70503355;font-size:12px}
 .linked-filter[hidden]{display:none}.linked-filter button,.linked-back{background:#2d1e12;color:#ffd09b;border:1px solid #d9823b7d;border-radius:7px;padding:8px 12px;cursor:pointer}
+.dispatch-tabs{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px 9px;border-bottom:1px solid #70503355}
+.dispatch-tabs button{background:#20180f;color:#e2d0bb;border:1px solid #85613c;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+.dispatch-tabs button[aria-pressed="true"]{background:#bf6b2f;color:#1b1008;border-color:#f1b16e}
+.dispatch-tabs button:focus-visible{outline:2px solid #f5ce84;outline-offset:3px}
+.dispatch-tabs span{font-variant-numeric:tabular-nums;margin-left:5px}
+.payment-note{margin:0;padding:7px 20px;color:#c7b49a;font-size:12px}
 .linked-back{margin:16px 20px;align-self:flex-start}.mini-dialog{width:min(680px,94vw)}
 .product-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:20px}
 .product-facts>div{border:1px solid #c9a05d40;border-radius:9px;padding:13px;background:#261b1047}
@@ -196,7 +202,7 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
   <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step" id="loadStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="dispatchModal"><span class="symbol">IV</span><small>CARGA · CLIC PARA VER</small><b>Carga</b><span id="loadCaption">Despachos, importe y cobro</span></div>
-  <div class="step"><span class="symbol">V</span><small>COBRO</small><b id="paymentStatus">—</b><span>Formas de pago: pendiente de enlazar</span></div>
+  <div class="step" id="paymentStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="dispatchModal"><span class="symbol">V</span><small>COBRO · CLIC PARA VER</small><b id="paymentStatus">—</b><span id="paymentCaption">Ver despachos cobrados y sus comprobantes</span></div>
 </section>
 
 <div class="tank-modal" id="truckModal" role="dialog" aria-modal="true" aria-labelledby="truckTitle">
@@ -222,9 +228,14 @@ h1 em{font-weight:500;color:#d9ae65}
 
 <div class="tank-modal" id="dispatchModal" role="dialog" aria-modal="true" aria-labelledby="dispatchModalTitle">
   <div class="tank-dialog">
-    <div class="tank-head"><div><div class="eyebrow">CARGA</div><h2 id="dispatchModalTitle">Despachos</h2></div><button class="tank-close" id="dispatchClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-head"><div><div class="eyebrow">CARGA Y COBROS</div><h2 id="dispatchModalTitle">Despachos</h2></div><button class="tank-close" id="dispatchClose" type="button" aria-label="Cerrar">×</button></div>
     <div class="tank-status" id="dispatchStatus">Esperando despachos…</div>
-    <div class="linked-filter" id="dispatchFilter" hidden><span id="dispatchFilterText"></span><button type="button" id="dispatchAll">Ver todos</button></div>
+    <div class="dispatch-tabs" role="group" aria-label="Filtrar despachos por cobro">
+      <button id="dispatchShowAll" type="button" data-state="all" aria-pressed="true">Todos <span id="dispatchCountAll">0</span></button>
+      <button id="dispatchShowPaid" type="button" data-state="paid" aria-pressed="false">Cobrados <span id="dispatchCountPaid">0</span></button>
+      <button id="dispatchShowPending" type="button" data-state="pending" aria-pressed="false">Pendientes <span id="dispatchCountPending">0</span></button>
+    </div>
+    <p class="payment-note">Tocá <strong>Cobrado ↗</strong> en una venta para abrir su comprobante, si existe una relación verificada.</p>
     <div class="tank-table-wrap" id="dispatchTableWrap"></div>
   </div>
 </div>
@@ -442,8 +453,21 @@ h1 em{font-weight:500;color:#d9ae65}
      {label:'Turno',value:r=>r.Turno??r.turno}
    ],'La venta está cobrada, pero no llegó un comprobante asociado en la respuesta del SP. No se muestra otra venta.');
  }
- function loads(){
-   const rows=getRows(circuit?.dispatches);
+ let dispatchView='all';
+ const paymentStep=document.getElementById('paymentStep');
+ const paymentState=r=>Number(r?.EstadoVta)===1?'paid':Number(r?.EstadoVta)===0?'pending':'unknown';
+ function loads(selected=dispatchView){
+   dispatchView=selected;
+   const all=getRows(circuit?.dispatches);
+   const paid=all.filter(r=>paymentState(r)==='paid').length;
+   const pending=all.filter(r=>paymentState(r)==='pending').length;
+   const rows=selected==='all'?all:all.filter(r=>paymentState(r)===selected);
+   for(const [id,val] of [['dispatchCountAll',all.length],['dispatchCountPaid',paid],['dispatchCountPending',pending]]){
+     document.getElementById(id).textContent=nf.format(val);
+   }
+   for(const [id,view] of [['dispatchShowAll','all'],['dispatchShowPaid','paid'],['dispatchShowPending','pending']]){
+     document.getElementById(id).setAttribute('aria-pressed',String(selected===view));
+   }
    const cols=[
      {label:'Venta',value:r=>r.IdSale??r.Venta},
      {label:'Isla',value:getIsla,action:r=>pumps({key:'Isla',value:getIsla(r)}),hint:'Ver surtidores de esta isla'},
@@ -453,15 +477,28 @@ h1 em{font-weight:500;color:#d9ae65}
      {label:'Litros',value:r=>r.Litros,format:fmtNumber},
      {label:'Precio',value:r=>r.PPU,format:fmtMoney},
      {label:'Pesos',value:r=>r.Pesos,format:fmtMoney},
-     {label:'Cobro',value:r=>Number(r.EstadoVta)===1?(r.IdSale??r.Venta):null,
-       format:(v,r)=>Number(r.EstadoVta)===1?'Cobrado':'Pendiente',
+     {label:'Cobro',value:r=>paymentState(r)==='paid'?(r.IdSale??r.Venta):null,
+       format:(v,r)=>paymentState(r)==='paid'?'Cobrado':paymentState(r)==='pending'?'Pendiente':'Sin estado',
        action:r=>showReceipt(r.IdSale??r.Venta,dispatchModal),hint:'Ver comprobante del cobro'},
      {label:'Hora',value:r=>hourText(r)}
    ];
    tableView(dispatchModal,'dispatchStatus','dispatchTableWrap',rows,cols,
-     circuit?.source==='lectura_tablas'?
-       'Los despachos estarán disponibles cuando el SP tenga permiso EXECUTE.':'No hay despachos para esta estación.');
+     selected==='paid'?'No hay despachos cobrados entre los registros cargados.':
+     selected==='pending'?'No hay despachos pendientes entre los registros cargados.':
+     circuit?.source==='lectura_tablas'?'Los despachos requieren lectura autorizada en SQL.':'No hay despachos para esta estación.');
+   // Estos números corresponden a los despachos realmente cargados (máximo
+   // @MaxDespachos), no a todas las ventas históricas de la base.
+   document.getElementById('dispatchStatus').textContent=
+      (selected==='paid'?'Cobrados':selected==='pending'?'Pendientes':'Todos')+
+      ': '+rows.length+' de '+all.length+' despachos cargados · Estación '+(circuit?.station||'—');
  }
+ for(const [id,view] of [
+    ['dispatchShowAll','all'],['dispatchShowPaid','paid'],['dispatchShowPending','pending']
+ ])document.getElementById(id).addEventListener('click',()=>loads(view));
+ paymentStep.addEventListener('click',()=>loads('paid'));
+ paymentStep.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();loads('paid')}
+ });
  tankStep.addEventListener('click',()=>tanks());
  pumpStep.addEventListener('click',()=>pumps());
  loadStep.addEventListener('click',loads);
@@ -518,6 +555,7 @@ h1 em{font-weight:500;color:#d9ae65}
    set('livePumps','—');set('liveDatabase','Esperando surtidores…');
    set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');
    set('loadCaption','Despachos, importe y cobro');
+   set('paymentStatus','—');set('paymentCaption','Ver despachos cobrados y sus comprobantes');
    set('liveDbKpi',stationSelect.value?('Estación '+stationSelect.value):'Sin conexión');
  }
  function paint(data){
@@ -550,6 +588,9 @@ h1 em{font-weight:500;color:#d9ae65}
    set('livePesos',money.format(dispatches.reduce((sum,row)=>sum+Number(row.Pesos||0),0)));
    set('liveDispatches',nf.format(dispatches.length));
    set('loadCaption',dispatches.length+' despachos · abrí Carga para verlos');
+   const paidCount=dispatches.filter(r=>Number(r.EstadoVta)===1).length;
+   set('paymentStatus',nf.format(paidCount)+' cobrados');
+   set('paymentCaption','Tocá para ver cobrados y comprobantes');
    set('liveDbKpi',company?.NombreEstacion||('Estación '+data.station));
  }
  async function loadCircuit(){
