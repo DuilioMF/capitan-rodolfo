@@ -61,6 +61,8 @@ jobs:
             'dbo.Surtan',
             'dbo.Despachos',
             'dbo.RelacionCptsDespachos',
+            'dbo.ParamStock',
+            'Resultado 5: EMPRESA/ESTACIÓN',
             'sys.sp_executesql'
           )){
             if(!$sql.Contains($required)){throw "Falta contenido SQL: $required"}
@@ -101,6 +103,10 @@ jobs:
           for(const marker of ["function Resolve-UserSqlObject","function Read-SqlObjectForUser","'/api/sql/object'","SELECT TOP (200)","Invoke-AllowedStoredProcedure"]){
             if(!bridge.includes(marker))throw Error('Falta el endpoint SQL: '+marker);
           }
+          if(!bridge.includes('function Lookup-NamedSqlObject'))throw Error('Falta resolver de objetos SQL');
+          if(!bridge.includes('function Get-StationOptions'))throw Error('Falta resolver ParamStock');
+          if(!bridge.includes("dbo.ParamStock"))throw Error('Falta consultar ParamStock');
+          if(!bridge.includes('companyAvailable=($sets.Count -ge 5)'))throw Error('Falta quinto resultado en bridge');
           console.log('Explorador SQL por nombre: controles y ruta backend OK');
           console.log('Camión y circuito enlazados: OK');
           '@ | Set-Content -Encoding UTF8 ($testFile=Join-Path $env:RUNNER_TEMP 'validate-pages.cjs')
