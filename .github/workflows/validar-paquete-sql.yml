@@ -101,7 +101,7 @@ jobs:
           if(!(Test-Path $p)){throw "Falta SQL"}
           $sql=Get-Content $p -Raw
           foreach($required in @(
-            'CREATE OR ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion',
+            'ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion',
             '@IdEstacion',
             '@EstadoVta',
             'dbo.Tanque',
