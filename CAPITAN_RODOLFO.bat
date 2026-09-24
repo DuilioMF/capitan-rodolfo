@@ -10,7 +10,7 @@ set "ALLOWLIST=%APPROOT%\sp_allowlist.json"
 set "LOG=%APPROOT%\install.log"
 set "TASK=CapitanRodolfoLocal"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main"
-set "EXPECTED_VERSION=72"
+set "EXPECTED_VERSION=73"
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
 if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
