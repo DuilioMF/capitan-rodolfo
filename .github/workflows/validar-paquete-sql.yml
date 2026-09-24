@@ -144,6 +144,17 @@ jobs:
           if(!(Test-Path 'sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql')){throw "Falta instalación de una sola vez para administrador"}
           $bootstrap=Get-Content 'sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql' -Raw
           if(!$bootstrap.Contains('GRANT EXECUTE ON OBJECT::dbo.PA_CapitanRodolfo_CircuitoEstacion')){throw "Falta autorización específica del SP"}
+          foreach($fragment in @(
+            'PRECOMPRA','PRECIOCONIVA','IMPUESTOS','TasaOtrosImpue',
+            'dbo.MP_TipoConexion','DI_DESPACHO','dbo.MaeFac',
+            ' AS Hora',' AS Isla',' AS Costo',' AS Precio',
+            ' AS Numero',' AS Turno'
+          )){
+             if(!$sql.Contains($fragment)){throw "Falta nueva columna/vínculo de circuito: $fragment"}
+             if(!$bootstrap.Contains($fragment)){throw "Instalador desactualizado: $fragment"}
+          }
+          if($sql -notmatch 'COUNT\(\*\)=1'){throw 'El controlador debe evitar cruces duplicados'}
+
 
           $permissions=Get-Content sql/DIAGNOSTICO_PERMISOS_CircuitoEstacion.sql -Raw
           if(!$permissions.Contains("HAS_PERMS_BY_NAME('dbo.Tanque'")){throw "Falta prueba SELECT Tanque"}
@@ -174,6 +185,27 @@ jobs:
           for(const marker of ['id="truckStep"','id="truckModal"','id="truckReader"','documentos.html?truck=1','/api/station/circuit','/api/station/ids','id="pumpModal"']){
             if(!index.includes(marker))throw Error('Falta integración con Estación: '+marker);
           }
+
+          for(const marker of [
+            'id="loadStep"','id="dispatchModal"','id="productModal"','id="receiptModal"',
+            "label:'Nro. Tanque'","label:'Controlador'","label:'Cobro'",
+            "pumps({key:'Cara'","pumps({key:'Isla'","pumps({key:'Manguera'",
+            'showProduct','showReceipt','tanks(r.NTanque)'
+          ]){
+             if(!index.includes(marker))throw Error('Navegación incompleta de circuito: '+marker);
+          }
+          const startIsla=index.indexOf(' const getIsla=row=>{');
+          const endIsla=index.indexOf(' const valueText=x=>',startIsla);
+          if(startIsla<0||endIsla<=startIsla)throw Error('No encontré función de Isla');
+          const islandSource='const hasValue=x=>x!==null&&x!==undefined&&String(x).trim()!=="";'+
+             'const num=x=>hasValue(x)&&Number.isFinite(Number(x))?Number(x):null;'+
+             index.slice(startIsla,endIsla)+'\\ngetIsla';
+          const testedIsla=require('vm').runInNewContext(islandSource);
+          for(const [cara,expected] of [[1,1],[2,1],[3,2],[4,2],[7,4],[8,4]]){
+             if(testedIsla({Cara:cara})!==expected)throw Error('Cara '+cara+' asignada a isla incorrecta');
+          }
+          if(testedIsla({Cara:'SIN DATOS'})!==null)throw Error('Cara desconocida no puede generar una isla');
+          console.log('Navegación Tanques / Surtidores / Carga y cálculo Isla: OK');
           const explorer=fs.readFileSync('conexion-sql.html','utf8');
           const bridge=fs.readFileSync('bridge/capitan_rodolfo_local.ps1','utf8');
           if(explorer.includes('Procedimientos habilitados'))throw Error('La interfaz antigua sigue visible');
