@@ -1045,7 +1045,11 @@ try {
         $savedDb = [string]$profile.database
         if(-not [string]::IsNullOrWhiteSpace($savedDb) -and $restored.databases -contains $savedDb){
             $Sessions[$restored.sessionId]["database"] = $savedDb
-            Invoke-CircuitAutoInstall -Connection $Sessions[$restored.sessionId].connection -Database $savedDb
+            try {
+                Invoke-CircuitAutoInstall -Connection $Sessions[$restored.sessionId].connection -Database $savedDb
+            } catch {
+                Save-CircuitInstallStatus -State 'deployment_error' -Database $savedDb -Message $_.Exception.Message
+            }
         }
         Write-Host "Conexion SQL restaurada: $([string]$profile.server) / $savedDb"
     }
@@ -2152,7 +2156,10 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
             }
           }
           Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database $selectedDb
-          if($selectedDb -eq 'SiSRL'){Invoke-CircuitAutoInstall -Connection $Sessions[$state.sessionId].connection -Database $selectedDb}
+          if($selectedDb -eq 'SiSRL'){
+            try{Invoke-CircuitAutoInstall -Connection $Sessions[$state.sessionId].connection -Database $selectedDb}
+            catch{Save-CircuitInstallStatus -State 'deployment_error' -Database $selectedDb -Message $_.Exception.Message}
+          }
           $script:LastRestoreError = ""
           Write-ServiceStatus -State "running-connected" -Database $selectedDb -Server $server -User $user
           Send-Json $stream 200 @{sessionId=$state.sessionId;server=$state.server;auth=$state.auth;user=$state.user;databases=$state.databases;database=$selectedDb}
@@ -2184,7 +2191,10 @@ ORDER BY s.name,t.name;
           $reader.Close()
           $sess["database"] = $database
           Save-SqlProfile -Server ([string]$sess.server) -Auth ([string]$sess.auth) -User ([string]$sess.user) -Password "" -Database $database
-          if($database -eq 'SiSRL'){Invoke-CircuitAutoInstall -Connection $cn -Database $database}
+          if($database -eq 'SiSRL'){
+            try{Invoke-CircuitAutoInstall -Connection $cn -Database $database}
+            catch{Save-CircuitInstallStatus -State 'deployment_error' -Database $database -Message $_.Exception.Message}
+          }
           Write-ServiceStatus -State "running-connected" -Database $database -Server ([string]$sess.server) -User ([string]$sess.user)
           Send-Json $stream 200 @{database=$database;tables=$rows}
         } catch {
