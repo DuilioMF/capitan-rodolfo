@@ -838,7 +838,7 @@ function Get-StationReadOnlyCircuit {
 }
 
 function Invoke-AllowedStoredProcedure {
-    param($Connection,[string]$Database,[string]$Procedure,$Parameters)
+    param($Connection,[string]$Database,[string]$Procedure,$Parameters,[int]$MaxRows=500)
     Assert-AllowedProcedure -Procedure $Procedure
     $Connection.ChangeDatabase($Database)
     $cmd=$Connection.CreateCommand()
@@ -863,7 +863,9 @@ function Invoke-AllowedStoredProcedure {
             $columns=@()
             for($i=0;$i -lt $reader.FieldCount;$i++){ $columns += [string]$reader.GetName($i) }
             $rows=@()
-            while($reader.Read() -and $rows.Count -lt 500){
+            $truncated=$false
+            while($reader.Read()){
+                if($rows.Count -ge $MaxRows){$truncated=$true;break}
                 $row=[ordered]@{}
                 for($i=0;$i -lt $reader.FieldCount;$i++){
                     $v=$reader.GetValue($i)
@@ -874,7 +876,7 @@ function Invoke-AllowedStoredProcedure {
                 }
                 $rows += [pscustomobject]$row
             }
-            $sets += @{columns=$columns;rows=$rows;rowCount=$rows.Count}
+            $sets += @{columns=$columns;rows=$rows;rowCount=$rows.Count;truncated=$truncated}
         }
     } while($reader.NextResult())
     $reader.Close()
@@ -1482,6 +1484,76 @@ try {
           }
         } catch {
           Send-Json $stream 500 @{error=('No pude obtener las estaciones: '+$_.Exception.Message)}
+        }
+      }
+
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payments'){
+        # Payments read-only: exactly the installed and allowlisted
+        # PA_VentasFormasPago. No fabricated sums or injected SQL.
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
+            Send-Json $stream 409 @{error='Conectá primero la base SiSRL desde Núcleo → Datos.'}
+            continue
+          }
+          $data=$req.Body | ConvertFrom-Json
+          $station=0
+          if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
+            Send-Json $stream 400 @{error='Elegí una estación válida.'};continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          $ids=@(Get-StationOptions -Connection $cn -Database ([string]$state.database))
+          if($ids -notcontains $station){
+            Send-Json $stream 403 @{error='No se autorizó esa estación.'};continue
+          }
+          $culture=[Globalization.CultureInfo]::InvariantCulture
+          $dateStyle=[Globalization.DateTimeStyles]::None
+          $from=[datetime]::MinValue;$until=[datetime]::MinValue
+          if(-not [datetime]::TryParseExact([string]$data.fechaDesde,'yyyy-MM-dd',$culture,$dateStyle,[ref]$from) -or
+             -not [datetime]::TryParseExact([string]$data.fechaHasta,'yyyy-MM-dd',$culture,$dateStyle,[ref]$until)){
+            Send-Json $stream 400 @{error='Usá fechas válidas con formato AAAA-MM-DD.'};continue
+          }
+          if($until -lt $from -or ($until-$from).TotalDays -gt 31){
+            Send-Json $stream 400 @{error='Consultá un período de hasta 32 días, desde la primera hasta la última fecha.'};continue
+          }
+          $turnoDesde=0;$turnoHasta=99999
+          if($null -ne $data.turnoDesde -and [string]$data.turnoDesde -ne '' -and
+             -not [int]::TryParse([string]$data.turnoDesde,[ref]$turnoDesde)){
+             Send-Json $stream 400 @{error='Turno inicial inválido.'};continue
+          }
+          if($null -ne $data.turnoHasta -and [string]$data.turnoHasta -ne '' -and
+             -not [int]::TryParse([string]$data.turnoHasta,[ref]$turnoHasta)){
+             Send-Json $stream 400 @{error='Turno final inválido.'};continue
+          }
+          if($turnoDesde -lt 0 -or $turnoHasta -lt $turnoDesde -or $turnoHasta -gt 99999){
+             Send-Json $stream 400 @{error='El rango de turnos debe estar entre 0 y 99999.'};continue
+          }
+          $params=[pscustomobject]@{
+            FechaDesde=$from
+            FechaHasta=$until.Date.AddDays(1).AddMilliseconds(-3)
+            IdEstacion=$station
+            TurnoDesde=$turnoDesde
+            TurnoHasta=$turnoHasta
+          }
+          try {
+            # 5.000 rows per set; if any set reaches that limit the browser
+            # shows an incomplete-data warning, not a fictitious daily total.
+            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
+            $sets=@($result.resultSets)
+            if($sets.Count -eq 0){throw 'PA_VentasFormasPago no devolvió un conjunto de resultados.'}
+            Send-Json $stream 200 @{
+              source='dbo.PA_VentasFormasPago';database='SiSRL';station=$station
+              fechaDesde=$from.ToString('yyyy-MM-dd');fechaHasta=$until.ToString('yyyy-MM-dd')
+              turnoDesde=$turnoDesde;turnoHasta=$turnoHasta
+              resultSets=$sets
+              truncated=([bool](@($sets | Where-Object {$_.truncated}).Count -gt 0))
+              version=$Version
+            }
+          } catch {
+            Send-Json $stream 422 @{error=('No pude leer las formas de pago: '+$_.Exception.Message+'. Verificá los permisos EXECUTE de PA_VentasFormasPago.')}
+          }
+        } catch {
+          Send-Json $stream 500 @{error=('Error al consultar Cobros: '+$_.Exception.Message)}
         }
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/circuit'){
