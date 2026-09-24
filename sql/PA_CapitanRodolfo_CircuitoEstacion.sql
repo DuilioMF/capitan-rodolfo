@@ -3,6 +3,9 @@
  Archivo de despliegue. Ejecutar en SSMS sobre la base SiSRL.
  Requiere SQL Server 2016 SP1 o superior (CREATE OR ALTER).
  NO borra ni modifica datos de negocio.
+ Se ejecuta con el contexto del propietario para leer las tablas del circuito.
+ Requiere que el propietario tenga permisos y que el usuario del sistema
+ tenga permiso EXECUTE sobre este SP (concedido por el administrador).
 
  Resultado 1: Tanques con nombre de producto.
  Resultado 2: Caras/surtidores y mangueras con su tanque.
@@ -21,6 +24,7 @@ CREATE OR ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion
     @EstadoVta     BIT = NULL,   -- NULL=todos; 0=pendientes; 1=cobrados
     @MaxDespachos  INT = 500,
     @MaxRelaciones INT = 1000
+WITH EXECUTE AS OWNER
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -365,8 +369,20 @@ END;
 GO
 
 /*
- PASO 1 - Comprobar qué estaciones existen (sin cambiar datos):
- SELECT DISTINCT ID_ESTACION FROM dbo.Tanque;
+ PASO 1 - Diagnóstico de tu usuario SQL (sin cambiar datos):
+ SELECT DB_NAME() AS Base,
+        USER_NAME() AS UsuarioBD,
+        SUSER_SNAME() AS LoginSQL,
+        HAS_PERMS_BY_NAME('dbo.Tanque','OBJECT','SELECT') AS PuedeLeerTanque,
+        HAS_PERMS_BY_NAME('dbo.PA_CapitanRodolfo_CircuitoEstacion','OBJECT','EXECUTE') AS PuedeEjecutarSP;
+
+ Para ejecutar SELECT directamente sobre Tanque desde el Explorador SQL,
+ pedí al DBA permiso SELECT SOLO en los objetos necesarios.
+ No uses db_owner ni db_datareader salvo decisión expresa del DBA.
+ Para ejecutar el SP, el DBA debe conceder EXECUTE sobre este procedimiento.
+
+ PASO 1b - Obtener estaciones con el usuario autorizado (sólo si tiene SELECT):
+ SELECT DISTINCT ID_ESTACION FROM dbo.ParamStock;
 
  PASO 2 - Ejecutar con el ID real (ejemplo 1, AJUSTAR):
  EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion
