@@ -26,12 +26,12 @@
   <div class="note">Conexión validada. Los valores visuales de esta pantalla todavía son de maqueta; los datos reales se conectarán cuando definas tablas y campos.</div>
 </div>
 <script>
-const BRIDGES=['http://127.0.0.1:8787','http://localhost:8787'];
+const BRIDGES=['127.0.0.1','localhost'].includes(location.hostname)?[location.origin+'/_doinglio_sql']:['http://127.0.0.1:8787','http://localhost:8787'];
 const sid=sessionStorage.getItem('rodolfo.sql.sessionId');
 const db=sessionStorage.getItem('rodolfo.sql.database');
 const preferred=sessionStorage.getItem('rodolfo.sql.bridge');
 const gate=document.getElementById('gate'),app=document.getElementById('app'),text=document.getElementById('gateText'),ret=document.getElementById('returnSql');
-async function localFetch(url,options={}){const opts={cache:'no-store',...options};opts.targetAddressSpace='local';return fetch(url,opts)}
+async function localFetch(url,options={}){const opts={cache:'no-store',...options};if(!['127.0.0.1','localhost'].includes(location.hostname))opts.targetAddressSpace='local';return fetch(url,opts)}
 async function validate(){
  if(!sid||!db){text.textContent='No hay una conexión SQL activa ni una base seleccionada.';ret.style.display='inline-block';return}
  const list=[preferred,...BRIDGES].filter((x,i,a)=>x&&a.indexOf(x)===i);
