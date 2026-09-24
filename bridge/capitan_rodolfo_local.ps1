@@ -432,6 +432,73 @@ ORDER BY prm.parameter_id;
     return $result
 }
 
+function Get-DatabaseProcedureCatalog {
+    param($Connection,[string]$Database)
+    $Connection.ChangeDatabase($Database)
+    $allowed = @(Get-SpAllowlist)
+    $cmd = $Connection.CreateCommand()
+    $cmd.CommandTimeout = 15
+    $cmd.CommandText = @"
+SELECT s.name AS schema_name,p.name AS procedure_name
+FROM sys.procedures p
+INNER JOIN sys.schemas s ON s.schema_id=p.schema_id
+WHERE p.is_ms_shipped=0
+ORDER BY s.name,p.name;
+"@
+    $reader = $cmd.ExecuteReader()
+    $available = New-Object System.Collections.Generic.List[object]
+    try {
+        while($reader.Read()){
+            $schema=[string]$reader.GetString(0)
+            $proc=[string]$reader.GetString(1)
+            $name=$schema+'.'+$proc
+            $isAllowed=$false
+            foreach($item in $allowed){
+                if([string]::Equals($item,$name,[StringComparison]::OrdinalIgnoreCase)){$isAllowed=$true;break}
+            }
+            $available.Add(@{name=$name;allowed=$isAllowed})
+        }
+    } finally { $reader.Close() }
+    $missing=@()
+    foreach($item in $allowed){
+        $found=$false
+        foreach($entry in $available){
+            if([string]::Equals([string]$entry.name,$item,[StringComparison]::OrdinalIgnoreCase)){$found=$true;break}
+        }
+        if(-not $found){$missing+= $item}
+    }
+    return @{
+        database=$Database
+        procedures=@($available)
+        allowed=@($allowed)
+        missingAllowed=@($missing)
+    }
+}
+
+function Get-StationOptions {
+    param($Connection,[string]$Database)
+    $Connection.ChangeDatabase($Database)
+    $nameCmd=$Connection.CreateCommand()
+    $nameCmd.CommandText = @"
+SELECT TOP(1) c.name FROM sys.columns c
+WHERE c.object_id=OBJECT_ID(N'dbo.Tanque','U')
+AND REPLACE(LOWER(c.name),'_','') IN ('idestacion','idestaicion')
+ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
+"@
+    $col=$nameCmd.ExecuteScalar()
+    if($null -eq $col -or $col -is [DBNull]){
+        throw 'No se identifica ID_ESTACION en dbo.Tanque. Mostrá el esquema real para resolverlo sin mezclar estaciones.'
+    }
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandText='SELECT DISTINCT TRY_CONVERT(INT,'+[string](('['+[string]$col+']'))+') AS IdEstacion FROM dbo.Tanque WHERE TRY_CONVERT(INT,'+[string](('['+[string]$col+']'))+') IS NOT NULL ORDER BY IdEstacion;'
+    $reader=$cmd.ExecuteReader()
+    $rows=@()
+    try {
+        while($reader.Read()){if(-not $reader.IsDBNull(0)){$rows += [int]$reader.GetInt32(0)}}
+    } finally {$reader.Close()}
+    return @($rows)
+}
+
 function Invoke-AllowedStoredProcedure {
     param($Connection,[string]$Database,[string]$Procedure,$Parameters)
     Assert-AllowedProcedure -Procedure $Procedure
@@ -795,6 +862,82 @@ try {
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/ai/sql-read'){
         try {$data=$req.Body|ConvertFrom-Json;Send-Json $stream 200 (Invoke-ReadOnlySql -SessionId ([string]$data.sessionId) -Database ([string]$data.database) -Sql ([string]$data.sql))} catch {Send-Json $stream 400 @{error=$_.Exception.Message}}
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/sp/catalog'){
+        try {
+          $data=$req.Body | ConvertFrom-Json
+          $sid=[string]$data.sessionId
+          $db=[string]$data.database
+          if(-not $Sessions.ContainsKey($sid)){Send-Json $stream 401 @{error='Sesión vencida. Abrí Núcleo → Datos.'};continue}
+          $sess=$Sessions[$sid]
+          if($sess.databases -notcontains $db){Send-Json $stream 403 @{error='La base seleccionada no está autorizada.'};continue}
+          $catalog=Get-DatabaseProcedureCatalog -Connection $sess.connection -Database $db
+          $catalog.metadata=@(Get-AllowedProcedureMetadata -Connection $sess.connection -Database $db)
+          Send-Json $stream 200 $catalog
+        } catch {
+          Send-Json $stream 500 @{error=('No pude consultar el catálogo real de SP: '+$_.Exception.Message)}
+        }
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/station/ids'){
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Falta conexión SQL y base seleccionada. Abrí Núcleo → Datos.'}
+            continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          $ids=@(Get-StationOptions -Connection $cn -Database ([string]$state.database))
+          Send-Json $stream 200 @{
+            connected=$true
+            database=[string]$state.database
+            stations=$ids
+            procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
+            version=$Version
+          }
+        } catch {
+          Send-Json $stream 500 @{error=('No pude obtener las estaciones: '+$_.Exception.Message)}
+        }
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/circuit'){
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Falta conexión SQL y base seleccionada. Abrí Núcleo → Datos.'}
+            continue
+          }
+          $data=$req.Body | ConvertFrom-Json
+          $station=0
+          if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
+            Send-Json $stream 400 @{error='Seleccioná una estación real.'}
+            continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          $ids=@(Get-StationOptions -Connection $cn -Database ([string]$state.database))
+          if($ids -notcontains $station){
+            Send-Json $stream 400 @{error='La estación seleccionada no existe en los tanques de esta base.'}
+            continue
+          }
+          $params=[pscustomobject]@{IdEstacion=$station;MaxDespachos=500;MaxRelaciones=1000}
+          $result=Invoke-AllowedStoredProcedure -Connection $cn -Database ([string]$state.database) -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params
+          $sets=@($result.resultSets)
+          if($sets.Count -ne 4){
+            Send-Json $stream 500 @{error=('El SP debe devolver cuatro conjuntos, pero devolvió '+$sets.Count+'. Verificá que esté instalada la versión del circuito.')}
+            continue
+          }
+          Send-Json $stream 200 @{
+            connected=$true
+            database=[string]$state.database
+            station=$station
+            procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
+            tanks=$sets[0]
+            hoses=$sets[1]
+            dispatches=$sets[2]
+            receipts=$sets[3]
+            version=$Version
+          }
+        } catch {
+          Send-Json $stream 500 @{error=('Error al ejecutar PA_CapitanRodolfo_CircuitoEstacion: '+$_.Exception.Message)}
+        }
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/station-summary'){
         try {
