@@ -64,6 +64,12 @@
     <div id="params" class="params"></div>
     <div class="actions"><button id="runSp" type="button">Ejecutar SP</button></div>
     <div id="spStatus" class="status">Elegí un SP.</div>
+    <div class="actions"><button class="ghost" type="button" id="refreshSp">Actualizar lista desde la base</button></div>
+    <h2>SP encontrados realmente en la base</h2>
+    <p class="muted">La lista siguiente muestra el catálogo de SQL Server. Solo los procedimientos autorizados se pueden ejecutar desde DoingLio.</p>
+    <label for="spSearch">Buscar procedimiento por nombre</label>
+    <input id="spSearch" type="search" placeholder="Ej.: CircuitoEstacion">
+    <div id="spCatalog" class="status" style="max-height:260px;overflow:auto">Consultando SQL…</div>
     <div id="results"></div>
   </section>
 </main>
@@ -156,16 +162,52 @@
    catch(e){setStatus($('databaseStatus'),'No pude usar esa base: '+e.message,'bad')}
  }
 
+ let dbCatalog=[];
+ function paintCatalog(){
+   const root=$('spCatalog');root.replaceChildren();
+   const search=$('spSearch').value.trim().toLocaleLowerCase();
+   const matches=dbCatalog.filter(p=>p.name.toLocaleLowerCase().includes(search));
+   if(!matches.length){root.textContent='No hay procedimientos que coincidan. Revisá la base seleccionada y la búsqueda.';return}
+   matches.forEach(proc=>{
+     const row=document.createElement('div');
+     row.style.padding='7px 3px';row.style.borderBottom='1px solid #59452966';
+     row.textContent=proc.name+(proc.allowed?' · PERMITIDO':' · solo lectura del catálogo');
+     row.style.color=proc.allowed?'#5ee6a8':'#cbbca6';root.appendChild(row);
+   });
+ }
  async function loadProcedures(){
    if(!sessionId||!currentDb)return;
-   $('spCard').classList.remove('hidden');setStatus($('spStatus'),'Leyendo SP habilitados…');
+   $('spCard').classList.remove('hidden');setStatus($('spStatus'),'Leyendo catálogo real de SQL Server…');
+   logDiag('Consultando sys.procedures en '+currentDb);
    try{
-     const d=await post('/api/sp/list',{sessionId,database:currentDb});procedures=d.procedures||[];
-     const sel=$('procedure');sel.innerHTML='';
-     if(!procedures.length){sel.innerHTML='<option value="">No hay SP habilitados encontrados</option>';renderParams(null);setStatus($('spStatus'),'No encontré SP habilitados en esta base.','bad');return}
-     procedures.forEach((p,i)=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o)});
-     renderParams(procedures[0]);setStatus($('spStatus'),procedures.length+' SP habilitado(s).','ok');
-   }catch(e){setStatus($('spStatus'),'No pude listar SP: '+e.message,'bad')}
+     const d=await post('/api/sp/catalog',{sessionId,database:currentDb});
+     dbCatalog=Array.isArray(d.procedures)?d.procedures:[];
+     procedures=Array.isArray(d.metadata)?d.metadata:[];
+     const missing=Array.isArray(d.missingAllowed)?d.missingAllowed:[];
+     const sel=$('procedure');sel.replaceChildren();
+     if(!procedures.length){const option=document.createElement('option');option.value='';option.textContent='No hay SP ejecutables';sel.appendChild(option);renderParams(null)}
+     else {
+       procedures.forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o)});
+       renderParams(procedures[0]);
+     }
+     paintCatalog();
+     const circuit='dbo.PA_CapitanRodolfo_CircuitoEstacion';
+     const found=dbCatalog.some(p=>p.name.toLowerCase()===circuit.toLowerCase());
+     const eligible=dbCatalog.some(p=>p.name.toLowerCase()===circuit.toLowerCase()&&p.allowed);
+     let msg='Base '+currentDb+': '+dbCatalog.length+' SP reales encontrados; '+procedures.length+' ejecutables.';
+     if(!found)msg+=' ATENCIÓN: '+circuit+' NO EXISTE en esta base. Ejecutá el script sobre '+currentDb+'.';
+     else if(!eligible)msg+=' '+circuit+' existe pero no está autorizado en el conector local.';
+     else if(!procedures.some(p=>p.name.toLowerCase()===circuit.toLowerCase()))
+       msg+=' '+circuit+' está autorizado, pero no pude leer sus parámetros. Revisá los permisos del usuario SQL.';
+     if(missing.length)msg+=' Otros autorizados que faltan: '+missing.join(', ')+'.';
+     const kind=(!found||!eligible||!procedures.some(p=>p.name.toLowerCase()===circuit.toLowerCase()))?'bad':'ok';
+     setStatus($('spStatus'),msg,kind);
+     logDiag('Catálogo: '+msg);
+   }catch(e){
+     dbCatalog=[];procedures=[];paintCatalog();
+     const message=e.message.includes('404')?'Conector antiguo sin catálogo SQL. Cerrá DoingLio y volvé a abrirlo desde el cerebro para actualizar.':e.message;
+     setStatus($('spStatus'),'Error leyendo catálogo: '+message,'bad');logDiag('ERROR catálogo SP: '+message);
+   }
  }
 
  function renderParams(proc){
@@ -213,6 +255,8 @@
  });
  $('database').addEventListener('change',e=>chooseDatabase(e.target.value));
  $('procedure').addEventListener('change',e=>renderParams(procedures.find(p=>p.name===e.target.value)));
+ $('spSearch').addEventListener('input',paintCatalog);
+ $('refreshSp').addEventListener('click',loadProcedures);
  $('runSp').addEventListener('click',async()=>{
    const proc=$('procedure').value;if(!proc)return;setStatus($('spStatus'),'Ejecutando '+proc+'…');
    try{const d=await post('/api/sp/execute',{sessionId,database:currentDb,procedure:proc,parameters:readParams()});setStatus($('spStatus'),proc+' ejecutado correctamente.','ok');renderResults(d)}
