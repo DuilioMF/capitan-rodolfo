@@ -1244,6 +1244,80 @@ try {
           Send-Json $stream 500 @{error=('No se pudo iniciar la instalación del SP: '+$_.Exception.Message)}
         }
       }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/circuit/admin-install'){
+        # Installation via transient SQL admin credentials entered on this PC.
+        # No administrator password or profile is persisted anywhere.
+        $cnAdmin=$null
+        $adminPassword=''
+        try {
+          $requestData=$req.Body | ConvertFrom-Json
+          $sid=[string]$requestData.sessionId
+          if(-not $Sessions.ContainsKey($sid)){
+            Send-Json $stream 401 @{error='Conectá primero con el usuario habitual a SiSRL.'}
+            continue
+          }
+          $session=$Sessions[$sid]
+          if([string]$session.database -ine 'SiSRL' -or
+              [string]$requestData.database -ine 'SiSRL' -or
+              $session.databases -notcontains 'SiSRL'){
+            Send-Json $stream 403 @{error='La instalación está limitada a la base SiSRL ya seleccionada.'}
+            continue
+          }
+          if([string]$requestData.confirm -cne 'INSTALAR Y HABILITAR SP'){
+            Send-Json $stream 400 @{error='Confirmá explícitamente la instalación y el permiso EXECUTE del usuario habitual.'}
+            continue
+          }
+          $adminUser=([string]$requestData.adminUser).Trim()
+          $adminPassword=[string]$requestData.adminPassword
+          if([string]::IsNullOrWhiteSpace($adminUser) -or
+             [string]::IsNullOrWhiteSpace($adminPassword) -or
+             $adminUser.Length -gt 128){
+            Send-Json $stream 400 @{error='Ingresá usuario y contraseña del administrador SQL Server, solo para esta operación.'}
+            continue
+          }
+          $cnUser=$session.connection
+          $cnUser.ChangeDatabase('SiSRL')
+          $identityCommand=$cnUser.CreateCommand()
+          $identityCommand.CommandText='SELECT USER_NAME()'
+          try{$principal=[string]$identityCommand.ExecuteScalar()}
+          finally{$identityCommand.Dispose()}
+          if($principal -in @('','dbo','guest','INFORMATION_SCHEMA','sys')){
+            Send-Json $stream 400 @{error='No se pudo identificar un usuario de base al que otorgar EXECUTE. Usá el instalador para un administrador.'}
+            continue
+          }
+          $cnAdmin=New-SqlConnection -Server ([string]$session.server) -Auth 'sql' -User $adminUser -Password $adminPassword
+          $cnAdmin.Open()
+          $cnAdmin.ChangeDatabase('SiSRL')
+          Invoke-CircuitAutoInstall -Connection $cnAdmin -Database 'SiSRL'
+          $status=$script:CircuitInstallStatus
+          if($status.state -ne 'installed'){
+            Send-Json $stream 200 @{state=[string]$status.state;success=$false;message=[string]$status.message}
+            continue
+          }
+          # Only the circuit SP is granted to the authenticated ordinary SQL user.
+          $safePrincipal='['+$principal.Replace(']',']]')+']'
+          $grant=$cnAdmin.CreateCommand()
+          $grant.CommandText='GRANT EXECUTE ON OBJECT::dbo.PA_CapitanRodolfo_CircuitoEstacion TO '+$safePrincipal+';'
+          try{$null=$grant.ExecuteNonQuery()}finally{$grant.Dispose()}
+          $check=Get-CircuitDatabasePermission -Connection $cnUser
+          if($check.execute -ne 1){
+            Save-CircuitInstallStatus -State 'pending_permission' -Database 'SiSRL' -Message 'El SP está instalado, pero el usuario habitual todavía no puede ejecutarlo. Revisá su mapeo SQL.'
+          }else{
+            Save-CircuitInstallStatus -State 'installed' -Database 'SiSRL' -Message ('SP instalado y usuario '+$principal+' autorizado exclusivamente para ejecutar este circuito.')
+          }
+          Send-Json $stream 200 @{
+            state=[string]$script:CircuitInstallStatus.state
+            success=([string]$script:CircuitInstallStatus.state -eq 'installed')
+            message=[string]$script:CircuitInstallStatus.message
+          }
+        } catch {
+          Save-CircuitInstallStatus -State 'deployment_error' -Database 'SiSRL' -Message ('Falló la instalación temporal: '+$_.Exception.Message)
+          Send-Json $stream 200 @{state='deployment_error';success=$false;message=[string]$script:CircuitInstallStatus.message}
+        } finally {
+          $adminPassword=''
+          if($null -ne $cnAdmin){try{$cnAdmin.Dispose()}catch{}}
+        }
+      }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/circuit/install-state'){
         Send-Json $stream 200 $script:CircuitInstallStatus
       }
