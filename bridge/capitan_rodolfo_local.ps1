@@ -837,6 +837,109 @@ function Get-StationReadOnlyCircuit {
     }
 }
 
+function Find-VerifiedPaymentColumn {
+    param($Connection,[string]$ObjectName,[string[]]$Names)
+    # Only local constant table names are provided by the payment route.
+    # Read the actual schema; never infer an invoice/payment association.
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandText="SELECT c.name FROM sys.columns c WHERE c.object_id=OBJECT_ID(@tbl,'U') ORDER BY c.column_id"
+    $null=$cmd.Parameters.Add('@tbl',[System.Data.SqlDbType]::NVarChar,257)
+    $cmd.Parameters['@tbl'].Value=$ObjectName
+    $reader=$cmd.ExecuteReader()
+    $all=New-Object System.Collections.Generic.List[string]
+    try {while($reader.Read()){$all.Add([string]$reader.GetString(0))}}finally{$reader.Close();$cmd.Dispose()}
+    foreach($requested in $Names){
+        $want=([string]$requested).Replace('_','').ToLowerInvariant()
+        foreach($candidate in $all){
+            if($candidate.Replace('_','').ToLowerInvariant() -eq $want){return '['+$candidate.Replace(']',']]')+']'}
+        }
+    }
+    return ''
+}
+
+function Get-VerifiedPaymentEvidence {
+    param($Connection,[int]$Station,[string]$Method,
+          [string]$Letra,[string]$Sucursal,[string]$Numero)
+    if($Method -notin @('MercadoPago','AppYPF')){throw 'Este método todavía no tiene detalle de pasarela verificado.'}
+    if($Letra.Length -gt 10 -or $Sucursal.Length -gt 20 -or
+       $Numero.Length -gt 40 -or -not $Letra -or -not $Sucursal -or -not $Numero){
+       throw 'El comprobante necesita letra, sucursal y número para enlazar el pago.'
+    }
+    $Connection.ChangeDatabase('SiSRL')
+    $mfStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.MaeFac'
+    $mfLetter=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('LETRA')
+    $mfBranch=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('SUCURSAL')
+    $mfNumber=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('NCOMPRO','NUMERO')
+    if(-not ($mfStation -and $mfLetter -and $mfBranch -and $mfNumber)){
+       throw 'No se verificaron las claves de factura y estación en MaeFac.'
+    }
+    if($Method -eq 'MercadoPago'){
+       $link='dbo.MP_OrdenPagoComprobante';$master='dbo.MP_OrdenPago'
+       $fk=Find-VerifiedPaymentColumn $Connection $link @('ID_ORDENPAGO')
+       $pk=Find-VerifiedPaymentColumn $Connection $master @('ID')
+       $wanted=@(
+         @{names=@('id_sale');alias='Venta'},
+         @{names=@('ID_PAGO');alias='Pago'},
+         @{names=@('amount');alias='Importe'}
+       )
+    } else {
+       $link='dbo.YPF_PaymentIntentionComprobante';$master='dbo.YPF_PaymentIntention'
+       $fk=Find-VerifiedPaymentColumn $Connection $link @('ID_PAYMENTINTENTION')
+       $pk=Find-VerifiedPaymentColumn $Connection $master @('ID')
+       $wanted=@(
+         @{names=@('PaymentIntentionID');alias='PaymentIntentionID'},
+         @{names=@('PaymentID');alias='PaymentID'},
+         @{names=@('GatewayID');alias='GatewayID'},
+         @{names=@('Gateway');alias='Gateway'}
+       )
+    }
+    $linkLetter=Find-VerifiedPaymentColumn $Connection $link @('LETRA')
+    $linkBranch=Find-VerifiedPaymentColumn $Connection $link @('SUCURSAL')
+    $linkNumber=Find-VerifiedPaymentColumn $Connection $link @('NUMERO','NCOMPRO','NCOMP','NCOMPROBANTE')
+    if(-not ($fk -and $pk -and $linkLetter -and $linkBranch -and $linkNumber)){
+        throw ('No se verificaron todas las claves de '+$link+' a '+$master+' y al comprobante.')
+    }
+    $select=@('m.'+$pk+' AS Referencia')
+    foreach($item in $wanted){
+        $col=Find-VerifiedPaymentColumn $Connection $master $item.names
+        if($col){$select+=('m.'+$col+' AS ['+$item.alias+']')}
+    }
+    $query='SELECT TOP (50) '+($select -join ',')+
+       ' FROM '+$link+' pc INNER JOIN '+$master+' m ON pc.'+$fk+'=m.'+$pk+
+       ' WHERE CONVERT(NVARCHAR(10),pc.'+$linkLetter+')=@Letra'+
+       ' AND CONVERT(NVARCHAR(20),pc.'+$linkBranch+')=@Sucursal'+
+       ' AND CONVERT(NVARCHAR(40),pc.'+$linkNumber+')=@Numero'+
+       ' AND EXISTS (SELECT 1 FROM dbo.MaeFac mf WHERE mf.'+$mfStation+'=@Station'+
+       ' AND CONVERT(NVARCHAR(10),mf.'+$mfLetter+')=@Letra'+
+       ' AND CONVERT(NVARCHAR(20),mf.'+$mfBranch+')=@Sucursal'+
+       ' AND CONVERT(NVARCHAR(40),mf.'+$mfNumber+')=@Numero);'
+    $cmd=$Connection.CreateCommand()
+    $cmd.CommandTimeout=30;$cmd.CommandText=$query
+    foreach($p in @(
+       @{name='@Station';type=[System.Data.SqlDbType]::Int;size=0;value=$Station},
+       @{name='@Letra';type=[System.Data.SqlDbType]::NVarChar;size=10;value=$Letra},
+       @{name='@Sucursal';type=[System.Data.SqlDbType]::NVarChar;size=20;value=$Sucursal},
+       @{name='@Numero';type=[System.Data.SqlDbType]::NVarChar;size=40;value=$Numero}
+    )){
+       $param=if($p.size){$cmd.Parameters.Add($p.name,$p.type,$p.size)}else{$cmd.Parameters.Add($p.name,$p.type)}
+       $param.Value=$p.value
+    }
+    $reader=$cmd.ExecuteReader()
+    $columns=@();$rows=@()
+    try{
+       for($i=0;$i -lt $reader.FieldCount;$i++){$columns+=([string]$reader.GetName($i))}
+       while($reader.Read()){
+          $row=[ordered]@{}
+          for($i=0;$i -lt $reader.FieldCount;$i++){
+             $value=$reader.GetValue($i)
+             $row[$columns[$i]]=if($value -is [DBNull]){$null}else{$value}
+          }
+          $rows += [pscustomobject]$row
+       }
+    }finally{$reader.Close();$cmd.Dispose()}
+    return @{method=$Method;verified=$true;columns=$columns;rows=@($rows);count=$rows.Count}
+}
+
 function Invoke-AllowedStoredProcedure {
     param($Connection,[string]$Database,[string]$Procedure,$Parameters,[int]$MaxRows=500)
     Assert-AllowedProcedure -Procedure $Procedure
@@ -1487,6 +1590,31 @@ try {
         }
       }
 
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payment-evidence'){
+        try{
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
+             Send-Json $stream 409 @{error='Conectá SiSRL para consultar el comprobante.'};continue
+          }
+          $data=$req.Body | ConvertFrom-Json
+          $station=0
+          if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
+             Send-Json $stream 400 @{error='Estación inválida.'};continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+             Send-Json $stream 403 @{error='Estación no autorizada.'};continue
+          }
+          try{
+             $evidence=Get-VerifiedPaymentEvidence -Connection $cn -Station $station -Method ([string]$data.method) -Letra ([string]$data.letra) -Sucursal ([string]$data.sucursal) -Numero ([string]$data.numero)
+             Send-Json $stream 200 $evidence
+          }catch{
+             Send-Json $stream 422 @{error=('No se pudo confirmar la relación del pago: '+$_.Exception.Message)}
+          }
+        }catch{
+          Send-Json $stream 500 @{error=('Error al buscar evidencia del cobro: '+$_.Exception.Message)}
+        }
+      }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payments'){
         # Payments read-only: exactly the installed and allowlisted
         # PA_VentasFormasPago. No fabricated sums or injected SQL.
