@@ -1,0 +1,65 @@
+/* Capitán Rodolfo v83 · Cobros, inspirado en panel negro/cobre del tablero. */
+#paymentsModal{z-index:5200;padding:16px}
+#paymentsModal .payments-dialog{width:min(1380px,98vw);height:min(860px,96vh);max-height:96vh;overflow:hidden;border:1px solid #d57b27;box-shadow:0 0 0 2px #6a331750,0 0 45px #e87c1952,0 36px 100px #000e;border-radius:18px;background:#0b0c0e;color:#f5ede3}
+#paymentsModal .payments-head{border-bottom:1px solid #d8843945;background:linear-gradient(110deg,#2b180f,#0c1017 65%);padding:17px 22px;min-height:82px}
+#paymentsModal .payments-head .tank-close{border:1px solid #d87c3390;color:#f9ca9a;background:#23150e;border-radius:10px}
+#paymentsModal .payments-head .tank-close:hover{background:#d9823b;color:#160f09}
+#paymentsModal .payments-head h2{font:600 31px "Cormorant Garamond",Georgia,serif;line-height:1;color:#f6d4aa;margin:3px 0 0}
+#paymentsModal .payments-head .eyebrow{color:#d1a57b;letter-spacing:.17em}
+.payments-range{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:13px 20px 15px;background:#141313;border-bottom:1px solid #bc7a3344}
+.payments-range label{display:flex;flex-direction:column;gap:5px;min-width:127px;color:#c4a580;font-weight:600;font-size:10px;letter-spacing:.045em}
+.payments-range input{font:inherit;font-size:13px;letter-spacing:0;color:#f2e2cd;border:1px solid #77543680;background:#090b0e;min-height:38px;max-width:150px;padding:7px;border-radius:8px;color-scheme:dark}
+.payments-range input:focus{outline:2px solid #e49141}
+.payments-range button{padding:10px 18px;min-height:38px;background:linear-gradient(125deg,#e48b2c,#ffac58);color:#231307;font-weight:800;border:0;border-radius:8px;cursor:pointer}
+.payments-range button:disabled{opacity:.5;cursor:wait}
+.payments-notice{margin:0;padding:9px 20px;min-height:34px;font-size:12px;background:#14201a;color:#83dbac;border-bottom:1px solid #245038}
+.payments-notice.error{background:#321d14;color:#ffb488;border-color:#8d4b29}
+.payments-notice.warn{background:#2a2112;color:#efd18b;border-color:#93733a}
+.payments-layout{display:grid;grid-template-columns:minmax(235px,285px) minmax(0,1fr);flex:1;min-height:0;overflow:hidden}
+.payments-left{min-height:0;overflow:auto;padding:20px 12px;background:linear-gradient(160deg,#101214,#090b0c);border-right:1px solid #df7d3460;box-shadow:4px 0 30px #e7881315}
+.payments-left-head{display:flex;align-items:center;gap:11px;padding:7px 10px 17px;border-bottom:1px solid #ba712f66}
+.payments-left-head strong{display:block;font-size:18px;font-weight:800;color:#f2c18b}
+.payments-left-head small{display:block;font-size:8px;letter-spacing:.19em;color:#8f897e;margin-top:3px}
+.payments-logo{border:1px solid #f3a13d;box-shadow:0 0 12px #c8842c55;background:#2b190f;color:#f9b957;border-radius:9px;font-size:27px;width:41px;height:41px;display:grid;place-items:center}
+.payments-methods{display:flex;flex-direction:column;gap:7px;padding-top:13px}
+.payments-method{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-height:65px;padding:10px;background:linear-gradient(105deg,#171a1d,#101114);border:1px solid #98572d58;border-radius:9px;text-align:left;color:#f5e5cf;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
+.payments-method:hover{border-color:#f49d3d;box-shadow:0 0 15px #d87b2244}
+.payments-method[aria-pressed="true"]{background:linear-gradient(110deg,#342012,#171b1e);border-color:#ffab49;box-shadow:inset 3px 0 #fa9135,0 0 18px #d5803333}
+.payments-method:focus-visible{outline:2px solid #fbb967;outline-offset:2px}
+.payments-method-icon{display:grid;place-items:center;width:38px;height:38px;font-size:17px;border:1px solid currentColor;border-radius:10px;font-weight:900;box-shadow:0 0 14px currentColor inset}
+.payments-method-name{font-size:11px;font-weight:800;color:#f7ead9}.payments-method-amount{display:block;font-size:14px;color:#fff;margin-top:4px;font-variant-numeric:tabular-nums;font-weight:700}
+.payments-method-unavailable{color:#988476;font-size:11px}.payments-method-count{background:#dc822b;color:#1a1006;min-width:25px;height:25px;border-radius:50%;display:grid;place-items:center;padding:0 5px;font-size:10px;font-weight:900}
+.payments-method-count.off{color:#c6ab89;background:#373024}
+.payments-footnote{font-size:10px;line-height:1.55;color:#9a8d7e;border-top:1px solid #91603d50;margin:18px 6px 4px;padding-top:15px}
+.payments-main{min-width:0;min-height:0;overflow:auto;padding:20px 22px;background:radial-gradient(circle at 95% 5%,#37211730,transparent 46%),#0d1013}
+.payments-main-head{display:flex;align-items:start;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.payments-main-head h3{font:600 30px "Cormorant Garamond",Georgia,serif;color:#f4d2a9;margin:2px 0 13px}
+.payments-source{display:inline-block;border:1px solid #bc7c4870;color:#bc9c7e;border-radius:99px;padding:7px 11px;font-size:10px;overflow-wrap:anywhere;max-width:100%}
+.payments-overview{display:grid;grid-template-columns:1.45fr 1fr 1fr;gap:9px;margin:0 0 16px}
+.payments-overview>div{border:1px solid #7b5b394f;border-radius:10px;padding:15px 13px;background:#1c191645}
+.payments-overview small{display:block;color:#b6a28d;font-size:10px;margin-bottom:9px}
+.payments-overview strong{display:block;color:#f4bd7a;font:800 clamp(16px,2.1vw,26px) Inter,Segoe UI,sans-serif;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.payments-list{min-height:145px}
+.payments-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(100px,1fr) minmax(105px,1fr) auto;gap:8px;align-items:center;border:1px solid #73634f42;background:#17191a;border-radius:11px;padding:12px;margin:0 0 8px}
+.payments-row:hover{border-color:#a7805390}
+.payments-row .ref{color:#f3ca98;font-size:13px;font-weight:800}.payments-row .hint{color:#9d9186;font-size:10px;display:block;margin-top:4px;overflow-wrap:anywhere}
+.payments-row .amount{color:#9bebbb;font-weight:800;font-size:16px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.payments-row .method{font-size:12px;color:#f1d6b0;font-weight:700}.payments-row button{border:1px solid #a86b3c;color:#f0ba79;background:#352114;border-radius:8px;padding:9px 10px;font-weight:800;cursor:pointer}
+.payments-row button:focus-visible,.payments-more:focus-visible{outline:2px solid #f4b15c}
+.payments-more{border:1px solid #b57845;background:#211811;color:#efbd7a;border-radius:8px;padding:11px 18px;margin:12px 0;cursor:pointer}
+.payments-empty{color:#ae9e8d;padding:22px;border:1px dashed #8b653e7f;border-radius:12px;font-size:13px;line-height:1.6}
+.payments-evidence{border:1px solid #c68e5259;background:#211a148a;border-radius:12px;padding:15px;margin:16px 0 22px;color:#e4c7a7;font-size:12px}
+.payments-evidence h4{color:#ffcc91;font-size:16px;margin:0 0 9px}.payments-evidence p{margin:7px 0;line-height:1.5}.payments-evidence dl{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,2fr);gap:7px}.payments-evidence dt{color:#b8a692}.payments-evidence dd{color:#f9deb9;margin:0;overflow-wrap:anywhere}
+#paymentsModal button:disabled{opacity:.65;cursor:not-allowed}
+@media(max-width:850px){
+ #paymentsModal{padding:7px}#paymentsModal .payments-dialog{width:100%;height:96vh;max-height:96vh}
+ .payments-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+ .payments-left{overflow:visible;border-right:0;border-bottom:1px solid #df7d344d;padding:10px}
+ .payments-left-head{padding:4px 9px 7px}.payments-methods{display:flex;flex-direction:row;overflow-x:auto;gap:6px;padding:7px 3px}
+ .payments-method{flex:0 0 160px;grid-template-columns:30px 1fr;min-height:62px;padding:7px}
+ .payments-method-count{display:none}.payments-method-icon{width:30px;height:30px;font-size:14px}
+ .payments-footnote{display:none}.payments-main{padding:15px}.payments-overview{grid-template-columns:1.2fr 1fr}.payments-overview>div:last-child{grid-column:1/-1}
+ .payments-range{gap:7px;padding:10px}.payments-range label{min-width:105px}.payments-range input{max-width:133px}
+ .payments-row{grid-template-columns:minmax(0,1fr) auto;gap:7px}.payments-row .method{display:none}
+}
+@media(prefers-reduced-motion:reduce){.payments-method{transition:none}}
