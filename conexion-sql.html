@@ -120,7 +120,7 @@
  const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
  let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SISRL';
 
- const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:(url.endsWith('/api/circuit/install')?120000:25000));try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
+ const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:((url.endsWith('/api/circuit/install')||url.endsWith('/api/circuit/admin-install'))?120000:25000));try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
  async function get(path){const r=await localFetch(bridge+path);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  async function post(path,body){const r=await localFetch(bridge+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  function setStatus(el,msg,kind=''){el.className='status '+kind;el.textContent=msg}
