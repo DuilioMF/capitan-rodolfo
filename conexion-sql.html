@@ -56,6 +56,28 @@
     <div id="databaseStatus" class="status">—</div>
   </section>
 
+  <section class="card hidden" id="circuitCard">
+    <h2>Circuito de estación · SiSRL</h2>
+    <p class="muted">Desde esta página podés instalar o actualizar el SP del circuito con tu conexión SQL actual, si el usuario tiene permiso. También podés ejecutarlo para ver tanques, surtidores y despachos.</p>
+    <div class="actions">
+      <button id="installCircuit" type="button">Instalar / actualizar SP desde aquí</button>
+      <button id="refreshCircuit" class="ghost" type="button">Comprobar instalación</button>
+    </div>
+    <div id="circuitStatus" class="status">Consultando instalación del SP…</div>
+    <p class="small">Descargas de SQL Server para conservar o ejecutar desde SSMS:</p>
+    <div class="actions">
+      <a href="https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/sql/PA_CapitanRodolfo_CircuitoEstacion.sql" target="_blank" rel="noopener noreferrer">Descargar SP del circuito</a>
+      <a href="https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql" target="_blank" rel="noopener noreferrer">Descargar instalador para administrador</a>
+    </div>
+    <p class="muted">Si faltan permisos, el conector no los saltea: un administrador debe ejecutar el segundo archivo una sola vez. Nunca pegues su contraseña aquí.</p>
+    <div class="grid">
+      <div><label for="circuitStation">Estación para ejecutar el SP</label><select id="circuitStation"><option value="">Cargando estaciones…</option></select></div>
+      <div class="actions" style="align-self:end"><button id="runCircuit" type="button">Ejecutar circuito y mostrar datos</button></div>
+    </div>
+    <div id="runCircuitStatus" class="status">Elegí una estación para ver sus datos.</div>
+    <div id="circuitResults"></div>
+  </section>
+
   <section class="card hidden" id="sqlExplorerCard">
     <h2>Explorador SQL</h2>
     <p class="muted">Escribí el nombre de cualquier tabla, vista o procedimiento de la base seleccionada. Se reconoce su tipo automáticamente. Las tablas y vistas se consultan en modo lectura (máximo 200 filas); para SP se muestran primero los parámetros.</p>
@@ -184,6 +206,10 @@
    $('executeSp').classList.add('hidden');$('objectParams').replaceChildren();$('results').replaceChildren();
    inspected=null;
    status('Base '+currentDb+' lista. Escribí tabla, vista o SP y presioná Buscar y mostrar.');
+   const circuitAvailable=currentDb.toLowerCase()==='sisrl';
+   $('circuitCard').classList.toggle('hidden',!circuitAvailable);
+   if(circuitAvailable){refreshCircuitState();loadCircuitStations()}
+   else $('circuitResults').replaceChildren();
  }
  function showParams(proc){
    const box=$('objectParams');box.replaceChildren();
@@ -214,8 +240,8 @@
    });
    return params;
  }
- function renderResults(data){
-   const root=$('results');root.replaceChildren();
+ function renderResults(data,containerId='results'){
+   const root=$(containerId);root.replaceChildren();
    const sets=Array.isArray(data.resultSets)?data.resultSets:[];
    if(!sets.length){root.textContent='Sin resultados para mostrar.';return}
    sets.forEach((set,idx)=>{
@@ -266,6 +292,77 @@
    }
  }
 
+ async function refreshCircuitState(){
+   if(!bridge||currentDb.toLowerCase()!=='sisrl')return;
+   try {
+     const state=await get('/api/circuit/install-state');
+     const code=state.state||'pending';
+     const message=state.message||'Todavía no se ha instalado el circuito.';
+     setStatus($('circuitStatus'),message,code==='installed'?'ok':(code==='pending'||code==='missing_file'?'':'bad'));
+     logDiag('Instalación SP: '+code+' · '+message);
+   }catch(e){setStatus($('circuitStatus'),'No pude consultar la instalación: '+e.message,'bad')}
+ }
+ async function loadCircuitStations(){
+   const sel=$('circuitStation');sel.replaceChildren();
+   const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Elegí una estación';sel.appendChild(placeholder);
+   if(!bridge||currentDb.toLowerCase()!=='sisrl')return;
+   try{
+     const d=await get('/api/station/ids');
+     const ids=Array.isArray(d.stations)?d.stations:[];
+     ids.forEach(id=>{const option=document.createElement('option');option.value=String(id);option.textContent='Estación '+id;sel.appendChild(option)});
+     if(ids.length===1)sel.value=String(ids[0]);
+     if(!ids.length)setStatus($('runCircuitStatus'),'No hay estaciones disponibles en ParamStock para esta sesión.','bad');
+     else setStatus($('runCircuitStatus'),ids.length+' estación(es) disponibles en '+currentDb+'.','ok');
+   }catch(e){setStatus($('runCircuitStatus'),'No pude listar las estaciones: '+e.message,'bad')}
+ }
+ $('installCircuit').addEventListener('click',async()=>{
+   if(!bridge||!sessionId||currentDb.toLowerCase()!=='sisrl')return;
+   if(!window.confirm('¿Instalar o actualizar dbo.PA_CapitanRodolfo_CircuitoEstacion en SiSRL con tu usuario SQL actual? Esta acción modifica la definición del procedimiento, NO los datos comerciales.'))return;
+   $('installCircuit').disabled=true;
+   setStatus($('circuitStatus'),'Instalando SP desde el archivo verificado de Capitán…');
+   logDiag('Instalación de SP solicitada desde Núcleo → Datos');
+   try{
+     const result=await post('/api/circuit/install',{sessionId,database:currentDb,confirm:'INSTALAR SP'});
+     setStatus($('circuitStatus'),result.message||'Instalación completada.',result.success?'ok':'bad');
+     logDiag('Instalación SP: '+result.state+' · '+result.message);
+     if(result.success)await loadCircuitStations();
+   }catch(e){
+     setStatus($('circuitStatus'),'No pude instalar el SP: '+e.message,'bad');
+     logDiag('ERROR instalando SP: '+e.message);
+   }finally{$('installCircuit').disabled=false}
+ });
+ $('refreshCircuit').addEventListener('click',refreshCircuitState);
+ $('runCircuit').addEventListener('click',async()=>{
+   const id=Number($('circuitStation').value);
+   if(!Number.isInteger(id)||id<=0){setStatus($('runCircuitStatus'),'Elegí una estación real primero.','bad');return}
+   $('runCircuit').disabled=true;
+   setStatus($('runCircuitStatus'),'Leyendo circuito real de la estación '+id+'…');
+   $('circuitResults').replaceChildren();
+   try{
+     const d=await post('/api/station/circuit',{idEstacion:id});
+     const sets=[
+       ['Tanques',d.tanks],
+       ['Mangueras / caras',d.hoses],
+       ['Despachos',d.dispatches],
+       ['Relaciones con comprobantes',d.receipts],
+       ['Empresa / estación',d.company]
+     ].filter(([_,set])=>set&&Array.isArray(set.rows));
+     sets.forEach(([name,set])=>{
+       const title=document.createElement('h3');title.textContent=name;$('circuitResults').appendChild(title);
+       const target=document.createElement('div');target.id='circuitResult'+$('circuitResults').children.length;
+       $('circuitResults').appendChild(target);
+       renderResults({resultSets:[set]},target.id);
+     });
+     const isSp=d.source==='sp';
+     const message=isSp?'Circuito ejecutado desde el SP: '+sets.length+' resultados.':
+       'Se muestran las tablas autorizadas, pero el SP sigue sin permiso EXECUTE. '+(d.warning||'');
+     setStatus($('runCircuitStatus'),message,isSp?'ok':'bad');
+     logDiag('Circuito estación '+id+': '+(d.source||'?'));
+   }catch(e){
+     setStatus($('runCircuitStatus'),'No se pudo ejecutar el circuito: '+e.message,'bad');
+     logDiag('ERROR circuito: '+e.message);
+   }finally{$('runCircuit').disabled=false}
+ });
  $('copyDiag').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('diagLog').textContent);logDiag('Diagnóstico copiado al portapapeles')}catch(e){logDiag('No pude copiar: '+e.message)}});
  $('clearDiag').addEventListener('click',()=>{$('diagLog').textContent='';logDiag('Log limpiado')});
  $('auth').addEventListener('change',authUi);
