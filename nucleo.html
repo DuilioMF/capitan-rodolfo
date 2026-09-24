@@ -38,8 +38,8 @@
 </main><script>
 (function(){
  const form=document.getElementById('openaiForm'),input=document.getElementById('openaiKey'),status=document.getElementById('engineStatus'),guide=document.getElementById('memoryGuide'),guideToggle=document.getElementById('guideToggle'),checkConnector=document.getElementById('checkConnector'),saveOpenAI=document.getElementById('saveOpenAI');
- const ports=[8787,8797,18787,27877,37877,48787,57877];const bridges=ports.flatMap(p=>['http://127.0.0.1:'+p,'http://localhost:'+p]);let bridge=null;
- const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,targetAddressSpace:'local'});
+ const ports=[8787,8797,18787,27877,37877,48787,57877];const bridges=ports.map(p=>'http://127.0.0.1:'+p);let bridge=null;
+ const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),800);try{return await fetch(url,{cache:'no-store',...options,targetAddressSpace:'local',signal:ac.signal})}finally{clearTimeout(timer)}};
  function showGuide(show){guide.hidden=!show;guideToggle.setAttribute('aria-expanded',String(show));guideToggle.textContent=show?'Ocultar guía de Memoria Duilio':'¿No tenés la clave? Memoria Duilio te guía'}
  guideToggle.addEventListener('click',()=>showGuide(guide.hidden));
  async function find(){bridge=null;saveOpenAI.disabled=true;status.textContent='Comprobando conector local · Núcleo v67…';for(const base of bridges){try{const h=await localFetch(base+'/health');if(!h.ok)continue;const hd=await h.json();if(!hd.ok)continue;const r=await localFetch(base+'/api/openai/status');if(r.ok){bridge=base;const d=await r.json();saveOpenAI.disabled=false;status.textContent='Conector activo · v'+(hd.version||'?')+' · puerto '+new URL(base).port+(d.configured?' · OpenAI configurado.':' · ya podés guardar la clave de OpenAI.');showGuide(!d.configured);return true}}catch(_){}}status.textContent='Conector no detectado · Núcleo v67. Abrí DoingLio desde el escritorio y volvé a comprobar.';showGuide(true);return false}
