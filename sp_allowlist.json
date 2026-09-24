@@ -1,5 +1,6 @@
 {
   "procedures": [
-    "dbo.PA_VentasFormasPago"
+    "dbo.PA_VentasFormasPago",
+    "dbo.PA_CapitanRodolfo_CircuitoEstacion"
   ]
 }
