@@ -81,7 +81,7 @@ jobs:
 
             $auto=Invoke-RestMethod -Uri ("http://127.0.0.1:"+$port+"/api/circuit/install-state") -TimeoutSec 4
             if($auto.state -ne 'pending'){throw "Sin SQL no debería instalar procedimientos automáticamente"}
-            Write-Host "Conector real v$expectedVersion: health, explorador SQL y estado instalador automático OK"
+            Write-Host ("Conector real v"+$expectedVersion+": health, explorador SQL e instalador OK")
           } finally {
             if($proc){Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue}
           }
