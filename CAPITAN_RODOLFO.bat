@@ -10,6 +10,7 @@ set "ALLOWLIST=%APPROOT%\sp_allowlist.json"
 set "LOG=%APPROOT%\install.log"
 set "TASK=CapitanRodolfoLocal"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main"
+set "EXPECTED_VERSION=66"
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
 if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
@@ -29,9 +30,6 @@ echo.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
 
-for %%Q in (8787 8797 18787 27877 37877 48787 57877) do (
-  for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%%Q .*LISTENING"') do taskkill /PID %%P /F >nul 2>nul
-)
 schtasks /End /TN "%TASK%" >nul 2>nul
 schtasks /Delete /F /TN "%TASK%" >nul 2>nul
 
@@ -40,7 +38,7 @@ powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%BR
 
 set "ACTIVE_PORT="
 for /L %%I in (1,1,30) do (
-  for /f "delims=" %%Q in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports=8787,8797,18787,27877,37877,48787,57877; foreach($p in $ports){ try{$r=Invoke-RestMethod -Uri ('http://127.0.0.1:'+ $p +'/health') -TimeoutSec 1; if($r.ok){Write-Output $p; break}}catch{}}"') do (
+  for /f "delims=" %%Q in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports=8787,8797,18787,27877,37877,48787,57877; foreach($p in $ports){ try{$r=Invoke-RestMethod -Uri ('http://127.0.0.1:'+ $p +'/health') -TimeoutSec 1; if($r.ok -and [string]$r.version -eq '%EXPECTED_VERSION%'){Write-Output $p; break}}catch{}}"') do (
     set "ACTIVE_PORT=%%Q"
   )
   if defined ACTIVE_PORT goto :ready
@@ -50,8 +48,8 @@ for /L %%I in (1,1,30) do (
 :ready
 if defined ACTIVE_PORT (
   echo [%date% %time%] Conector listo puerto !ACTIVE_PORT! >>"%LOG%"
-  echo Conector SQL listo en puerto !ACTIVE_PORT!.
-  start "" "https://duiliomf.github.io/capitan-rodolfo/conexion-sql.html?v=65"
+  echo Conector SQL v%EXPECTED_VERSION% listo en puerto !ACTIVE_PORT!.
+  start "" "http://127.0.0.1:!ACTIVE_PORT!/"
   timeout /t 2 >nul
   exit /b 0
 )
