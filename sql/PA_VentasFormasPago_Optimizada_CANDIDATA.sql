@@ -5,6 +5,8 @@ Base: Maestros. NO reemplaza dbo.PA_VentasFormasPago original.
 
 Qué cambia:
  - Primero filtra comprobantes por estación, fecha, turno y vendedor.
+ - Elimina la función ISNULL sobre la columna VENDEDOR en el WHERE,
+   preservando el caso VENDEDOR NULL como código 0.
  - Agrupa tickets antes de relacionarlos con sus pagos.
  - Calcula cada pasarela por separado para evitar el producto cartesiano
    generado por varios LEFT JOIN de relaciones uno-a-muchos.
@@ -69,7 +71,9 @@ BEGIN
     WHERE M.FECHA >= @Inicio AND M.FECHA < @FinExclusivo
       AND M.ID_ESTACION = @IdEstacion
       AND M.TURNO BETWEEN @TurnoDesde AND @TurnoHasta
-      AND ISNULL(M.VENDEDOR,0) BETWEEN @VendedorDesde AND @VendedorHasta
+      AND (M.VENDEDOR BETWEEN @VendedorDesde AND @VendedorHasta
+        OR (M.VENDEDOR IS NULL
+         AND @VendedorDesde <= 0 AND @VendedorHasta >= 0))
 
     UNION ALL
 
@@ -84,7 +88,9 @@ BEGIN
         WHERE T.FECHA >= @Inicio AND T.FECHA < @FinExclusivo
           AND T.ID_ESTACION = @IdEstacion
           AND T.TURNO BETWEEN @TurnoDesde AND @TurnoHasta
-          AND ISNULL(T.VENDEDOR,0) BETWEEN @VendedorDesde AND @VendedorHasta
+          AND (T.VENDEDOR BETWEEN @VendedorDesde AND @VendedorHasta
+            OR (T.VENDEDOR IS NULL
+             AND @VendedorDesde <= 0 AND @VendedorHasta >= 0))
         GROUP BY T.Sucursal, T.Numero, T.Turno, T.Vendedor
     ) MT;
 
