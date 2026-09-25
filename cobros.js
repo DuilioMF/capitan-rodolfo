@@ -84,7 +84,7 @@ function matchesSale(row){
 }
 function selectedMovements(m){
  const list=m.id==='all'?allMovements():available(m)?movements(m):[];
- return saleFilter?list.filter(e=>matchesSale(e.row)):list;
+ return list; // Ver medios conserva TODOS los movimientos del día; selección solo visual.
 }
 function total(arr){return arr.reduce((s,x)=>s+x.amount,0)}
 function station(){const n=Number($('stationId')?.value);return Number.isInteger(n)&&n>0?n:null}
@@ -236,6 +236,10 @@ function showRows(list){
  const fragment=document.createDocumentFragment();
  for(const entry of list.slice(0,visible)){
    const item=document.createElement('div');item.className='payments-row';
+   if(saleFilter&&matchesSale(entry.row)){
+     item.classList.add('payments-row-selected');
+     item.setAttribute('aria-label','Comprobante seleccionado: '+invoiceName(entry.row));
+   }
    const main=document.createElement('div'),reference=document.createElement('div'),sub=document.createElement('span');
    reference.className='ref';reference.textContent=invoiceName(entry.row);
    sub.className='hint';const i=invoice(entry.row);
@@ -251,6 +255,10 @@ function showRows(list){
    item.append(main,methodLabel,amountText,button);fragment.appendChild(item);
  }
  root.appendChild(fragment);
+ if(saleFilter){
+   const target=root.querySelector('.payments-row-selected');
+   if(target)requestAnimationFrame(()=>target.scrollIntoView({block:'nearest',behavior:'smooth'}));
+ }
  $('paymentsMore').hidden=list.length<=visible;
  $('paymentsMore').textContent='Mostrar 50 más · '+whole.format(visible)+' / '+whole.format(list.length);
 }
@@ -258,7 +266,7 @@ function render(){
  methodButtons();
  const m=methods.find(x=>x.id===method)||methods[0],list=selectedMovements(m);
  $('paymentsMethodTitle').textContent=method==='all'?'Todas las formas de pago':m.name;
- $('paymentsSelection').textContent=saleFilter?('Comprobante '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero):'';
+ $('paymentsSelection').textContent=saleFilter?('Seleccionado: '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero+' · destacado en la tabla; se muestran todos los cobros del día'):'';
  $('paymentsClearInvoice').hidden=!saleFilter;
  $('paymentsAmount').textContent=!data||!available(m)?'—':money.format(total(list));
  $('paymentsCount').textContent=!data||!available(m)?'—':whole.format(list.length);
@@ -282,12 +290,16 @@ async function search(){
    const s=sets.find(x=>Array.isArray(x.columns)&&x.columns.some(c=>methods.slice(1).some(m=>m.keys.some(a=>norm(a)===norm(c)))));
    data=response;rows=s&&Array.isArray(s.rows)?s.rows:[];columnNames=s?s.columns:[];
    paramsKey=JSON.stringify(p);visible=50;method='all';
+   if(saleFilter){
+     const index=allMovements().findIndex(e=>matchesSale(e.row));
+     if(index>=0)visible=Math.ceil((index+1)/50)*50;
+   }
    const incomplete=!!(response.truncated||s?.truncated);
    if(!s)notice('El SP respondió, pero no devolvió columnas reconocibles de medios de pago. Revisá su resultado real.','warn');
    else if(incomplete)notice('ATENCIÓN: se alcanzó el límite de 5.000 filas. Los totales son PARCIALES; acotá las fechas.','error');
    else if(saleFilter&&!rows.some(matchesSale))notice('El comprobante '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero+' no apareció en el SP para las fechas y turnos seleccionados. No se atribuyen otros cobros.','warn');
    else if(sets.length>1)notice('Se muestra un único resultado del SP para evitar duplicar importes de otros conjuntos.','warn');
-   else notice('Cobros consultados de la estación '+p.idEstacion+'. Importes reales del procedimiento.');
+   else notice(saleFilter?'Cobros de todo el día cargados; comprobante seleccionado destacado en la tabla.':'Cobros consultados de la estación '+p.idEstacion+'. Importes reales del procedimiento.');
    render();
  }catch(err){
    if(request===latestRequest){
@@ -338,6 +350,8 @@ function showModal(){
 }
 function open(){
  saleFilter=null;
+ $('paymentsFrom').value=today();$('paymentsTo').value=today();
+ $('paymentsShiftFrom').value='0';$('paymentsShiftTo').value='99999';
  if(modal.classList.contains('open')){render();return}
  showModal();
  let p;try{p=range()}catch(e){render();notice(e.message,'warn');return}
@@ -350,6 +364,8 @@ function openForSale(details){
  saleFilter={letra:String(details.letra),sucursal:String(details.sucursal),numero:String(details.numero),sale:details.sale??null};
  method='all';visible=50;
  showModal();
+ // Siempre consultar todos los turnos del día al llegar desde Ver medios.
+ $('paymentsShiftFrom').value='0';$('paymentsShiftTo').value='99999';
  // La fecha debe venir del despacho enlazado por ID_DESPACHO + ULDATE.
  // Nunca consultar silenciosamente otro día si falta la fecha real.
  const date=String(details.fecha??'').match(/^(\d{4}-\d{2}-\d{2})/);
@@ -361,7 +377,12 @@ function openForSale(details){
  }
  let p;try{p=range()}catch(e){data=null;rows=[];columnNames=[];render();notice(e.message,'warn');return}
  if(!data||paramsKey!==JSON.stringify(p)){data=null;rows=[];columnNames=[];render();search()}
- else {render();notice(rows.some(matchesSale)?'Importes del comprobante verificado, según PA_VentasFormasPago.':'Este comprobante no aparece en los registros cargados del período. Ampliá fechas o turnos.','warn')}
+ else {
+   const idx=allMovements().findIndex(e=>matchesSale(e.row));
+   if(idx>=0)visible=Math.ceil((idx+1)/50)*50;
+   render();
+   notice(idx>=0?'Cobros del día completos. Comprobante destacado en la tabla.':'Este comprobante no aparece en los registros del día. No se atribuyen otros pagos.',idx>=0?'':'warn');
+ }
 }
 function close(){++saleRequest;$('paymentsFindSale').disabled=false;modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
 $('paymentsClose').addEventListener('click',close);

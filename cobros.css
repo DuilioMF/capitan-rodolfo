@@ -67,3 +67,30 @@
 .payments-selected{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:11px;color:#ffcf92}.payments-selected button{padding:8px 11px;border:1px solid #b87737;border-radius:8px;background:#281b10;color:#f7c88c;font-weight:700;cursor:pointer}.payments-selected button[hidden]{display:none}.payments-selected #paymentsOpenPaid{border-color:#50a878;background:#152b23;color:#a4ebc3}
 
 .payments-find-sale{border:1px solid #55b888!important;background:linear-gradient(125deg,#19382a,#296948)!important;color:#d7fce7!important}.payments-choice{padding:9px 15px;margin:5px;border:1px solid #54ba86;border-radius:8px;background:#142d20;color:#c2efcf;cursor:pointer}
+
+/* Cobros: paleta sobria y comprobante seleccionado (revisión de UX). */
+#paymentsModal .payments-dialog{border-color:#604b39;box-shadow:0 24px 68px #0009;background:#101214}
+#paymentsModal .payments-head{background:#171a1d;border-bottom-color:#393b3e}
+#paymentsModal .payments-head h2{color:#efdfc9}
+#paymentsModal .payments-head .eyebrow{color:#b4a395;letter-spacing:.11em}
+.payments-range{background:#181b1d;border-bottom-color:#3b3f42}
+.payments-left{background:#121619;border-right-color:#34393e;box-shadow:none}
+.payments-left-head{border-bottom-color:#353b40}
+.payments-left-head strong,.payments-main-head h3{color:#e8ded2}
+.payments-logo{color:#caa37b;border-color:#68543e;background:#1b2023;box-shadow:none}
+.payments-method{background:#1c2023;border-color:#383e42;color:#e0dcd6}
+.payments-method:hover{border-color:#8d785f;box-shadow:none}
+.payments-method[aria-pressed="true"]{background:#282b2c;border-color:#c69b6e;box-shadow:inset 3px 0 #d2a578}
+.payments-method-icon{border-color:#53585b!important;color:#c6b8a7!important;box-shadow:none}
+.payments-method-count{background:#3c4245;color:#e8d4bf}
+.payments-main{background:#141719}
+.payments-row{background:#1d2123;border-color:#363c40}
+.payments-row .ref{color:#eee3d4}
+.payments-row .amount{color:#b7dfc4}
+.payments-row-selected{border:2px solid #efc38e;background:#333129;box-shadow:inset 4px 0 #ebba7b}
+.payments-row-selected:before{content:"SELECCIONADO";font-size:10px;font-weight:800;letter-spacing:.09em;color:#f5d5ab;grid-column:1/-1}
+.payments-selected{color:#efd3a8;font-weight:700}
+.payments-source{border-color:#4c5050;color:#c1bdb6}
+.payments-range button{background:#a9845c;color:#17191c}
+.payments-overview strong{color:#e9dcc8}
+@media(max-width:760px){.payments-row-selected:before{grid-column:1/-1}}
