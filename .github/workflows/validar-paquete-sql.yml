@@ -277,7 +277,7 @@ jobs:
              if(!fallback.includes(marker))throw Error('Conector sin vínculo compuesto: '+marker);
           }
           for(const marker of ["loadStep.addEventListener('click',()=>loads('all'))",
-             "window.capitanOpenCobrosForSale?.(invoice)"]){
+             "window.capitanOpenCobrosForSale?.(invoice)","window.capitanOpenCobrados=()=>loads('paid')",'id="paymentsOpenPaid"']){
              if(!index.includes(marker))throw Error('Pantalla sin acceso al cobro: '+marker);
           }
           if(!cobros.includes('window.capitanOpenCobrosForSale=openForSale;')||
