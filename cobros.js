@@ -1,4 +1,4 @@
-/* Capitán Rodolfo v83 · medios de pago exclusivamente desde SQL autorizado. */
+/* Capitán Rodolfo v84 · medios de pago exclusivamente desde SQL autorizado. */
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
@@ -43,7 +43,7 @@ const today=()=>{
  return d.getFullYear()+'-'+n(d.getMonth()+1)+'-'+n(d.getDate());
 };
 const modal=$('paymentsModal');
-let data=null,rows=[],columnNames=[],method='all',visible=50,paramsKey='',working=false;
+let data=null,rows=[],columnNames=[],method='all',visible=50,paramsKey='',working=false,saleFilter=null;
 let latestRequest=0;
 $('paymentsFrom').value=today();$('paymentsTo').value=today();
 function notice(message,type=''){
@@ -67,6 +67,24 @@ function allMovements(){
    if(value!==null&&value!==0)out.push({row,method:m,amount:value});
  }
  return out;
+}
+function invoiceEq(a,b){
+ const l=String(a??'').trim().toUpperCase(),r=String(b??'').trim().toUpperCase();
+ if(!l||!r)return false;
+ if(/^\d+$/.test(l)&&/^\d+$/.test(r)){
+  const ln=Number(l),rn=Number(r);
+  return Number.isSafeInteger(ln)&&Number.isSafeInteger(rn)?ln===rn:l===r;
+ }
+ return l===r;
+}
+function matchesSale(row){
+ if(!saleFilter)return true;
+ const id=invoice(row);
+ return invoiceEq(id.letra,saleFilter.letra)&&invoiceEq(id.sucursal,saleFilter.sucursal)&&invoiceEq(id.numero,saleFilter.numero);
+}
+function selectedMovements(m){
+ const list=m.id==='all'?allMovements():available(m)?movements(m):[];
+ return saleFilter?list.filter(e=>matchesSale(e.row)):list;
 }
 function total(arr){return arr.reduce((s,x)=>s+x.amount,0)}
 function station(){const n=Number($('stationId')?.value);return Number.isInteger(n)&&n>0?n:null}
@@ -97,7 +115,7 @@ function methodButtons(){
  for(const m of methods){
    const active=method===m.id;
    const known=m.id==='all'||available(m);
-   const list=m.id==='all'?allMovements():known?movements(m):[];
+   const list=known?selectedMovements(m):[];
    const b=document.createElement('button');b.className='payments-method';b.type='button';
    b.setAttribute('aria-pressed',String(active));b.title=known?'Mostrar '+m.name:'El SP aún no devuelve '+m.name;
    const logo=document.createElement('span');logo.className='payments-method-icon';logo.style.color=m.color;
@@ -212,7 +230,7 @@ function showRows(list){
    const p=document.createElement('p');p.className='payments-empty';
    p.textContent=!available(methods.find(m=>m.id===method))?
      'PA_VentasFormasPago no devolvió esta forma de pago. No muestro un cero ficticio.':
-     'No hay movimientos de este medio en el período consultado.';
+     saleFilter?'El SP no devolvió este medio para el comprobante indicado en el período consultado. Verificá fecha y turno.':'No hay movimientos de este medio en el período consultado.';
    root.appendChild(p);$('paymentsMore').hidden=true;return;
  }
  const fragment=document.createDocumentFragment();
@@ -238,8 +256,10 @@ function showRows(list){
 }
 function render(){
  methodButtons();
- const m=methods.find(x=>x.id===method)||methods[0],list=method==='all'?allMovements():available(m)?movements(m):[];
+ const m=methods.find(x=>x.id===method)||methods[0],list=selectedMovements(m);
  $('paymentsMethodTitle').textContent=method==='all'?'Todas las formas de pago':m.name;
+ $('paymentsSelection').textContent=saleFilter?('Comprobante '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero):'';
+ $('paymentsClearInvoice').hidden=!saleFilter;
  $('paymentsAmount').textContent=!data||!available(m)?'—':money.format(total(list));
  $('paymentsCount').textContent=!data||!available(m)?'—':whole.format(list.length);
  $('paymentsStation').textContent=station()?'Estación '+station():'—';
@@ -265,6 +285,7 @@ async function search(){
    const incomplete=!!(response.truncated||s?.truncated);
    if(!s)notice('El SP respondió, pero no devolvió columnas reconocibles de medios de pago. Revisá su resultado real.','warn');
    else if(incomplete)notice('ATENCIÓN: se alcanzó el límite de 5.000 filas. Los totales son PARCIALES; acotá las fechas.','error');
+   else if(saleFilter&&!rows.some(matchesSale))notice('El comprobante '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero+' no apareció en el SP para las fechas y turnos seleccionados. No se atribuyen otros cobros.','warn');
    else if(sets.length>1)notice('Se muestra un único resultado del SP para evitar duplicar importes de otros conjuntos.','warn');
    else notice('Cobros consultados de la estación '+p.idEstacion+'. Importes reales del procedimiento.');
    render();
@@ -276,12 +297,36 @@ async function search(){
    working=false;$('paymentsSearch').disabled=false;
  }
 }
-function open(){
- if(modal.classList.contains('open'))return;
+function showModal(){
  modal.classList.add('open');modal.setAttribute('aria-hidden','false');
  $('paymentsClose').focus();
+}
+function open(){
+ saleFilter=null;
+ if(modal.classList.contains('open')){render();return}
+ showModal();
  const p=range();
  if(!data||paramsKey!==JSON.stringify(p))search();else render();
+}
+function openForSale(details){
+ if(!details||[details.letra,details.sucursal,details.numero].some(x=>x===null||x===undefined||String(x).trim()==='')){
+  showModal();saleFilter=null;render();notice('No se puede relacionar el cobro: faltan las claves verificadas del comprobante.','warn');return;
+ }
+ saleFilter={letra:String(details.letra),sucursal:String(details.sucursal),numero:String(details.numero),sale:details.sale??null};
+ method='all';visible=50;
+ showModal();
+ // La fecha debe venir del despacho enlazado por ID_DESPACHO + ULDATE.
+ // Nunca consultar silenciosamente otro día si falta la fecha real.
+ const date=String(details.fecha??'').match(/^(\d{4}-\d{2}-\d{2})/);
+ if(date){$('paymentsFrom').value=date[1];$('paymentsTo').value=date[1]}
+ else {
+  data=null;rows=[];columnNames=[];paramsKey='';
+  $('paymentsFrom').value='';$('paymentsTo').value='';
+  render();notice('Falta ULDATE del despacho. Seleccioná la fecha real del comprobante para consultar sus medios.','warn');return;
+ }
+ let p;try{p=range()}catch(e){data=null;rows=[];columnNames=[];render();notice(e.message,'warn');return}
+ if(!data||paramsKey!==JSON.stringify(p)){data=null;rows=[];columnNames=[];render();search()}
+ else {render();notice('Importes del comprobante encontrado en PA_VentasFormasPago.')}
 }
 function close(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
 $('paymentsClose').addEventListener('click',close);
@@ -290,12 +335,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.con
 $('paymentsSearch').addEventListener('click',search);
 $('paymentsMore').addEventListener('click',()=>{
  const m=methods.find(x=>x.id===method)||methods[0];
- visible+=50;showRows(method==='all'?allMovements():movements(m));
+ visible+=50;showRows(selectedMovements(m));
 });
 $('stationId')?.addEventListener('change',()=>{
- ++latestRequest;++cardRequest;data=null;rows=[];columnNames=[];paramsKey='';
+ ++latestRequest;++cardRequest;data=null;rows=[];columnNames=[];paramsKey='';saleFilter=null;
  if(modal.classList.contains('open')){render();notice('Cambió la estación. Consultá sus cobros.','warn')}
 });
+$('paymentsClearInvoice').addEventListener('click',()=>{saleFilter=null;visible=50;render();notice('Mostrando el período completo de la estación.');});
 window.capitanOpenCobros=open;
+window.capitanOpenCobrosForSale=openForSale;
 render();
 })();
