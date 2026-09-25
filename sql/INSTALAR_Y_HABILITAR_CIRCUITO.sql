@@ -1,5 +1,5 @@
 /*
-CAPITAN RODOLFO v81 - INSTALADOR PARA ADMINISTRADOR SQL
+CAPITAN RODOLFO v84 - INSTALADOR PARA ADMINISTRADOR SQL
 Incluye los ajustes de Tanques, Surtidores, Carga y comprobantes.
 Requiere privilegios para ALTER PROCEDURE y GRANT EXECUTE sobre el SP.
 No modifica movimientos comerciales.
@@ -113,7 +113,9 @@ BEGIN
         @RelVentaExpr NVARCHAR(300), @RelLetraExpr NVARCHAR(300),
         @RelSucExpr NVARCHAR(300), @RelNumExpr NVARCHAR(300),
         @RelTurnoExpr NVARCHAR(300), @ComprobanteJoin NVARCHAR(MAX),
-        @MfEst SYSNAME,
+        @MfEst SYSNAME, @RDate SYSNAME, @DDate SYSNAME,
+        @DispatchIdExpr NVARCHAR(250), @DispatchDateExpr NVARCHAR(250),
+        @RelationDispatchJoin NVARCHAR(MAX),
         @ParamHasRow BIT = 0, @Ambiguo BIT = 0;
 
     -- Acepta ID_ESTACION e ID_ESTAICION (error de tipeo mencionado);
@@ -239,23 +241,29 @@ BEGIN
         END;
     END;
 
-    -- Buscar vínculo con Despachos sin asumir que ID_SALE = ID_DESPACHO.
-    SELECT TOP(1) @RKey=rc.name,@DKey=dc.name
-    FROM sys.columns rc
-    JOIN sys.columns dc ON dc.object_id=OBJECT_ID(N'dbo.Despachos')
-      AND REPLACE(LOWER(dc.name),'_','')=REPLACE(LOWER(rc.name),'_','')
-    WHERE rc.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
-      AND REPLACE(LOWER(rc.name),'_','') IN ('iddespacho','iddespcho','idsale')
-    ORDER BY CASE REPLACE(LOWER(rc.name),'_','')
-             WHEN 'iddespacho' THEN 0 WHEN 'iddespcho' THEN 1 ELSE 2 END;
-
-    -- Relación explícita indicada por la instalación: DI_DESPACHO -> ID_SALE.
-    -- Solo se acepta si ambas columnas están presentes.
-    IF COL_LENGTH('dbo.RelacionCptsDespachos','DI_DESPACHO') IS NOT NULL
-       AND COL_LENGTH('dbo.Despachos','ID_SALE') IS NOT NULL
+    -- Relacion verificada: ID_SALE identifica la venta, pero no es la
+    -- clave de RelacionCptsDespachos. Se exigen ID_DESPACHO y ULDATE
+    -- de Despachos frente al identificador de despacho y FECHA de la relacion.
+    SELECT TOP(1) @DKey=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.Despachos')
+        AND REPLACE(LOWER(c.name),'_','')='iddespacho';
+    SELECT TOP(1) @DDate=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.Despachos')
+        AND REPLACE(LOWER(c.name),'_','')='uldate';
+    SELECT TOP(1) @RKey=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
+        AND REPLACE(LOWER(c.name),'_','') IN ('iddespacho','didespacho')
+      ORDER BY CASE REPLACE(LOWER(c.name),'_','')
+          WHEN 'iddespacho' THEN 0 ELSE 1 END;
+    SELECT TOP(1) @RDate=c.name FROM sys.columns c
+      WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
+        AND REPLACE(LOWER(c.name),'_','')='fecha';
+    IF @DKey IS NULL OR @DDate IS NULL OR @RKey IS NULL OR @RDate IS NULL
     BEGIN
-      SET @RKey='DI_DESPACHO';
-      SET @DKey='ID_SALE';
+      -- Mantener tanques/carga aunque falte el esquema de comprobantes.
+      -- No atribuir cobros a una venta por coincidencia de ID_SALE.
+      SET @RKey=NULL;
+      SET @DKey=NULL;
     END;
 
     -- Nombres de comprobante por metadatos: jamás suponer que TURNO existe.
@@ -276,8 +284,8 @@ BEGIN
       WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
         AND REPLACE(LOWER(c.name),'_','')='turno';
 
-    SET @RelVentaExpr=CASE WHEN @RKey IS NOT NULL AND REPLACE(LOWER(@DKey),'_','')='idsale'
-      THEN N'r.'+QUOTENAME(@RKey) ELSE N'CAST(NULL AS INT)' END;
+    SET @RelVentaExpr=CASE WHEN @RKey IS NOT NULL
+      THEN N'd.ID_SALE' ELSE N'CAST(NULL AS INT)' END;
     SET @RelLetraExpr=CASE WHEN @RLetra IS NOT NULL
       THEN N'r.'+QUOTENAME(@RLetra) ELSE N'CAST(NULL AS NVARCHAR(10))' END;
     SET @RelSucExpr=CASE WHEN @RSucursal IS NOT NULL
@@ -316,25 +324,9 @@ BEGIN
       END;
     END;
 
-    IF @REst IS NULL AND @RKey IS NULL
-    BEGIN
-        RAISERROR('RelacionCptsDespachos no tiene ID_ESTACION ni clave compartida confirmada con Despachos. No se envían datos sin filtro.',16,1);
-        RETURN;
-    END;
-    IF @EstadoVta IS NOT NULL AND @RKey IS NULL
-    BEGIN
-        RAISERROR('No hay clave confirmada para filtrar los comprobantes por ESTADOVTA. Ejecutá con @EstadoVta=NULL o verificá el vínculo.',16,1);
-        RETURN;
-    END;
+    -- Sin ambos campos del vínculo compuesto, devolver relaciones vacías;
+    -- no bloquear el circuito restante ni presentar facturas incorrectas.
 
-    -- Solo calcular isla cuando SURTIDOR es numerico entero.
-    -- Si es texto, no se inventa una relacion: el campo Isla sera NULL.
-    SELECT @SCaraType=TYPE_NAME(c.system_type_id)
-      FROM sys.columns c
-      WHERE c.object_id=OBJECT_ID(N'dbo.Surpla') AND c.name='SURTIDOR';
-    SELECT @DCaraType=TYPE_NAME(c.system_type_id)
-      FROM sys.columns c
-      WHERE c.object_id=OBJECT_ID(N'dbo.Despachos') AND c.name='SURTIDOR';
     SET @IslaSurplaExpr=CASE WHEN @SCaraType IN ('tinyint','smallint','int','bigint')
       THEN N'CASE WHEN s.SURTIDOR BETWEEN 1 AND 9999 THEN (CONVERT(INT,s.SURTIDOR)+1)/2 ELSE NULL END'
       ELSE N'CAST(NULL AS INT)' END;
@@ -443,10 +435,17 @@ BEGIN
       THEN N'd.MANGUERA' ELSE N'CAST(NULL AS INT)' END;
     SET @Fecha=CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL
       THEN N'CONVERT(VARCHAR(8),d.ULTIME,108)' ELSE N'CAST(NULL AS VARCHAR(8))' END;
+    SET @DispatchIdExpr=CASE WHEN @DKey IS NOT NULL
+      THEN N'd.'+QUOTENAME(@DKey) ELSE N'CAST(NULL AS NVARCHAR(40))' END;
+    SET @DispatchDateExpr=CASE WHEN @DDate IS NOT NULL
+      THEN N'd.'+QUOTENAME(@DDate) ELSE N'CAST(NULL AS DATETIME)' END;
     SET @Sql=N'
       SELECT TOP(@MaxDespachos)
              d.'+QUOTENAME(@DEst)+N' AS IdEstacion,
-             d.ID_SALE AS IdSale, d.SURTIDOR AS Cara,
+             d.ID_SALE AS IdSale,
+             '+@DispatchIdExpr+N' AS IdDespacho,
+             '+@DispatchDateExpr+N' AS FechaDespacho,
+             d.SURTIDOR AS Cara,
              '+@IslaDespachosExpr+N' AS Isla,
              '+@DManguera+N' AS Manguera, d.CODART AS CodArt,
              p.'+QUOTENAME(@ProdDesc)+N' AS Producto,
@@ -463,23 +462,20 @@ BEGIN
          N'@IdEstacion INT,@EstadoVta BIT,@MaxDespachos INT',
          @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,@MaxDespachos=@MaxDespachos;
 
-    -- Resultado 4: RELACION COMPROBANTE/DESPACHO
-    -- Si existe clave compartida, usa EXISTS y también el filtro de EstadoVta.
-    -- Si no existe pero la tabla lleva estación, devuelve relaciones de esa estación
-    -- únicamente cuando EstadoVta es NULL. Nunca asume columnas de factura.
-    IF @RKey IS NOT NULL
+    -- Resultado 4: comprobante del despacho: dos claves obligatorias.
+    -- El ID_SALE se obtiene de Despachos DESPUES de enlazar por ID y fecha.
+    SET @RelationDispatchJoin=N'';
+    SET @WhereRel=N'1=0';
+    IF @RKey IS NOT NULL AND @DKey IS NOT NULL
     BEGIN
-      SET @WhereRel=N'EXISTS (
-         SELECT 1 FROM dbo.Despachos d
-         WHERE d.'+QUOTENAME(@DKey)+N'=r.'+QUOTENAME(@RKey)+N'
-           AND d.'+QUOTENAME(@DEst)+N'=@IdEstacion
-           AND (@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)
-      )';
+      SET @RelationDispatchJoin=N' INNER JOIN dbo.Despachos d
+        ON d.'+QUOTENAME(@DKey)+N'=r.'+QUOTENAME(@RKey)+N'
+        AND d.'+QUOTENAME(@DDate)+N'=r.'+QUOTENAME(@RDate)+N'
+        AND d.'+QUOTENAME(@DEst)+N'=@IdEstacion';
+      SET @WhereRel=N'(@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)';
       IF @REst IS NOT NULL
-        SET @WhereRel=N'r.'+QUOTENAME(@REst)+N'=@IdEstacion AND '+@WhereRel;
-    END
-    ELSE
-      SET @WhereRel=N'r.'+QUOTENAME(@REst)+N'=@IdEstacion';
+        SET @WhereRel+=N' AND r.'+QUOTENAME(@REst)+N'=@IdEstacion';
+    END;
 
     SET @Sql=N'
       SELECT TOP(@MaxRelaciones)
@@ -489,6 +485,7 @@ BEGIN
           '+@RelNumExpr+N' AS Numero,
           '+@RelTurnoExpr+N' AS Turno
       FROM dbo.RelacionCptsDespachos r
+      '+@RelationDispatchJoin+N'
       '+@ComprobanteJoin+N'
       WHERE '+@WhereRel+N';';
     EXEC sys.sp_executesql @Sql,
