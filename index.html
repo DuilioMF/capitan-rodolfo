@@ -482,20 +482,51 @@ h1 em{font-weight:500;color:#d9ae65}
    tableView(pumpModal,'pumpStatus','pumpTableWrap',rows,cols,
      'No hay surtidores para esta selección.',filter?'Filtrado: '+filter.key+' '+filter.value:'');
  }
- function showReceipt(sale,parentModal){
+ let receiptLookupRequest=0;
+ async function showReceipt(sale,parentModal){
    receiptParent=parentModal;
-   const records=getRows(circuit?.receipts);
-   const matched=records.filter(r=>{
-     const key=r.Venta??r.DI_DESPACHO??r.Di_Despacho??r.IdSale;
-     return hasValue(key)&&String(key)===String(sale);
-   });
-   document.getElementById('receiptModalTitle').textContent='Venta '+sale+' · comprobante';
-   tableView(receiptModal,'receiptStatus','receiptTableWrap',matched,[
+   const columns=[
      {label:'Letra',value:r=>r.Letra??r.letra},
      {label:'Sucursal',value:r=>r.Sucursal??r.sucursal},
      {label:'Número',value:r=>r.Numero??r.NCOMPRO??r.NCompro},
      {label:'Turno',value:r=>r.Turno??r.turno}
-   ],'La venta está cobrada, pero no llegó un comprobante asociado en la respuesta del SP. No se muestra otra venta.');
+   ];
+   const title=document.getElementById('receiptModalTitle');
+   title.textContent='Venta '+sale+' · comprobante';
+   tableView(receiptModal,'receiptStatus','receiptTableWrap',[],columns,
+     'Consultando directamente por ID_SALE, FECHA e ID_DESPACHO…');
+   const status=document.getElementById('receiptStatus');
+   const idSale=Number(sale),idEstacion=Number(stationSelect.value);
+   if(!activeBridge||!Number.isSafeInteger(idSale)||idSale<=0||!Number.isInteger(idEstacion)||idEstacion<=0){
+     status.className='tank-status warn';
+     status.textContent='No puedo consultar: falta conexión o identificador de venta válido.';
+     return;
+   }
+   const request=++receiptLookupRequest;
+   status.textContent='Buscando el comprobante exacto en SiSRL…';
+   try {
+     const response=await localFetch(activeBridge+'/api/station/dispatch-receipt',{
+       method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({idEstacion,idSale})
+     });
+     const result=await response.json().catch(()=>({}));
+     if(!response.ok)throw Error(result.error||'HTTP '+response.status);
+     if(request!==receiptLookupRequest||!receiptModal.classList.contains('open'))return;
+     const rows=Array.isArray(result.rows)?result.rows:[];
+     tableView(receiptModal,'receiptStatus','receiptTableWrap',rows,columns,
+       'No se encontró comprobante relacionado por FECHA e ID_DESPACHO.');
+     const status=document.getElementById('receiptStatus');
+     status.className='tank-status '+(result.truncated?'warn':'ok');
+     const paid=result.estadoVta===null||result.estadoVta===undefined?'Estado no informado':
+       Number(result.estadoVta)===1?'Cobrado':Number(result.estadoVta)===0?'Pendiente':'Estado '+result.estadoVta;
+     status.textContent=rows.length+' comprobante(s) verificado(s) · '+paid+
+       ' · '+(result.source==='sp'?'Procedimiento SQL':'Lectura autorizada')+
+       (result.truncated?' · Lista incompleta: más de 100 registros':'');
+   } catch(e) {
+     if(request!==receiptLookupRequest||!receiptModal.classList.contains('open'))return;
+     status.className='tank-status warn';
+     status.textContent='No se pudo verificar este comprobante: '+e.message;
+   }
  }
  let dispatchView='all';
  const paymentStep=document.getElementById('paymentStep');
