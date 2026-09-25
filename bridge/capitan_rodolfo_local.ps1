@@ -869,7 +869,7 @@ function Get-VerifiedPaymentEvidence {
        $Numero.Length -gt 40 -or -not $Letra -or -not $Sucursal -or -not $Numero){
        throw 'El comprobante necesita letra, sucursal y número para enlazar el pago.'
     }
-    $Connection.ChangeDatabase('SiSRL')
+    $Connection.ChangeDatabase('Maestros')
     $mfStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.MaeFac'
     $mfLetter=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('LETRA')
     $mfBranch=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('SUCURSAL')
@@ -1712,6 +1712,9 @@ try {
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
              Send-Json $stream 400 @{error='Estación inválida.'};continue
           }
+          if(@($state.databases) -notcontains 'Maestros'){
+             Send-Json $stream 403 @{error='Maestros no es accesible con esta sesión SQL.'};continue
+          }
           $cn=$Sessions[$state.sessionId].connection
           if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
              Send-Json $stream 403 @{error='Estación no autorizada.'};continue
@@ -1798,6 +1801,9 @@ try {
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
             Send-Json $stream 400 @{error='Elegí una estación válida.'};continue
           }
+          if(@($state.databases) -notcontains 'Maestros'){
+            Send-Json $stream 403 @{error='La conexión SQL no tiene acceso a Maestros, donde está PA_VentasFormasPago.'};continue
+          }
           $cn=$Sessions[$state.sessionId].connection
           $ids=@(Get-StationOptions -Connection $cn -Database ([string]$state.database))
           if($ids -notcontains $station){
@@ -1825,51 +1831,27 @@ try {
           if($turnoDesde -lt 0 -or $turnoHasta -lt $turnoDesde -or $turnoHasta -gt 99999){
              Send-Json $stream 400 @{error='El rango de turnos debe estar entre 0 y 99999.'};continue
           }
-          # La llamada comprobada tiene SIETE argumentos posicionales:
-          # fecha desde/hasta, estacion, rango 0..999, rango 0..999.
-          # No suponer nombres de parametros: resolver su orden desde SQL Server.
-          # Si cambió la firma, fallar antes de devolver cobros incorrectos.
-          $cn.ChangeDatabase('SiSRL')
-          $meta=$cn.CreateCommand()
-          try {
-            $meta.CommandText=@"
-SELECT p.name AS Name,TYPE_NAME(p.user_type_id) AS TypeName
-FROM sys.parameters p
-WHERE p.object_id=OBJECT_ID('dbo.PA_VentasFormasPago','P')
-  AND p.is_output=0
-ORDER BY p.parameter_id;
-"@
-            $reader=$meta.ExecuteReader()
-            $signature=New-Object System.Collections.Generic.List[object]
-            try {
-              while($reader.Read()){
-                $signature.Add([pscustomobject]@{Name=[string]$reader['Name'];Type=[string]$reader['TypeName']})
-              }
-            }finally{$reader.Close()}
-          }finally{$meta.Dispose()}
-          if($signature.Count -ne 7){
-            Send-Json $stream 422 @{error=('Firma inesperada: PA_VentasFormasPago presenta '+$signature.Count+' parámetros y el ejemplo aprobado utiliza 7. Revisá el procedimiento.');parametros=@($signature.ToArray())}
-            continue
+          # Firma real recibida de Maestros: 7 parámetros.
+          # La fecha fin del SP ORIGINAL usa BETWEEN y requiere fin del día.
+          # La candidata usa intervalo [inicio,fin siguiente día), ambos
+          # reciben la misma fecha de calendario sin perder operaciones.
+          $params=[pscustomobject]@{
+            FechaDesde=$from.Date
+            FechaHasta=$until.Date.AddDays(1).AddMilliseconds(-3)
+            IdEstacion=$station
+            TurnoDesde=$turnoDesde
+            TurnoHasta=$turnoHasta
+            VendedorDesde=0
+            VendedorHasta=999
           }
-          if(($signature[0].Type -notin @('date','datetime','datetime2','smalldatetime')) -or
-             ($signature[1].Type -notin @('date','datetime','datetime2','smalldatetime'))){
-            Send-Json $stream 422 @{error='Los dos primeros parámetros de PA_VentasFormasPago no son fechas. No se asumirá una firma incompatible.'}
-            continue
-          }
-          $arguments=@($from.Date,$until.Date,$station,$turnoDesde,$turnoHasta,0,999)
-          $named=[ordered]@{}
-          for($i=0;$i -lt 7;$i++){
-            $named[$signature[$i].Name.TrimStart('@')]=$arguments[$i]
-          }
-          $params=[pscustomobject]$named
           try {
             # Mantener los dos ultimos argumentos 0..999 indicados por Duilio.
             # Nunca sintetizar importes desde Despachos.
-            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
+            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'Maestros' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
             $sets=@($result.resultSets)
             if($sets.Count -eq 0){throw 'PA_VentasFormasPago no devolvió un conjunto de resultados.'}
             Send-Json $stream 200 @{
-              source='dbo.PA_VentasFormasPago';database='SiSRL';station=$station
+              source='Maestros.dbo.PA_VentasFormasPago';database='Maestros';station=$station
               fechaDesde=$from.ToString('yyyy-MM-dd');fechaHasta=$until.ToString('yyyy-MM-dd')
               turnoDesde=$turnoDesde;turnoHasta=$turnoHasta
               resultSets=$sets
