@@ -267,6 +267,8 @@ h1 em{font-weight:500;color:#d9ae65}
       <label>Turno desde <input type="number" id="paymentsShiftFrom" value="0" min="0" max="99999"></label>
       <label>Turno hasta <input type="number" id="paymentsShiftTo" value="99999" min="0" max="99999"></label>
       <button type="button" id="paymentsSearch">Consultar cobros</button>
+      <label>ID_SALE <input type="number" id="paymentsSaleId" min="1" step="1" placeholder="Nº de despacho"></label>
+      <button type="button" id="paymentsFindSale" class="payments-find-sale">Buscar despacho</button>
     </div>
     <p id="paymentsNotice" class="payments-notice" role="status" aria-live="polite">Elegí un período y consultá los cobros reales.</p>
     <div class="payments-layout">
