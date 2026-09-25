@@ -64,4 +64,4 @@
 }
 @media(prefers-reduced-motion:reduce){.payments-method{transition:none}}
 
-.payments-selected{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:11px;color:#ffcf92}.payments-selected button{padding:8px 11px;border:1px solid #b87737;border-radius:8px;background:#281b10;color:#f7c88c;font-weight:700;cursor:pointer}.payments-selected button[hidden]{display:none}
+.payments-selected{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:11px;color:#ffcf92}.payments-selected button{padding:8px 11px;border:1px solid #b87737;border-radius:8px;background:#281b10;color:#f7c88c;font-weight:700;cursor:pointer}.payments-selected button[hidden]{display:none}.payments-selected #paymentsOpenPaid{border-color:#50a878;background:#152b23;color:#a4ebc3}
