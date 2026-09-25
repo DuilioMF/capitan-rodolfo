@@ -1,4 +1,4 @@
-/* Capitán Rodolfo v84 · medios de pago exclusivamente desde SQL autorizado. */
+/* Capitán Rodolfo v87 · medios de pago exclusivamente desde SQL autorizado. */
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
@@ -343,6 +343,21 @@ function open(){
  let p;try{p=range()}catch(e){render();notice(e.message,'warn');return}
  if(!data||paramsKey!==JSON.stringify(p))search();else render();
 }
+function openForDispatch(sale){
+ const id=Number(sale);
+ if(!Number.isSafeInteger(id)||id<=0){
+   showModal();saleFilter=null;render();
+   notice('El despacho no tiene un ID_SALE válido para buscar el comprobante.','warn');
+   return;
+ }
+ // Abrir Cobros inmediatamente; el endpoint valida la relación real del
+ // despacho antes de mostrar importes o elegir una factura.
+ $('paymentsSaleId').value=String(id);
+ $('paymentsShiftFrom').value='0';
+ $('paymentsShiftTo').value='99999';
+ showModal();
+ searchBySale();
+}
 function openForSale(details){
  if(!details||[details.letra,details.sucursal,details.numero].some(x=>x===null||x===undefined||String(x).trim()==='')){
   showModal();saleFilter=null;render();notice('No se puede relacionar el cobro: faltan las claves verificadas del comprobante.','warn');return;
@@ -382,5 +397,6 @@ $('paymentsClearInvoice').addEventListener('click',()=>{saleFilter=null;visible=
 $('paymentsOpenPaid').addEventListener('click',()=>{close();window.capitanOpenCobrados?.()});
 window.capitanOpenCobros=open;
 window.capitanOpenCobrosForSale=openForSale;
+window.capitanOpenCobrosForDispatch=openForDispatch;
 render();
 })();
