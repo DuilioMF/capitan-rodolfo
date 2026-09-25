@@ -206,7 +206,8 @@ jobs:
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
               'id="paymentsMethods"','cobros.css?v=84','cobros.js?v=84',
-              'window.capitanSqlBridge=activeBridge','window.capitanOpenCobros?.()']){
+              'window.capitanSqlBridge=activeBridge','window.capitanOpenCobros?.()',
+              'id="paymentsSaleId"','id="paymentsFindSale"']){
             if(!ui.includes(marker))throw Error('Pantalla Cobros incompleta: '+marker);
           }
           const allowlist=JSON.parse(fs.readFileSync('sp_allowlist.json','utf8'));
@@ -283,6 +284,10 @@ jobs:
           if(!cobros.includes('window.capitanOpenCobrosForSale=openForSale;')||
              !cobros.includes('function matchesSale('))
              throw Error('El tablero no restringe el cobro al comprobante verificado');
+          if(!fallback.includes("'/api/station/payment-sale'") ||
+             !fallback.includes("'d.ID_DESPACHO=r.'+$rkey+' AND d.ULDATE=r.FECHA '") ||
+             !cobros.includes("api('/api/station/payment-sale'"))
+             throw Error('La búsqueda por ID_SALE no usa relación compuesta validada');
           console.log('Cobros v84: comprobante por identificador + fecha; apertura y filtro por factura OK');
           console.log('Cierres izquierda y cobros: estados, filtros y navegación OK');
 
