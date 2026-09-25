@@ -65,3 +65,5 @@
 @media(prefers-reduced-motion:reduce){.payments-method{transition:none}}
 
 .payments-selected{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:11px;color:#ffcf92}.payments-selected button{padding:8px 11px;border:1px solid #b87737;border-radius:8px;background:#281b10;color:#f7c88c;font-weight:700;cursor:pointer}.payments-selected button[hidden]{display:none}.payments-selected #paymentsOpenPaid{border-color:#50a878;background:#152b23;color:#a4ebc3}
+
+.payments-find-sale{border:1px solid #55b888!important;background:linear-gradient(125deg,#19382a,#296948)!important;color:#d7fce7!important}.payments-choice{padding:9px 15px;margin:5px;border:1px solid #54ba86;border-radius:8px;background:#142d20;color:#c2efcf;cursor:pointer}
