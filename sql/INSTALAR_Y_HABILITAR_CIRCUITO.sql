@@ -438,7 +438,7 @@ BEGIN
     SET @DispatchIdExpr=CASE WHEN @DKey IS NOT NULL
       THEN N'd.'+QUOTENAME(@DKey) ELSE N'CAST(NULL AS NVARCHAR(40))' END;
     SET @DispatchDateExpr=CASE WHEN @DDate IS NOT NULL
-      THEN N'd.'+QUOTENAME(@DDate) ELSE N'CAST(NULL AS DATETIME)' END;
+      THEN N'CONVERT(VARCHAR(23),d.'+QUOTENAME(@DDate)+N',121)' ELSE N'CAST(NULL AS VARCHAR(23))' END;
     SET @Sql=N'
       SELECT TOP(@MaxDespachos)
              d.'+QUOTENAME(@DEst)+N' AS IdEstacion,
