@@ -205,8 +205,9 @@ jobs:
           }
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
-              'id="paymentsMethods"','cobros.css?v=83','cobros.js?v=83',
-              'window.capitanSqlBridge=activeBridge','window.capitanOpenCobros?.()']){
+              'id="paymentsMethods"','cobros.css?v=84','cobros.js?v=84',
+              'window.capitanSqlBridge=activeBridge','window.capitanOpenCobros?.()',
+              'id="paymentsSaleId"','id="paymentsFindSale"']){
             if(!ui.includes(marker))throw Error('Pantalla Cobros incompleta: '+marker);
           }
           const allowlist=JSON.parse(fs.readFileSync('sp_allowlist.json','utf8'));
@@ -214,7 +215,7 @@ jobs:
              !allowlist.procedures.includes('dbo.PA_VentasFormasPago')){
             throw Error('Lista local no permite ambos SP de cobros');
           }
-          console.log('Cobros v83: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
+          console.log('Cobros v84: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
           const doc=fs.readFileSync('documentos.html','utf8');
           const index=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="drop"','id="truckWrap"','id="file"','dragover','drop','/functions/v1/extract-document-json','JSON.stringify(extracted,null,2)','Otro (revisar)']){
@@ -264,6 +265,30 @@ jobs:
              !index.includes("action:r=>showReceipt(r.IdSale??r.Venta,dispatchModal)")){
                throw Error('Cobro no abre panel de medios o la carga no vincula su comprobante');
           }
+          const sp=fs.readFileSync('sql/PA_CapitanRodolfo_CircuitoEstacion.sql','utf8');
+          const fallback=fs.readFileSync('bridge/capitan_rodolfo_local.ps1','utf8');
+          for(const marker of ['@DispatchIdExpr','@DispatchDateExpr',"@RDate",'d.ID_SALE','FechaDespacho',
+             "QUOTENAME(@DDate)+N'=r.'+QUOTENAME(@RDate)"]){
+             if(!sp.includes(marker))throw Error('Falta vínculo de cobros: '+marker);
+          }
+          if(sp.includes("SET @DKey='ID_SALE'")||fallback.includes("'d.ID_SALE=r.DI_DESPACHO'"))
+             throw Error('Persistió enlace erróneo directo de DI_DESPACHO con ID_SALE');
+          for(const marker of ["d.ID_DESPACHO='+$receiptKey+' AND d.ULDATE=r.FECHA",
+             "AS FechaDespacho"]){
+             if(!fallback.includes(marker))throw Error('Conector sin vínculo compuesto: '+marker);
+          }
+          for(const marker of ["loadStep.addEventListener('click',()=>loads('all'))",
+             "window.capitanOpenCobrosForSale?.(invoice)","window.capitanOpenCobrados=()=>loads('paid')",'id="paymentsOpenPaid"']){
+             if(!index.includes(marker))throw Error('Pantalla sin acceso al cobro: '+marker);
+          }
+          if(!cobros.includes('window.capitanOpenCobrosForSale=openForSale;')||
+             !cobros.includes('function matchesSale('))
+             throw Error('El tablero no restringe el cobro al comprobante verificado');
+          if(!fallback.includes("'/api/station/payment-sale'") ||
+             !fallback.includes("'d.ID_DESPACHO=r.'+$rkey+' AND d.ULDATE=r.FECHA '") ||
+             !cobros.includes("api('/api/station/payment-sale'"))
+             throw Error('La búsqueda por ID_SALE no usa relación compuesta validada');
+          console.log('Cobros v84: comprobante por identificador + fecha; apertura y filtro por factura OK');
           console.log('Cierres izquierda y cobros: estados, filtros y navegación OK');
 
           const explorer=fs.readFileSync('conexion-sql.html','utf8');

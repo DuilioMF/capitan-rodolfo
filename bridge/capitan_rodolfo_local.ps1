@@ -789,7 +789,10 @@ function Get-StationReadOnlyCircuit {
         $joinProd=if($prodOk){$prodJoin.Replace('{SOURCE}','d')}else{''}
         $prodFields=if($prodOk){'p.DESCRIART AS Producto,'+$costExpr+' AS Costo,'+$priceExpr+' AS PrecioProducto,'}
             else{'CAST(NULL AS NVARCHAR(120)) AS Producto,CAST(NULL AS DECIMAL(18,2)) AS Costo,CAST(NULL AS DECIMAL(18,2)) AS PrecioProducto,'}
-        $dispatchSql='SELECT TOP (200) d.ID_SALE AS IdSale,d.SURTIDOR AS Cara,'+
+        $dispatchId=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ID_DESPACHO'){'d.ID_DESPACHO'}else{'CAST(NULL AS INT)'}
+        $dispatchDate=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE'){"CONVERT(VARCHAR(23),d.ULDATE,121)"}else{'CAST(NULL AS VARCHAR(23))'}
+        $dispatchSql='SELECT TOP (200) d.ID_SALE AS IdSale,'+$dispatchId+' AS IdDespacho,'+
+             $dispatchDate+' AS FechaDespacho,d.SURTIDOR AS Cara,'+
              $manguera+' AS Manguera,d.CODART AS CodArt,'+
              $prodFields+'d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,'+
              'd.ESTADOVTA AS EstadoVta,'+$hora+' AS Hora '+
@@ -799,8 +802,10 @@ function Get-StationReadOnlyCircuit {
             $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station
         } catch {$warnings.Add('Carga no disponible en modo lectura: '+$_.Exception.Message)}
         $receiptStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.RelacionCptsDespachos'
-        if($receiptStation -and
-           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO')){
+        $receiptKey=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'ID_DESPACHO'){'r.ID_DESPACHO'}elseif(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO'){'r.DI_DESPACHO'}else{''}
+        $receiptDate=Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'FECHA'
+        $hasDispatchKeys=(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ID_DESPACHO') -and (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE')
+        if($receiptKey -and $receiptDate -and $hasDispatchKeys){
             $fields=@()
             foreach($col in @(
                 @{source='LETRA';target='Letra'},
@@ -812,12 +817,15 @@ function Get-StationReadOnlyCircuit {
                     $fields+=('r.['+$col.source+'] AS ['+$col.target+']')
                 }else{$fields+=('CAST(NULL AS NVARCHAR(30)) AS ['+$col.target+']')}
             }
-            $receiptSql='SELECT TOP(200) r.DI_DESPACHO AS Venta,'+($fields -join ',')+
+            $receiptSql='SELECT TOP(200) d.ID_SALE AS Venta,'+($fields -join ',')+
                ' FROM dbo.RelacionCptsDespachos r INNER JOIN dbo.Despachos d ON '+
-               'd.ID_SALE=r.DI_DESPACHO AND d.'+$dispatchStation+'=@Station '+
-               'WHERE r.'+$receiptStation+'=@Station;'
+               'd.ID_DESPACHO='+$receiptKey+' AND d.ULDATE=r.FECHA AND d.'+$dispatchStation+'=@Station '+
+               $(if($receiptStation){'WHERE r.'+$receiptStation+'=@Station '}else{''})+
+               'ORDER BY d.ID_SALE DESC;'
             try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
             catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
+        } else {
+            $warnings.Add('Comprobantes no enlazados: faltan ID_DESPACHO y/o ULDATE/FECHA verificados en las tablas.')
         }
     }
     $warnings.Add('El SP no pudo ejecutarse: '+$Failure+'. Mostrando solamente las tablas autorizadas en modo lectura.')
@@ -1604,6 +1612,70 @@ try {
         }
       }
 
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payment-sale'){
+        # Resolver una venta por ID_SALE sin tomarlo por ID_DESPACHO.
+        # La factura solo se devuelve si coinciden ID_DESPACHO y ULDATE/FECHA.
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
+             Send-Json $stream 409 @{error='Conectá SiSRL para consultar el despacho.'};continue
+          }
+          $inputData=$req.Body | ConvertFrom-Json
+          $station=0;$sale=0
+          if(-not [int]::TryParse([string]$inputData.idEstacion,[ref]$station) -or $station -le 0 -or
+             -not [int]::TryParse([string]$inputData.idSale,[ref]$sale) -or $sale -le 0){
+             Send-Json $stream 400 @{error='Indicá estación e ID_SALE numéricos positivos.'};continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+             Send-Json $stream 403 @{error='No se autorizó la estación.'};continue
+          }
+          $cn.ChangeDatabase('SiSRL')
+          $dstation=Find-StationColumn -Connection $cn -ObjectName 'dbo.Despachos'
+          $rstation=Find-StationColumn -Connection $cn -ObjectName 'dbo.RelacionCptsDespachos'
+          $rkey=if(Get-SqlColumnExists -Connection $cn -Table 'dbo.RelacionCptsDespachos' -Name 'ID_DESPACHO'){'[ID_DESPACHO]'}
+                elseif(Get-SqlColumnExists -Connection $cn -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO'){'[DI_DESPACHO]'}
+                else{''}
+          $letter=Find-VerifiedPaymentColumn $cn 'dbo.RelacionCptsDespachos' @('LETRA')
+          $branch=Find-VerifiedPaymentColumn $cn 'dbo.RelacionCptsDespachos' @('SUCURSAL')
+          $number=Find-VerifiedPaymentColumn $cn 'dbo.RelacionCptsDespachos' @('NCOMPRO','NUMERO')
+          if(-not $dstation -or -not $rkey -or -not $letter -or -not $branch -or -not $number -or
+             -not (Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ID_DESPACHO') -or
+             -not (Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ULDATE') -or
+             -not (Get-SqlColumnExists -Connection $cn -Table 'dbo.RelacionCptsDespachos' -Name 'FECHA')){
+             Send-Json $stream 422 @{error='No se verificaron las columnas ID_DESPACHO y ULDATE/FECHA y los datos del comprobante. No se atribuyen pagos por coincidencia de ID_SALE.'};continue
+          }
+          $query='SELECT TOP(25) d.ID_SALE AS IdSale,d.ID_DESPACHO AS IdDespacho,'+
+             'CONVERT(VARCHAR(23),d.ULDATE,121) AS FechaDespacho,d.ESTADOVTA AS EstadoVta,'+
+             'r.'+$letter+' AS Letra,r.'+$branch+' AS Sucursal,r.'+$number+' AS Numero '+
+             'FROM dbo.Despachos d INNER JOIN dbo.RelacionCptsDespachos r ON '+
+             'd.ID_DESPACHO=r.'+$rkey+' AND d.ULDATE=r.FECHA '+
+             'WHERE d.ID_SALE=@Sale AND d.'+$dstation+'=@Station '+
+             $(if($rstation){'AND r.'+$rstation+'=@Station '}else{''})+
+             'ORDER BY d.ULDATE DESC,d.ID_SALE DESC;'
+          $cmd=$cn.CreateCommand();$cmd.CommandText=$query;$cmd.CommandTimeout=30
+          $null=$cmd.Parameters.Add('@Sale',[System.Data.SqlDbType]::Int)
+          $null=$cmd.Parameters.Add('@Station',[System.Data.SqlDbType]::Int)
+          $cmd.Parameters['@Sale'].Value=$sale
+          $cmd.Parameters['@Station'].Value=$station
+          $rows=@()
+          $reader=$cmd.ExecuteReader()
+          try {
+             while($reader.Read()){
+               $rows+=@{idSale=[int]$reader['IdSale']
+                 idDespacho=$reader['IdDespacho']
+                 fecha=[string]$reader['FechaDespacho']
+                 estadoVta=$reader['EstadoVta']
+                 letra=[string]$reader['Letra']
+                 sucursal=[string]$reader['Sucursal']
+                 numero=[string]$reader['Numero']}
+             }
+          }finally{$reader.Close();$cmd.Dispose()}
+          Send-Json $stream 200 @{idSale=$sale;idEstacion=$station;rows=@($rows);count=$rows.Count;version=$Version}
+        }catch {
+          Send-Json $stream 422 @{error=('No se pudo buscar el despacho por ID_SALE: '+$_.Exception.Message)}
+        }
+      }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payment-evidence'){
         try{
           $state=Ensure-ActiveSession

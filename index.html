@@ -95,7 +95,7 @@ h1 em{font-weight:500;color:#d9ae65}
 .kpi small{color:#837b6e;font-size:10px;letter-spacing:.08em}
 .kpi strong{display:block;font:600 30px "Cormorant Garamond",serif;margin-top:7px}.ok{color:var(--green)}.warn{color:#ffb36b}
 .footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px;color:#686155;font-size:9px;letter-spacing:.16em}
-.build{border:1px solid #6d583b45;border-radius:999px;padding:6px 9px;color:#9a8468}
+.build{border:1px solid #6d583b24;border-radius:999px;padding:4px 7px;color:#766655;font-size:8px;letter-spacing:.22em;opacity:.5;user-select:text}.build:hover{opacity:.86}
 .scribble{position:absolute;left:-55px;bottom:25px;color:#6f6556;font:italic 15px "Cormorant Garamond",serif;transform:rotate(-8deg)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.32}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -137,9 +137,9 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 #truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
-<link rel="stylesheet" href="cobros.css?v=83">
-<link rel="stylesheet" href="theme.css?v=62">
-<script src="theme.js?v=62" defer></script>
+<link rel="stylesheet" href="cobros.css?v=84">
+<link rel="stylesheet" href="theme.css?v=84">
+<script src="theme.js?v=84" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -203,7 +203,7 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
   <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step" id="loadStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="dispatchModal"><span class="symbol">IV</span><small>CARGA · CLIC PARA VER</small><b>Carga</b><span id="loadCaption">Despachos, importe y cobro</span></div>
-  <div class="step" id="paymentStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="dispatchModal"><span class="symbol">V</span><small>COBRO · CLIC PARA VER</small><b id="paymentStatus">—</b><span id="paymentCaption">Ver despachos cobrados y sus comprobantes</span></div>
+  <div class="step" id="paymentStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="paymentsModal"><span class="symbol">V</span><small>COBRO · CLIC PARA VER</small><b id="paymentStatus">—</b><span id="paymentCaption">Ver despachos cobrados y sus comprobantes</span></div>
 </section>
 
 <div class="tank-modal" id="truckModal" role="dialog" aria-modal="true" aria-labelledby="truckTitle">
@@ -267,6 +267,8 @@ h1 em{font-weight:500;color:#d9ae65}
       <label>Turno desde <input type="number" id="paymentsShiftFrom" value="0" min="0" max="99999"></label>
       <label>Turno hasta <input type="number" id="paymentsShiftTo" value="99999" min="0" max="99999"></label>
       <button type="button" id="paymentsSearch">Consultar cobros</button>
+      <label>ID_SALE <input type="number" id="paymentsSaleId" min="1" step="1" placeholder="Nº de despacho"></label>
+      <button type="button" id="paymentsFindSale" class="payments-find-sale">Buscar despacho</button>
     </div>
     <p id="paymentsNotice" class="payments-notice" role="status" aria-live="polite">Elegí un período y consultá los cobros reales.</p>
     <div class="payments-layout">
@@ -281,6 +283,7 @@ h1 em{font-weight:500;color:#d9ae65}
       <section class="payments-main" aria-label="Detalle de cobros">
         <div class="payments-main-head">
           <div><div class="eyebrow">DETALLE DE MOVIMIENTOS</div><h3 id="paymentsMethodTitle">Todas las formas</h3></div>
+          <div class="payments-selected"><span id="paymentsSelection" aria-live="polite"></span><button id="paymentsClearInvoice" type="button" hidden>Ver todos los comprobantes</button><button id="paymentsOpenPaid" type="button">Ver despachos cobrados ↗</button></div>
           <span id="paymentsSource" class="payments-source">Sin consultar</span>
         </div>
         <div class="payments-overview">
@@ -316,13 +319,13 @@ h1 em{font-weight:500;color:#d9ae65}
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">55</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build" aria-label="Código interno">R·…</span></div>
 </div>
 <script>
 (async()=>{
  try{
   const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
-  if(r.ok) document.getElementById('build').textContent=(await r.text()).trim();
+  if(r.ok) document.getElementById('build').textContent='R·'+(await r.text()).trim();
  }catch(_){}
 })();
 
@@ -494,8 +497,20 @@ h1 em{font-weight:500;color:#d9ae65}
      {label:'Letra',value:r=>r.Letra??r.letra},
      {label:'Sucursal',value:r=>r.Sucursal??r.sucursal},
      {label:'Número',value:r=>r.Numero??r.NCOMPRO??r.NCompro},
-     {label:'Turno',value:r=>r.Turno??r.turno}
-   ],'La venta está cobrada, pero no llegó un comprobante asociado en la respuesta del SP. No se muestra otra venta.');
+     {label:'Turno',value:r=>r.Turno??r.turno},
+     {label:'Formas de pago',value:r=>r.Numero??r.NCOMPRO??r.NCompro,
+       format:()=> 'Ver medios',
+       action:r=>{
+         const dispatch=getRows(circuit?.dispatches).find(d=>hasValue(d.IdSale??d.Venta)&&String(d.IdSale??d.Venta)===String(sale));
+         const invoice={
+           letra:r.Letra??r.letra,sucursal:r.Sucursal??r.sucursal,
+           numero:r.Numero??r.NCOMPRO??r.NCompro,
+           fecha:dispatch?.FechaDespacho??null,
+           sale:sale
+         };
+         window.capitanOpenCobrosForSale?.(invoice);
+       },hint:'Consultar importes de este comprobante por forma de pago'}
+   ],'No hay un comprobante vinculado mediante el identificador y la fecha del despacho. No se atribuyen cobros por coincidencia de ID_SALE.');
  }
  let dispatchView='all';
  const paymentStep=document.getElementById('paymentStep');
@@ -539,14 +554,15 @@ h1 em{font-weight:500;color:#d9ae65}
  for(const [id,view] of [
     ['dispatchShowAll','all'],['dispatchShowPaid','paid'],['dispatchShowPending','pending']
  ])document.getElementById(id).addEventListener('click',()=>loads(view));
+ window.capitanOpenCobrados=()=>loads('paid');
  paymentStep.addEventListener('click',()=>window.capitanOpenCobros?.());
  paymentStep.addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){e.preventDefault();window.capitanOpenCobros?.()}
  });
  tankStep.addEventListener('click',()=>tanks());
  pumpStep.addEventListener('click',()=>pumps());
- loadStep.addEventListener('click',loads);
- for(const [node,fn] of [[tankStep,tanks],[pumpStep,pumps],[loadStep,loads]]){
+ loadStep.addEventListener('click',()=>loads('all'));
+ for(const [node,fn] of [[tankStep,tanks],[pumpStep,pumps],[loadStep,()=>loads('all')]]){
    node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fn()}});
  }
  for(const [id,fn] of [
@@ -632,7 +648,7 @@ h1 em{font-weight:500;color:#d9ae65}
    set('livePesos',money.format(dispatches.reduce((sum,row)=>sum+Number(row.Pesos||0),0)));
    set('liveDispatches',nf.format(dispatches.length));
    set('loadCaption',dispatches.length+' despachos · abrí Carga para verlos');
-   const paidCount=dispatches.filter(r=>Number(r.EstadoVta)===1).length;
+   const paidCount=dispatches.filter(r=>paymentState(r)==='paid').length;
    set('paymentStatus',nf.format(paidCount)+' cobrados');
    document.dispatchEvent(new CustomEvent('capitan:station-loaded',{detail:{station:data.station,bridge:activeBridge}}));
    set('paymentCaption','Tocá para ver cobrados y comprobantes');
@@ -765,7 +781,7 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 </script>
 
-<script src="cobros.js?v=83"></script>
+<script src="cobros.js?v=84"></script>
 
 </body>
 </html>

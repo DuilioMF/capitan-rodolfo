@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual: **76** (código publicado; SQL real pendiente de verificación en el equipo)
+- Versión actual del código: **84** (validación final contra la base SQL local pendiente)
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -73,6 +73,12 @@ Cada cambio debe quedar en un commit recuperable antes de publicar. Conservar ro
 
 GitHub es la fuente de código y GitHub Pages publica `main`. No usar copias de Sites como origen ni destino de navegación. Cada cambio se integra por PR y conserva su commit para rollback. Tema claro/oscuro compartido entre páginas; control arriba y regreso debajo.
 
-## Visualización del SP (v76)
+## Visualización del SP (v84)
 
 La vista Estación muestra directamente la respuesta de `dbo.PA_CapitanRodolfo_CircuitoEstacion`: tanques, caras/mangueras, despachos, relaciones con comprobantes y ParamStock de la estación seleccionada. También permite copiar el JSON real de los cinco conjuntos. El servicio local consulta `SiSRL` con la sesión guardada. Los datos reales sólo estarán disponibles si el equipo tiene SQL accesible, el SP instalado y los permisos adecuados. Ningún dato real se inventa desde GitHub Pages.
+
+## Cobros v84
+
+La relación para mostrar formas de pago por despacho usa `Despachos.ID_SALE` para ubicar la venta y obtiene `ID_DESPACHO` y `ULDATE`. Para adjudicar un comprobante exige `RelacionCptsDespachos.ID_DESPACHO` (o `DI_DESPACHO`) y `FECHA`, con coincidencia de ambas claves y estación. El botón Cobrado abre el comprobante verificado y, desde este, filtra los movimientos reales de `PA_VentasFormasPago` por letra, sucursal, número y fecha. No identifica por `ID_SALE` solo. Si falta relación o fecha, indica qué falta y no muestra importes de otras ventas. La validación con SQL local todavía debe ejecutarse en el equipo con permiso EXECUTE.
+
+El código propio de Capitán aparece discretamente como `R·84`, leído de `VERSION`, al pie de la pantalla de inicio; DoingLio conserva su propia build D independiente.

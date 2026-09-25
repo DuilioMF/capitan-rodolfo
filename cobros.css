@@ -1,4 +1,4 @@
-/* Capitán Rodolfo v83 · Cobros, inspirado en panel negro/cobre del tablero. */
+/* Capitán Rodolfo v84 · Cobros, inspirado en panel negro/cobre del tablero. */
 #paymentsModal{z-index:5200;padding:16px}
 #paymentsModal .payments-dialog{width:min(1380px,98vw);height:min(860px,96vh);max-height:96vh;overflow:hidden;border:1px solid #d57b27;box-shadow:0 0 0 2px #6a331750,0 0 45px #e87c1952,0 36px 100px #000e;border-radius:18px;background:#0b0c0e;color:#f5ede3}
 #paymentsModal .payments-head{border-bottom:1px solid #d8843945;background:linear-gradient(110deg,#2b180f,#0c1017 65%);padding:17px 22px;min-height:82px}
@@ -63,3 +63,7 @@
  .payments-row{grid-template-columns:minmax(0,1fr) auto;gap:7px}.payments-row .method{display:none}
 }
 @media(prefers-reduced-motion:reduce){.payments-method{transition:none}}
+
+.payments-selected{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font-size:11px;color:#ffcf92}.payments-selected button{padding:8px 11px;border:1px solid #b87737;border-radius:8px;background:#281b10;color:#f7c88c;font-weight:700;cursor:pointer}.payments-selected button[hidden]{display:none}.payments-selected #paymentsOpenPaid{border-color:#50a878;background:#152b23;color:#a4ebc3}
+
+.payments-find-sale{border:1px solid #55b888!important;background:linear-gradient(125deg,#19382a,#296948)!important;color:#d7fce7!important}.payments-choice{padding:9px 15px;margin:5px;border:1px solid #54ba86;border-radius:8px;background:#142d20;color:#c2efcf;cursor:pointer}
