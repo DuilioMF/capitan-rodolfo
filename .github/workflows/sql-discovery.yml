@@ -1,0 +1,20 @@
+name: Verify SQL Server discovery
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  sql-discovery:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check discovery behavior in Windows PowerShell 5.1
+        shell: powershell
+        run: ./tests/sql-discovery.test.ps1
+      - name: Check Núcleo/Datos UI and contract
+        run: node tests/sql-discovery-ui.test.js
