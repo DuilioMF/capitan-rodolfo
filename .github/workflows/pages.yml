@@ -27,6 +27,8 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Regression test — Ver medios from paid dispatch
+        run: node --test tests/ver-medios-navigation.test.js
       - name: Prepare canonical GitHub source
         run: |
           mkdir -p dist
