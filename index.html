@@ -281,7 +281,7 @@ h1 em{font-weight:500;color:#d9ae65}
       <section class="payments-main" aria-label="Detalle de cobros">
         <div class="payments-main-head">
           <div><div class="eyebrow">DETALLE DE MOVIMIENTOS</div><h3 id="paymentsMethodTitle">Todas las formas</h3></div>
-          <div class="payments-selected"><span id="paymentsSelection" aria-live="polite"></span><button id="paymentsClearInvoice" type="button" hidden>Ver todos los comprobantes</button></div>
+          <div class="payments-selected"><span id="paymentsSelection" aria-live="polite"></span><button id="paymentsClearInvoice" type="button" hidden>Ver todos los comprobantes</button><button id="paymentsOpenPaid" type="button">Ver despachos cobrados ↗</button></div>
           <span id="paymentsSource" class="payments-source">Sin consultar</span>
         </div>
         <div class="payments-overview">
@@ -552,6 +552,7 @@ h1 em{font-weight:500;color:#d9ae65}
  for(const [id,view] of [
     ['dispatchShowAll','all'],['dispatchShowPaid','paid'],['dispatchShowPending','pending']
  ])document.getElementById(id).addEventListener('click',()=>loads(view));
+ window.capitanOpenCobrados=()=>loads('paid');
  paymentStep.addEventListener('click',()=>window.capitanOpenCobros?.());
  paymentStep.addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){e.preventDefault();window.capitanOpenCobros?.()}
