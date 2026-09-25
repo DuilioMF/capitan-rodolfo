@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual del código: **84** (validación final contra la base SQL local pendiente)
+- Versión actual del código: **85** (validación final contra la base SQL local pendiente)
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -82,3 +82,8 @@ La vista Estación muestra directamente la respuesta de `dbo.PA_CapitanRodolfo_C
 La relación para mostrar formas de pago por despacho usa `Despachos.ID_SALE` para ubicar la venta y obtiene `ID_DESPACHO` y `ULDATE`. Para adjudicar un comprobante exige `RelacionCptsDespachos.ID_DESPACHO` (o `DI_DESPACHO`) y `FECHA`, con coincidencia de ambas claves y estación. El botón Cobrado abre el comprobante verificado y, desde este, filtra los movimientos reales de `PA_VentasFormasPago` por letra, sucursal, número y fecha. No identifica por `ID_SALE` solo. Si falta relación o fecha, indica qué falta y no muestra importes de otras ventas. La validación con SQL local todavía debe ejecutarse en el equipo con permiso EXECUTE.
 
 El código propio de Capitán aparece discretamente como `R·84`, leído de `VERSION`, al pie de la pantalla de inicio; DoingLio conserva su propia build D independiente.
+
+
+## Hotfix v85: procedencia de Cobros
+
+El puente SQL corregido consulta **Maestros.dbo.PA_VentasFormasPago**, no SiSRL, con los 7 parametros reales. Para verificar pagos MP/YPF utiliza Maestros y exige identidad/estación confirmadas. Las consultas de Despachos/RelacionCptsDespachos permanecen en SiSRL y conservan el vínculo de fecha e ID_DESPACHO publicado en v84. Si el usuario SQL no tiene acceso a Maestros, el conector comunica el bloqueo. **Pendiente:** cotejar resultados contra SiSRL/Maestros reales y aprobar la prueba funcional antes de declarar que Cobros funciona.
