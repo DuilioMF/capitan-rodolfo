@@ -137,7 +137,7 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 #truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
-<link rel="stylesheet" href="cobros.css?v=85">
+<link rel="stylesheet" href="cobros.css?v=87">
 <link rel="stylesheet" href="theme.css?v=84">
 <script src="theme.js?v=84" defer></script>
 </head>
@@ -498,18 +498,15 @@ h1 em{font-weight:500;color:#d9ae65}
      {label:'Sucursal',value:r=>r.Sucursal??r.sucursal},
      {label:'Número',value:r=>r.Numero??r.NCOMPRO??r.NCompro},
      {label:'Turno',value:r=>r.Turno??r.turno},
-     {label:'Formas de pago',value:r=>r.Numero??r.NCOMPRO??r.NCompro,
+     {label:'Formas de pago',value:()=>sale,
        format:()=> 'Ver medios',
-       action:r=>{
-         const dispatch=getRows(circuit?.dispatches).find(d=>hasValue(d.IdSale??d.Venta)&&String(d.IdSale??d.Venta)===String(sale));
-         const invoice={
-           letra:r.Letra??r.letra,sucursal:r.Sucursal??r.sucursal,
-           numero:r.Numero??r.NCOMPRO??r.NCompro,
-           fecha:dispatch?.FechaDespacho??null,
-           sale:sale
-         };
-         window.capitanOpenCobrosForSale?.(invoice);
-       },hint:'Consultar importes de este comprobante por forma de pago'}
+       action:()=>{
+         // El número puede no venir en el circuito inicial: resolverlo con
+         // ID_SALE en SQL y verificar ID_DESPACHO + ULDATE/FECHA en el bridge.
+         // Nunca deshabilitar el botón por NCOMPRO vacío ni atribuir por ID_SALE.
+         closeModals();
+         window.capitanOpenCobrosForDispatch?.(sale);
+       },hint:'Abrir Cobros y localizar los medios reales de esta venta'}
    ],'No hay un comprobante vinculado mediante el identificador y la fecha del despacho. No se atribuyen cobros por coincidencia de ID_SALE.');
  }
  let dispatchView='all';
@@ -781,7 +778,7 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 </script>
 
-<script src="cobros.js?v=85"></script>
+<script src="cobros.js?v=87"></script>
 
 </body>
 </html>
