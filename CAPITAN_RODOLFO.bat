@@ -4,17 +4,19 @@ title DoingLio - Conector SQL
 
 set "APPROOT=C:\Sistemas\DoingLioConnector"
 set "BRIDGEDIR=%APPROOT%\bridge"
+set "SQLDIR=%APPROOT%\sql"
 set "BRIDGE=%BRIDGEDIR%\capitan_rodolfo_local.ps1"
 set "VERSION_FILE=%APPROOT%\VERSION"
 set "ALLOWLIST=%APPROOT%\sp_allowlist.json"
 set "LOG=%APPROOT%\install.log"
 set "TASK=CapitanRodolfoLocal"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main"
-set "EXPECTED_VERSION=83"
+set "EXPECTED_VERSION=84"
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
 if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
 if not exist "%BRIDGEDIR%" mkdir "%BRIDGEDIR%" >nul 2>nul
+if not exist "%SQLDIR%" mkdir "%SQLDIR%" >nul 2>nul
 
 > "%LOG%" echo [%date% %time%] Inicio instalacion conector DoingLio SQL
 
@@ -27,7 +29,7 @@ echo Carpeta local: %APPROOT%
 echo Actualizando conector...
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sql/PA_CapitanRodolfo_CircuitoEstacion.sql' -OutFile '%SQLDIR%\PA_CapitanRodolfo_CircuitoEstacion.sql'" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
 
 schtasks /End /TN "%TASK%" >nul 2>nul
