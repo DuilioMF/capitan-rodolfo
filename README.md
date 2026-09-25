@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual: **76** (código publicado; SQL real pendiente de verificación en el equipo)
+- Versión en main al iniciar este cambio: **83** (la revisión 84 está en rama de prueba; exige verificación contra SiSRL) (código publicado; SQL real pendiente de verificación en el equipo)
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -76,3 +76,12 @@ GitHub es la fuente de código y GitHub Pages publica `main`. No usar copias de 
 ## Visualización del SP (v76)
 
 La vista Estación muestra directamente la respuesta de `dbo.PA_CapitanRodolfo_CircuitoEstacion`: tanques, caras/mangueras, despachos, relaciones con comprobantes y ParamStock de la estación seleccionada. También permite copiar el JSON real de los cinco conjuntos. El servicio local consulta `SiSRL` con la sesión guardada. Los datos reales sólo estarán disponibles si el equipo tiene SQL accesible, el SP instalado y los permisos adecuados. Ningún dato real se inventa desde GitHub Pages.
+
+
+## Comprobantes — corrección propuesta v84
+
+Dado un `ID_SALE`, el vínculo con el comprobante se resuelve con `Despachos.ULDATE = RelacionCptsDespachos.FECHA` **y** `Despachos.ID_DESPACHO = RelacionCptsDespachos.ID_DESPACHO`, siempre filtrando la estación desde Despachos. La página consulta individualmente cada venta para no depender del tope de relaciones del circuito. Caso de validación: `sql/PRUEBA_RELACION_DESPACHO.sql` con `ID_SALE = 1293`. El resultado real de SiSRL y los permisos del conector siguen pendientes de prueba antes de publicar.
+
+## PA_VentasFormasPago — firma informada (24/09/2026)
+
+Ejemplo confirmado por Duilio: `EXEC PA_VENTASFORMASPAGO '21/09/2026','21/09/2026',1,0,999,0,999`. El conector anterior pasaba solamente **cinco** argumentos con nombres supuestos. En esta rama primero inspecciona los siete nombres y tipos de `sys.parameters`, respeta el orden del ejemplo y mantiene los dos últimos valores `0,999` hasta verificar su significado real. No equiparar un total de medios de pago del día con un despacho: primero resolver su comprobante y luego identificar la fila del reporte por las claves reales de ese comprobante. La firma y sus resultados reales siguen pendientes de ejecutar en SiSRL.

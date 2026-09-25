@@ -799,8 +799,10 @@ function Get-StationReadOnlyCircuit {
             $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station
         } catch {$warnings.Add('Carga no disponible en modo lectura: '+$_.Exception.Message)}
         $receiptStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.RelacionCptsDespachos'
-        if($receiptStation -and
-           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO')){
+        if((Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'FECHA') -and
+           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'ID_DESPACHO') -and
+           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE') -and
+           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ID_DESPACHO')){
             $fields=@()
             foreach($col in @(
                 @{source='LETRA';target='Letra'},
@@ -812,10 +814,12 @@ function Get-StationReadOnlyCircuit {
                     $fields+=('r.['+$col.source+'] AS ['+$col.target+']')
                 }else{$fields+=('CAST(NULL AS NVARCHAR(30)) AS ['+$col.target+']')}
             }
-            $receiptSql='SELECT TOP(200) r.DI_DESPACHO AS Venta,'+($fields -join ',')+
+            $relationFilter=if($receiptStation){' AND r.'+$receiptStation+'=@Station'}else{''}
+            $receiptSql='SELECT TOP(200) d.ID_SALE AS Venta,'+($fields -join ',')+
                ' FROM dbo.RelacionCptsDespachos r INNER JOIN dbo.Despachos d ON '+
-               'd.ID_SALE=r.DI_DESPACHO AND d.'+$dispatchStation+'=@Station '+
-               'WHERE r.'+$receiptStation+'=@Station;'
+               'r.FECHA=d.ULDATE AND r.ID_DESPACHO=d.ID_DESPACHO '+
+               'WHERE d.'+$dispatchStation+'=@Station'+$relationFilter+
+               ' ORDER BY d.ULDATE DESC, d.ID_SALE DESC;'
             try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
             catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
         }
@@ -865,7 +869,7 @@ function Get-VerifiedPaymentEvidence {
        $Numero.Length -gt 40 -or -not $Letra -or -not $Sucursal -or -not $Numero){
        throw 'El comprobante necesita letra, sucursal y número para enlazar el pago.'
     }
-    $Connection.ChangeDatabase('SiSRL')
+    $Connection.ChangeDatabase('Maestros')
     $mfStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.MaeFac'
     $mfLetter=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('LETRA')
     $mfBranch=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('SUCURSAL')
@@ -1604,6 +1608,99 @@ try {
         }
       }
 
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/dispatch-receipt'){
+        # Búsqueda individual exacta. El conjunto general puede limitarse a 1000
+        # relaciones; una venta solicitada se consulta sin depender de esa lista.
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
+            Send-Json $stream 409 @{error='Conectá SiSRL antes de buscar el comprobante.'};continue
+          }
+          $data=$req.Body | ConvertFrom-Json
+          $station=0;$sale=0
+          if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0 -or
+             -not [int]::TryParse([string]$data.idSale,[ref]$sale) -or $sale -le 0){
+            Send-Json $stream 400 @{error='Estación o ID_SALE inválido.'};continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+            Send-Json $stream 403 @{error='Estación no autorizada.'};continue
+          }
+          $spFailure=''
+          try {
+            $p=[pscustomobject]@{IdEstacion=$station;IdSale=$sale;MaxDespachos=1;MaxRelaciones=101}
+            $res=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $p
+            $sets=@($res.resultSets)
+            if($sets.Count -lt 4){throw 'El procedimiento no devolvió el conjunto de comprobantes.'}
+            $found=@($sets[3].rows)
+            $saleRows=@($sets[2].rows)
+            $estado=if($saleRows.Count -gt 0){$saleRows[0].EstadoVta}else{$null}
+            Send-Json $stream 200 @{source='sp';idSale=$sale;station=$station;estadoVta=$estado;rows=$found;truncated=([bool]$sets[3].truncated -or $found.Count -ge 101);version=$Version}
+            continue
+          }catch{$spFailure=$_.Exception.Message}
+
+          # Respaldo de solo lectura para instalaciones que aún no pudieron
+          # actualizar el SP. La consulta conserva los dos campos de enlace.
+          try {
+            $cn.ChangeDatabase('SiSRL')
+            $dStation=Find-StationColumn -Connection $cn -ObjectName 'dbo.Despachos'
+            $rStation=Find-StationColumn -Connection $cn -ObjectName 'dbo.RelacionCptsDespachos'
+            if(-not $dStation){throw 'No se identificó la estación de Despachos.'}
+            foreach($spec in @(
+              @{Table='dbo.Despachos';Name='ULDATE'},
+              @{Table='dbo.Despachos';Name='ID_DESPACHO'},
+              @{Table='dbo.RelacionCptsDespachos';Name='FECHA'},
+              @{Table='dbo.RelacionCptsDespachos';Name='ID_DESPACHO'})){
+              if(-not (Get-SqlColumnExists -Connection $cn -Table $spec.Table -Name $spec.Name)){
+                throw ('Falta columna '+$spec.Name+' en '+$spec.Table)
+              }
+            }
+            $fields=@()
+            foreach($col in @(
+              @{source='LETRA';target='Letra'},@{source='SUCURSAL';target='Sucursal'},
+              @{source='NCOMPRO';target='Numero'},@{source='TURNO';target='Turno'})){
+              if(Get-SqlColumnExists -Connection $cn -Table 'dbo.RelacionCptsDespachos' -Name $col.source){
+                $fields+=('r.['+$col.source+'] AS ['+$col.target+']')
+              }else{$fields+=('CAST(NULL AS NVARCHAR(30)) AS ['+$col.target+']')}
+            }
+            $filter=if($rStation){' AND r.'+$rStation+'=@Station'}else{''}
+            $sql='SELECT TOP (101) d.ID_SALE AS Venta,d.ESTADOVTA AS EstadoVta,'+($fields -join ',')+
+                 ' FROM dbo.RelacionCptsDespachos r INNER JOIN dbo.Despachos d '+
+                 'ON r.FECHA=d.ULDATE AND r.ID_DESPACHO=d.ID_DESPACHO '+
+                 'WHERE d.ID_SALE=@Sale AND d.'+$dStation+'=@Station'+$filter+
+                 ' ORDER BY d.ULDATE DESC,d.ID_SALE DESC;'
+            $cmd=$cn.CreateCommand()
+            try{
+              $cmd.CommandText=$sql;$cmd.CommandTimeout=30
+              $null=$cmd.Parameters.Add('@Sale',[System.Data.SqlDbType]::Int)
+              $cmd.Parameters['@Sale'].Value=$sale
+              $null=$cmd.Parameters.Add('@Station',[System.Data.SqlDbType]::Int)
+              $cmd.Parameters['@Station'].Value=$station
+              $reader=$cmd.ExecuteReader()
+              try{
+                $items=New-Object System.Collections.Generic.List[object]
+                $truncated=$false;$estado=$null
+                while($reader.Read()){
+                  if($items.Count -ge 100){$truncated=$true;break}
+                  $record=[ordered]@{}
+                  for($i=0;$i -lt $reader.FieldCount;$i++){
+                    $value=$reader.GetValue($i)
+                    if($value -is [DBNull]){$value=$null}
+                    $record[$reader.GetName($i)]=$value
+                  }
+                  if($null -eq $estado){$estado=$record['EstadoVta']}
+                  $items.Add([pscustomobject]$record)
+                }
+              }finally{$reader.Close()}
+            }finally{$cmd.Dispose()}
+            Send-Json $stream 200 @{source='lectura_tablas';idSale=$sale;station=$station;estadoVta=$estado;rows=@($items.ToArray());truncated=$truncated;version=$Version}
+          }catch{
+            Send-Json $stream 422 @{error=('No pude verificar la venta por FECHA e ID_DESPACHO. SP: '+$spFailure+'. Lectura: '+$_.Exception.Message)}
+          }
+        }catch{
+          Send-Json $stream 500 @{error=('Error al consultar el comprobante exacto: '+$_.Exception.Message)}
+        }
+      }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payment-evidence'){
         try{
           $state=Ensure-ActiveSession
@@ -1614,6 +1711,9 @@ try {
           $station=0
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
              Send-Json $stream 400 @{error='Estación inválida.'};continue
+          }
+          if(@($state.databases) -notcontains 'Maestros'){
+             Send-Json $stream 403 @{error='Maestros no es accesible con esta sesión SQL.'};continue
           }
           $cn=$Sessions[$state.sessionId].connection
           if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
@@ -1701,6 +1801,9 @@ try {
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
             Send-Json $stream 400 @{error='Elegí una estación válida.'};continue
           }
+          if(@($state.databases) -notcontains 'Maestros'){
+            Send-Json $stream 403 @{error='La conexión SQL no tiene acceso a Maestros, donde está PA_VentasFormasPago.'};continue
+          }
           $cn=$Sessions[$state.sessionId].connection
           $ids=@(Get-StationOptions -Connection $cn -Database ([string]$state.database))
           if($ids -notcontains $station){
@@ -1728,21 +1831,27 @@ try {
           if($turnoDesde -lt 0 -or $turnoHasta -lt $turnoDesde -or $turnoHasta -gt 99999){
              Send-Json $stream 400 @{error='El rango de turnos debe estar entre 0 y 99999.'};continue
           }
+          # Firma real recibida de Maestros: 7 parámetros.
+          # La fecha fin del SP ORIGINAL usa BETWEEN y requiere fin del día.
+          # La candidata usa intervalo [inicio,fin siguiente día), ambos
+          # reciben la misma fecha de calendario sin perder operaciones.
           $params=[pscustomobject]@{
-            FechaDesde=$from
+            FechaDesde=$from.Date
             FechaHasta=$until.Date.AddDays(1).AddMilliseconds(-3)
             IdEstacion=$station
             TurnoDesde=$turnoDesde
             TurnoHasta=$turnoHasta
+            VendedorDesde=0
+            VendedorHasta=999
           }
           try {
-            # 5.000 rows per set; if any set reaches that limit the browser
-            # shows an incomplete-data warning, not a fictitious daily total.
-            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
+            # Mantener los dos ultimos argumentos 0..999 indicados por Duilio.
+            # Nunca sintetizar importes desde Despachos.
+            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'Maestros' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
             $sets=@($result.resultSets)
             if($sets.Count -eq 0){throw 'PA_VentasFormasPago no devolvió un conjunto de resultados.'}
             Send-Json $stream 200 @{
-              source='dbo.PA_VentasFormasPago';database='SiSRL';station=$station
+              source='Maestros.dbo.PA_VentasFormasPago';database='Maestros';station=$station
               fechaDesde=$from.ToString('yyyy-MM-dd');fechaHasta=$until.ToString('yyyy-MM-dd')
               turnoDesde=$turnoDesde;turnoHasta=$turnoHasta
               resultSets=$sets
@@ -2826,34 +2935,47 @@ ORDER BY s.name,t.name;
             return $null
           }
 
-          $dispatchCol = Pick-RelationColumn $relationColumns @('iddespacho','iddespcho') @('iddesp','despachoid','despacho')
-          if([string]::IsNullOrWhiteSpace($dispatchCol)){
-            Send-Json $stream 200 @{resolved=$false;reason='No pude identificar la columna que relaciona con Despachos.';columns=$relationColumns}
-            continue
+          # La venta determina fecha+id interno. No buscar solo por ID_DESPACHO.
+          $venta=0
+          if(-not [int]::TryParse([string]$data.venta,[ref]$venta) -or $venta -le 0){
+            Send-Json $stream 400 @{error='Falta ID_SALE válido para buscar el comprobante.'};continue
           }
           if([string]::IsNullOrWhiteSpace($idDespacho)){
-            Send-Json $stream 200 @{resolved=$false;reason='El registro de Despachos no expuso su ID interno.';columns=$relationColumns}
+            Send-Json $stream 200 @{resolved=$false;reason='El despacho no devolvió ID_DESPACHO.';columns=$relationColumns};continue
+          }
+          if(@($relationColumns | Where-Object {$_.ToUpperInvariant() -eq 'FECHA'}).Count -eq 0 -or
+             @($relationColumns | Where-Object {$_.ToUpperInvariant() -eq 'ID_DESPACHO'}).Count -eq 0){
+            Send-Json $stream 200 @{resolved=$false;reason='Falta FECHA o ID_DESPACHO en RelacionCptsDespachos.';columns=$relationColumns}
             continue
           }
-
-          $relCmd = $cn.CreateCommand()
-          $relCmd.CommandText = "SELECT TOP 1 * FROM dbo.RelacionCptsDespachos WHERE ["+$dispatchCol.Replace("]","]]")+"] = @id;"
-          $null = $relCmd.Parameters.Add("@id",[System.Data.SqlDbType]::VarChar,100)
-          $relCmd.Parameters["@id"].Value = $idDespacho
-          $rr = $relCmd.ExecuteReader()
+          $relCmd=$cn.CreateCommand()
+          $relCmd.CommandText=@"
+SELECT TOP(2) r.* FROM dbo.RelacionCptsDespachos r
+INNER JOIN dbo.Despachos d
+  ON r.FECHA=d.ULDATE AND r.ID_DESPACHO=d.ID_DESPACHO
+WHERE d.ID_SALE=@sale AND d.ID_DESPACHO=@id;
+"@
+          $null=$relCmd.Parameters.Add('@sale',[System.Data.SqlDbType]::Int)
+          $relCmd.Parameters['@sale'].Value=$venta
+          $null=$relCmd.Parameters.Add('@id',[System.Data.SqlDbType]::VarChar,100)
+          $relCmd.Parameters['@id'].Value=$idDespacho
+          $rr=$relCmd.ExecuteReader()
           if(-not $rr.Read()){
-            $rr.Close()
-            Send-Json $stream 200 @{resolved=$false;reason='No encontre una fila en RelacionCptsDespachos para id_despacho='+$idDespacho;columns=$relationColumns}
+            $rr.Close();$relCmd.Dispose()
+            Send-Json $stream 200 @{resolved=$false;reason='La venta no tiene un comprobante vinculado por fecha e ID_DESPACHO.';columns=$relationColumns}
             continue
           }
-          $rel = @{}
+          $rel=@{}
           for($i=0;$i -lt $rr.FieldCount;$i++){
-            $name=[string]$rr.GetName($i)
-            $val=$rr.GetValue($i)
-            if($val -is [DBNull]){ $val=$null }
-            $rel[$name]=$val
+            $name=[string]$rr.GetName($i);$val=$rr.GetValue($i)
+            if($val -is [DBNull]){$val=$null};$rel[$name]=$val
           }
-          $rr.Close()
+          if($rr.Read()){
+            $rr.Close();$relCmd.Dispose()
+            Send-Json $stream 200 @{resolved=$false;reason='Hay varios comprobantes para este despacho. Se deben mostrar todos, no seleccionar uno al azar.';columns=$relationColumns}
+            continue
+          }
+          $rr.Close();$relCmd.Dispose()
 
           $letterCol = Pick-RelationColumn $relationColumns @('letra','letter') @('letracomp','letracpte')
           $branchCol = Pick-RelationColumn $relationColumns @('sucursal','pos') @('sucursalcomp','poscomp')

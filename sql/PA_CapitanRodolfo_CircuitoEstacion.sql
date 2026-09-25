@@ -29,7 +29,8 @@ ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion
     @IdEstacion    INT,
     @EstadoVta     BIT = NULL,   -- NULL=todos; 0=pendientes; 1=cobrados
     @MaxDespachos  INT = 500,
-    @MaxRelaciones INT = 1000
+    @MaxRelaciones INT = 1000,
+    @IdSale        INT = NULL  -- NULL = todos; ID_SALE = consulta individual
 WITH EXECUTE AS OWNER
 AS
 BEGIN
@@ -85,7 +86,6 @@ BEGIN
         @TEst SYSNAME, @PEst SYSNAME, @SEst SYSNAME, @StEst SYSNAME,
         @DEst SYSNAME, @REst SYSNAME,
         @ProdDesc SYSNAME, @Capacidad SYSNAME,
-        @RKey SYSNAME, @DKey SYSNAME,
         @Sql NVARCHAR(MAX), @JoinProd NVARCHAR(MAX),
         @JoinSt NVARCHAR(MAX), @JoinTank NVARCHAR(MAX),
         @Controlador NVARCHAR(200), @DManguera NVARCHAR(200),
@@ -231,23 +231,15 @@ BEGIN
         END;
     END;
 
-    -- Buscar vínculo con Despachos sin asumir que ID_SALE = ID_DESPACHO.
-    SELECT TOP(1) @RKey=rc.name,@DKey=dc.name
-    FROM sys.columns rc
-    JOIN sys.columns dc ON dc.object_id=OBJECT_ID(N'dbo.Despachos')
-      AND REPLACE(LOWER(dc.name),'_','')=REPLACE(LOWER(rc.name),'_','')
-    WHERE rc.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
-      AND REPLACE(LOWER(rc.name),'_','') IN ('iddespacho','iddespcho','idsale')
-    ORDER BY CASE REPLACE(LOWER(rc.name),'_','')
-             WHEN 'iddespacho' THEN 0 WHEN 'iddespcho' THEN 1 ELSE 2 END;
-
-    -- Relación explícita indicada por la instalación: DI_DESPACHO -> ID_SALE.
-    -- Solo se acepta si ambas columnas están presentes.
-    IF COL_LENGTH('dbo.RelacionCptsDespachos','DI_DESPACHO') IS NOT NULL
-       AND COL_LENGTH('dbo.Despachos','ID_SALE') IS NOT NULL
+    -- Clave confirmada por el sistema: ID_SALE busca primero en Despachos;
+    -- la relacion comercial usa FECHA=ULDATE Y ID_DESPACHO=ID_DESPACHO.
+    IF COL_LENGTH('dbo.Despachos','ULDATE') IS NULL
+       OR COL_LENGTH('dbo.Despachos','ID_DESPACHO') IS NULL
+       OR COL_LENGTH('dbo.RelacionCptsDespachos','FECHA') IS NULL
+       OR COL_LENGTH('dbo.RelacionCptsDespachos','ID_DESPACHO') IS NULL
     BEGIN
-      SET @RKey='DI_DESPACHO';
-      SET @DKey='ID_SALE';
+       RAISERROR('Para vincular comprobantes se necesitan Despachos(ULDATE,ID_DESPACHO) y RelacionCptsDespachos(FECHA,ID_DESPACHO).',16,1);
+       RETURN;
     END;
 
     -- Nombres de comprobante por metadatos: jamás suponer que TURNO existe.
@@ -268,8 +260,7 @@ BEGIN
       WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
         AND REPLACE(LOWER(c.name),'_','')='turno';
 
-    SET @RelVentaExpr=CASE WHEN @RKey IS NOT NULL AND REPLACE(LOWER(@DKey),'_','')='idsale'
-      THEN N'r.'+QUOTENAME(@RKey) ELSE N'CAST(NULL AS INT)' END;
+    SET @RelVentaExpr=N'd.ID_SALE';
     SET @RelLetraExpr=CASE WHEN @RLetra IS NOT NULL
       THEN N'r.'+QUOTENAME(@RLetra) ELSE N'CAST(NULL AS NVARCHAR(10))' END;
     SET @RelSucExpr=CASE WHEN @RSucursal IS NOT NULL
@@ -308,16 +299,8 @@ BEGIN
       END;
     END;
 
-    IF @REst IS NULL AND @RKey IS NULL
-    BEGIN
-        RAISERROR('RelacionCptsDespachos no tiene ID_ESTACION ni clave compartida confirmada con Despachos. No se envían datos sin filtro.',16,1);
-        RETURN;
-    END;
-    IF @EstadoVta IS NOT NULL AND @RKey IS NULL
-    BEGIN
-        RAISERROR('No hay clave confirmada para filtrar los comprobantes por ESTADOVTA. Ejecutá con @EstadoVta=NULL o verificá el vínculo.',16,1);
-        RETURN;
-    END;
+    -- La estacion de Despachos es el filtro obligatorio.
+    -- Si la tabla de relaciones tambien lleva estacion, filtrarla adicionalmente.
 
     -- Solo calcular isla cuando SURTIDOR es numerico entero.
     -- Si es texto, no se inventa una relacion: el campo Isla sera NULL.
@@ -449,29 +432,19 @@ BEGIN
       FROM dbo.Despachos d '+@JoinProd+N'
       WHERE d.'+QUOTENAME(@DEst)+N'=@IdEstacion
         AND (@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)
+        AND (@IdSale IS NULL OR d.ID_SALE=@IdSale)
       ORDER BY '+CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL
                        THEN N'd.ULTIME DESC,' ELSE N'' END+N' d.ID_SALE DESC;';
     EXEC sys.sp_executesql @Sql,
-         N'@IdEstacion INT,@EstadoVta BIT,@MaxDespachos INT',
-         @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,@MaxDespachos=@MaxDespachos;
+         N'@IdEstacion INT,@EstadoVta BIT,@MaxDespachos INT,@IdSale INT',
+         @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,@MaxDespachos=@MaxDespachos,@IdSale=@IdSale;
 
-    -- Resultado 4: RELACION COMPROBANTE/DESPACHO
-    -- Si existe clave compartida, usa EXISTS y también el filtro de EstadoVta.
-    -- Si no existe pero la tabla lleva estación, devuelve relaciones de esa estación
-    -- únicamente cuando EstadoVta es NULL. Nunca asume columnas de factura.
-    IF @RKey IS NOT NULL
-    BEGIN
-      SET @WhereRel=N'EXISTS (
-         SELECT 1 FROM dbo.Despachos d
-         WHERE d.'+QUOTENAME(@DKey)+N'=r.'+QUOTENAME(@RKey)+N'
-           AND d.'+QUOTENAME(@DEst)+N'=@IdEstacion
-           AND (@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)
-      )';
-      IF @REst IS NOT NULL
-        SET @WhereRel=N'r.'+QUOTENAME(@REst)+N'=@IdEstacion AND '+@WhereRel;
-    END
-    ELSE
-      SET @WhereRel=N'r.'+QUOTENAME(@REst)+N'=@IdEstacion';
+    -- Resultado 4: los comprobantes se enlazan por las DOS claves exactas.
+    SET @WhereRel=N'd.'+QUOTENAME(@DEst)+N'=@IdEstacion
+      AND (@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)
+      AND (@IdSale IS NULL OR d.ID_SALE=@IdSale)';
+    IF @REst IS NOT NULL
+      SET @WhereRel=@WhereRel+N' AND r.'+QUOTENAME(@REst)+N'=@IdEstacion';
 
     SET @Sql=N'
       SELECT TOP(@MaxRelaciones)
@@ -481,12 +454,15 @@ BEGIN
           '+@RelNumExpr+N' AS Numero,
           '+@RelTurnoExpr+N' AS Turno
       FROM dbo.RelacionCptsDespachos r
+      INNER JOIN dbo.Despachos d
+        ON r.FECHA=d.ULDATE AND r.ID_DESPACHO=d.ID_DESPACHO
       '+@ComprobanteJoin+N'
-      WHERE '+@WhereRel+N';';
+      WHERE '+@WhereRel+N'
+      ORDER BY d.ULDATE DESC, d.ID_SALE DESC;';
     EXEC sys.sp_executesql @Sql,
-         N'@IdEstacion INT,@EstadoVta BIT,@MaxRelaciones INT',
+         N'@IdEstacion INT,@EstadoVta BIT,@MaxRelaciones INT,@IdSale INT',
          @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,
-         @MaxRelaciones=@MaxRelaciones;
+         @MaxRelaciones=@MaxRelaciones,@IdSale=@IdSale;
 
     -- Resultado 5: EMPRESA/ESTACIÓN. Se agrega al final para no alterar el
     -- orden de los cuatro conjuntos consumidos por las versiones previas.
