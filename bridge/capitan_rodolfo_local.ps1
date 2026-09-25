@@ -1608,6 +1608,97 @@ try {
         }
       }
 
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/dispatch-receipt'){
+        # Búsqueda individual exacta. El conjunto general puede limitarse a 1000
+        # relaciones; una venta solicitada se consulta sin depender de esa lista.
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
+            Send-Json $stream 409 @{error='Conectá SiSRL antes de buscar el comprobante.'};continue
+          }
+          $data=$req.Body | ConvertFrom-Json
+          $station=0;$sale=0
+          if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0 -or
+             -not [int]::TryParse([string]$data.idSale,[ref]$sale) -or $sale -le 0){
+            Send-Json $stream 400 @{error='Estación o ID_SALE inválido.'};continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+            Send-Json $stream 403 @{error='Estación no autorizada.'};continue
+          }
+          $spFailure=''
+          try {
+            $p=[pscustomobject]@{IdEstacion=$station;IdSale=$sale;MaxDespachos=1;MaxRelaciones=101}
+            $res=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $p
+            $sets=@($res.resultSets)
+            if($sets.Count -lt 4){throw 'El procedimiento no devolvió el conjunto de comprobantes.'}
+            $found=@($sets[3].rows)
+            $saleRows=@($sets[2].rows)
+            $estado=if($saleRows.Count -gt 0){$saleRows[0].EstadoVta}else{$null}
+            Send-Json $stream 200 @{source='sp';idSale=$sale;station=$station;estadoVta=$estado;rows=$found;truncated=([bool]$sets[3].truncated -or $found.Count -ge 101);version=$Version}
+            continue
+          }catch{$spFailure=$_.Exception.Message}
+
+          # Respaldo de solo lectura para instalaciones que aún no pudieron
+          # actualizar el SP. La consulta conserva los dos campos de enlace.
+          try {
+            $cn.ChangeDatabase('SiSRL')
+            $dStation=Find-StationColumn -Connection $cn -ObjectName 'dbo.Despachos'
+            $rStation=Find-StationColumn -Connection $cn -ObjectName 'dbo.RelacionCptsDespachos'
+            if(-not $dStation){throw 'No se identificó la estación de Despachos.'}
+            foreach($spec in @(
+              @('dbo.Despachos','ULDATE'),@('dbo.Despachos','ID_DESPACHO'),
+              @('dbo.RelacionCptsDespachos','FECHA'),@('dbo.RelacionCptsDespachos','ID_DESPACHO'))){
+              if(-not (Get-SqlColumnExists -Connection $cn -Table $spec[0] -Name $spec[1])){
+                throw ('Falta columna '+$spec[1]+' en '+$spec[0])
+              }
+            }
+            $fields=@()
+            foreach($col in @(
+              @{source='LETRA';target='Letra'},@{source='SUCURSAL';target='Sucursal'},
+              @{source='NCOMPRO';target='Numero'},@{source='TURNO';target='Turno'})){
+              if(Get-SqlColumnExists -Connection $cn -Table 'dbo.RelacionCptsDespachos' -Name $col.source){
+                $fields+=('r.['+$col.source+'] AS ['+$col.target+']')
+              }else{$fields+=('CAST(NULL AS NVARCHAR(30)) AS ['+$col.target+']')}
+            }
+            $filter=if($rStation){' AND r.'+$rStation+'=@Station'}else{''}
+            $sql='SELECT TOP (101) d.ID_SALE AS Venta,d.ESTADOVTA AS EstadoVta,'+($fields -join ',')+
+                 ' FROM dbo.RelacionCptsDespachos r INNER JOIN dbo.Despachos d '+
+                 'ON r.FECHA=d.ULDATE AND r.ID_DESPACHO=d.ID_DESPACHO '+
+                 'WHERE d.ID_SALE=@Sale AND d.'+$dStation+'=@Station'+$filter+
+                 ' ORDER BY d.ULDATE DESC,d.ID_SALE DESC;'
+            $cmd=$cn.CreateCommand()
+            try{
+              $cmd.CommandText=$sql;$cmd.CommandTimeout=30
+              $null=$cmd.Parameters.Add('@Sale',[System.Data.SqlDbType]::Int)
+              $cmd.Parameters['@Sale'].Value=$sale
+              $null=$cmd.Parameters.Add('@Station',[System.Data.SqlDbType]::Int)
+              $cmd.Parameters['@Station'].Value=$station
+              $reader=$cmd.ExecuteReader()
+              try{
+                $items=New-Object System.Collections.Generic.List[object]
+                $truncated=$false;$estado=$null
+                while($reader.Read()){
+                  if($items.Count -ge 100){$truncated=$true;break}
+                  $record=[ordered]@{}
+                  for($i=0;$i -lt $reader.FieldCount;$i++){
+                    $value=$reader.GetValue($i)
+                    if($value -is [DBNull]){$value=$null}
+                    $record[$reader.GetName($i)]=$value
+                  }
+                  if($null -eq $estado){$estado=$record['EstadoVta']}
+                  $items.Add([pscustomobject]$record)
+                }
+              }finally{$reader.Close()}
+            }finally{$cmd.Dispose()}
+            Send-Json $stream 200 @{source='lectura_tablas';idSale=$sale;station=$station;estadoVta=$estado;rows=@($items.ToArray());truncated=$truncated;version=$Version}
+          }catch{
+            Send-Json $stream 422 @{error=('No pude verificar la venta por FECHA e ID_DESPACHO. SP: '+$spFailure+'. Lectura: '+$_.Exception.Message)}
+          }
+        }catch{
+          Send-Json $stream 500 @{error=('Error al consultar el comprobante exacto: '+$_.Exception.Message)}
+        }
+      }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payment-evidence'){
         try{
           $state=Ensure-ActiveSession
@@ -2838,11 +2929,10 @@ ORDER BY s.name,t.name;
           if([string]::IsNullOrWhiteSpace($idDespacho)){
             Send-Json $stream 200 @{resolved=$false;reason='El despacho no devolvió ID_DESPACHO.';columns=$relationColumns};continue
           }
-          foreach($required in @('FECHA','ID_DESPACHO')){
-            if(@($relationColumns | Where-Object {$_.ToUpperInvariant() -eq $required}).Count -eq 0){
-              Send-Json $stream 200 @{resolved=$false;reason=('Falta '+$required+' en RelacionCptsDespachos.');columns=$relationColumns}
-              continue
-            }
+          if(@($relationColumns | Where-Object {$_.ToUpperInvariant() -eq 'FECHA'}).Count -eq 0 -or
+             @($relationColumns | Where-Object {$_.ToUpperInvariant() -eq 'ID_DESPACHO'}).Count -eq 0){
+            Send-Json $stream 200 @{resolved=$false;reason='Falta FECHA o ID_DESPACHO en RelacionCptsDespachos.';columns=$relationColumns}
+            continue
           }
           $relCmd=$cn.CreateCommand()
           $relCmd.CommandText=@"
