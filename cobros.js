@@ -294,7 +294,7 @@ async function search(){
     data=null;rows=[];columnNames=[];paramsKey='';render();notice(err.message,'error');
    }
  }finally{
-   working=false;$('paymentsSearch').disabled=false;
+   if(request===latestRequest){working=false;$('paymentsSearch').disabled=false}
  }
 }
 let saleRequest=0;
@@ -302,6 +302,8 @@ async function searchBySale(){
  const id=Number($('paymentsSaleId').value),st=station(),request=++saleRequest;
  if(!Number.isSafeInteger(id)||id<=0){notice('Escribí un ID_SALE numérico válido.','warn');return}
  if(!st){notice('Seleccioná primero una estación conectada.','warn');return}
+ ++latestRequest;working=false;$('paymentsSearch').disabled=false;
+ saleFilter=null;data=null;rows=[];columnNames=[];paramsKey='';render();
  $('paymentsFindSale').disabled=true;
  notice('Buscando el despacho '+id+' y su comprobante por ID_DESPACHO + fecha…');
  try{
@@ -359,9 +361,9 @@ function openForSale(details){
  }
  let p;try{p=range()}catch(e){data=null;rows=[];columnNames=[];render();notice(e.message,'warn');return}
  if(!data||paramsKey!==JSON.stringify(p)){data=null;rows=[];columnNames=[];render();search()}
- else {render();notice('Importes del comprobante encontrado en PA_VentasFormasPago.')}
+ else {render();notice(rows.some(matchesSale)?'Importes del comprobante verificado, según PA_VentasFormasPago.':'Este comprobante no aparece en los registros cargados del período. Ampliá fechas o turnos.','warn')}
 }
-function close(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
+function close(){++saleRequest;$('paymentsFindSale').disabled=false;modal.classList.remove('open');modal.setAttribute('aria-hidden','true')}
 $('paymentsClose').addEventListener('click',close);
 modal.addEventListener('click',e=>{if(e.target===modal)close()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('open'))close()});
