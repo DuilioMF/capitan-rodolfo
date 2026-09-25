@@ -342,6 +342,7 @@ $('stationId')?.addEventListener('change',()=>{
  if(modal.classList.contains('open')){render();notice('Cambió la estación. Consultá sus cobros.','warn')}
 });
 $('paymentsClearInvoice').addEventListener('click',()=>{saleFilter=null;visible=50;render();notice('Mostrando el período completo de la estación.');});
+$('paymentsOpenPaid').addEventListener('click',()=>{close();window.capitanOpenCobrados?.()});
 window.capitanOpenCobros=open;
 window.capitanOpenCobrosForSale=openForSale;
 render();
