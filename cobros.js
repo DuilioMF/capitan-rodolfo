@@ -305,7 +305,7 @@ function open(){
  saleFilter=null;
  if(modal.classList.contains('open')){render();return}
  showModal();
- const p=range();
+ let p;try{p=range()}catch(e){render();notice(e.message,'warn');return}
  if(!data||paramsKey!==JSON.stringify(p))search();else render();
 }
 function openForSale(details){
