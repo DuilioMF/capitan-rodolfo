@@ -23,3 +23,13 @@ WHERE d.ID_SALE=@IdSale;
 SELECT COUNT(*) AS CantidadDeDespachosParaIdSale
 FROM dbo.Despachos WHERE ID_SALE=@IdSale;
 GO
+
+-- Firma REAL de PA_VentasFormasPago; confirmar qué representan los
+-- parámetros 4 a 7 antes de permitir filtros nuevos en la pantalla.
+SELECT p.parameter_id, p.name AS Parametro, TYPE_NAME(p.user_type_id) AS Tipo
+FROM sys.parameters p
+WHERE p.object_id=OBJECT_ID(N'dbo.PA_VentasFormasPago',N'P')
+ORDER BY p.parameter_id;
+
+-- Reproducir los siete argumentos brindados por Duilio.
+EXEC dbo.PA_VentasFormasPago '20260921','20260921',1,0,999,0,999;
