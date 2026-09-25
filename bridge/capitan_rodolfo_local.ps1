@@ -1647,10 +1647,12 @@ try {
             $rStation=Find-StationColumn -Connection $cn -ObjectName 'dbo.RelacionCptsDespachos'
             if(-not $dStation){throw 'No se identificó la estación de Despachos.'}
             foreach($spec in @(
-              @('dbo.Despachos','ULDATE'),@('dbo.Despachos','ID_DESPACHO'),
-              @('dbo.RelacionCptsDespachos','FECHA'),@('dbo.RelacionCptsDespachos','ID_DESPACHO'))){
-              if(-not (Get-SqlColumnExists -Connection $cn -Table $spec[0] -Name $spec[1])){
-                throw ('Falta columna '+$spec[1]+' en '+$spec[0])
+              @{Table='dbo.Despachos';Name='ULDATE'},
+              @{Table='dbo.Despachos';Name='ID_DESPACHO'},
+              @{Table='dbo.RelacionCptsDespachos';Name='FECHA'},
+              @{Table='dbo.RelacionCptsDespachos';Name='ID_DESPACHO'})){
+              if(-not (Get-SqlColumnExists -Connection $cn -Table $spec.Table -Name $spec.Name)){
+                throw ('Falta columna '+$spec.Name+' en '+$spec.Table)
               }
             }
             $fields=@()
@@ -1849,7 +1851,8 @@ ORDER BY p.parameter_id;
             Send-Json $stream 422 @{error=('Firma inesperada: PA_VentasFormasPago presenta '+$signature.Count+' parámetros y el ejemplo aprobado utiliza 7. Revisá el procedimiento.');parametros=@($signature.ToArray())}
             continue
           }
-          if(@($signature[0].Type,$signature[1].Type | Where-Object {$_ -notin @('date','datetime','datetime2','smalldatetime')}).Count -gt 0){
+          if(($signature[0].Type -notin @('date','datetime','datetime2','smalldatetime')) -or
+             ($signature[1].Type -notin @('date','datetime','datetime2','smalldatetime'))){
             Send-Json $stream 422 @{error='Los dos primeros parámetros de PA_VentasFormasPago no son fechas. No se asumirá una firma incompatible.'}
             continue
           }
