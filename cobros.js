@@ -297,6 +297,39 @@ async function search(){
    working=false;$('paymentsSearch').disabled=false;
  }
 }
+let saleRequest=0;
+async function searchBySale(){
+ const id=Number($('paymentsSaleId').value),st=station(),request=++saleRequest;
+ if(!Number.isSafeInteger(id)||id<=0){notice('Escribí un ID_SALE numérico válido.','warn');return}
+ if(!st){notice('Seleccioná primero una estación conectada.','warn');return}
+ $('paymentsFindSale').disabled=true;
+ notice('Buscando el despacho '+id+' y su comprobante por ID_DESPACHO + fecha…');
+ try{
+  const report=await api('/api/station/payment-sale',{idEstacion:st,idSale:id});
+  if(request!==saleRequest||st!==station())return;
+  const entries=Array.isArray(report.rows)?report.rows:[];
+  if(!entries.length){
+    notice('No hay un comprobante vinculado por ID_DESPACHO y ULDATE/FECHA para esta venta y estación. No se adjudican otros cobros.','warn');return;
+  }
+  const paid=entries.filter(r=>Number(r.estadoVta)===1);
+  if(!paid.length){
+    notice('El despacho '+id+' existe con comprobante, pero ESTADOVTA no indica cobrado. No se muestran medios como cobrados.','warn');return;
+  }
+  const unique=[...new Map(paid.map(r=>[[r.letra,r.sucursal,r.numero].join('|'),r])).values()];
+  if(unique.length===1){openForSale({...unique[0],sale:id});return}
+  const root=$('paymentsEvidence');root.replaceChildren();root.hidden=false;
+  const title=document.createElement('h4');title.textContent='Comprobantes del despacho '+id;root.appendChild(title);
+  const note=document.createElement('p');note.textContent='Hay más de un comprobante vinculado. Elegí uno para consultar sus medios reales.';root.appendChild(note);
+  for(const row of unique){
+    const b=document.createElement('button');b.type='button';b.className='payments-choice';
+    b.textContent='Ver '+row.letra+' '+row.sucursal+'-'+row.numero;
+    b.addEventListener('click',()=>openForSale({...row,sale:id}));
+    root.appendChild(b);
+  }
+  notice('Se encontraron '+unique.length+' comprobantes de la venta. Seleccioná uno.','warn');
+ }catch(e){if(request===saleRequest)notice(e.message,'error')}
+ finally{if(request===saleRequest)$('paymentsFindSale').disabled=false}
+}
 function showModal(){
  modal.classList.add('open');modal.setAttribute('aria-hidden','false');
  $('paymentsClose').focus();
@@ -333,12 +366,14 @@ $('paymentsClose').addEventListener('click',close);
 modal.addEventListener('click',e=>{if(e.target===modal)close()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('open'))close()});
 $('paymentsSearch').addEventListener('click',search);
+$('paymentsFindSale').addEventListener('click',searchBySale);
+$('paymentsSaleId').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchBySale()}});
 $('paymentsMore').addEventListener('click',()=>{
  const m=methods.find(x=>x.id===method)||methods[0];
  visible+=50;showRows(selectedMovements(m));
 });
 $('stationId')?.addEventListener('change',()=>{
- ++latestRequest;++cardRequest;data=null;rows=[];columnNames=[];paramsKey='';saleFilter=null;
+ ++latestRequest;++cardRequest;++saleRequest;data=null;rows=[];columnNames=[];paramsKey='';saleFilter=null;
  if(modal.classList.contains('open')){render();notice('Cambió la estación. Consultá sus cobros.','warn')}
 });
 $('paymentsClearInvoice').addEventListener('click',()=>{saleFilter=null;visible=50;render();notice('Mostrando el período completo de la estación.');});
