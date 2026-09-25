@@ -203,6 +203,15 @@ jobs:
              'Find-StationColumn','TryParseExact','-MaxRows 5000']){
             if(!bridgeCode.includes(marker))throw Error('Conector de Cobros incompleto: '+marker);
           }
+          const paymentRoute=bridgeCode.slice(bridgeCode.indexOf("'/api/station/payments'"),
+            bridgeCode.indexOf("'/api/station/circuit'",bridgeCode.indexOf("'/api/station/payments'")));
+          for(const expected of ["-Database 'Maestros' -Procedure 'dbo.PA_VentasFormasPago'",
+            'VendedorDesde=0','VendedorHasta=99999',"-notcontains 'Maestros'"]){
+            if(!paymentRoute.includes(expected))throw Error('Regresion: Cobros debe usar Maestros y 7 parametros: '+expected);
+          }
+          const evidenceFn=bridgeCode.slice(bridgeCode.indexOf('function Get-VerifiedPaymentEvidence'),
+            bridgeCode.indexOf('function Invoke-AllowedStoredProcedure'));
+          if(!evidenceFn.includes("ChangeDatabase('Maestros')"))throw Error('Regresion: detalle MP/YPF no usa Maestros');
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
               'id="paymentsMethods"','cobros.css?v=84','cobros.js?v=84',
@@ -215,7 +224,7 @@ jobs:
              !allowlist.procedures.includes('dbo.PA_VentasFormasPago')){
             throw Error('Lista local no permite ambos SP de cobros');
           }
-          console.log('Cobros v84: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
+          console.log('Cobros v85: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
           const doc=fs.readFileSync('documentos.html','utf8');
           const index=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="drop"','id="truckWrap"','id="file"','dragover','drop','/functions/v1/extract-document-json','JSON.stringify(extracted,null,2)','Otro (revisar)']){
@@ -288,7 +297,7 @@ jobs:
              !fallback.includes("'d.ID_DESPACHO=r.'+$rkey+' AND d.ULDATE=r.FECHA '") ||
              !cobros.includes("api('/api/station/payment-sale'"))
              throw Error('La búsqueda por ID_SALE no usa relación compuesta validada');
-          console.log('Cobros v84: comprobante por identificador + fecha; apertura y filtro por factura OK');
+          console.log('Cobros v85: comprobante por identificador + fecha; apertura y filtro por factura OK');
           console.log('Cierres izquierda y cobros: estados, filtros y navegación OK');
 
           const explorer=fs.readFileSync('conexion-sql.html','utf8');
