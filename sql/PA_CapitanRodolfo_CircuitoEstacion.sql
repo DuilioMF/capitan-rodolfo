@@ -236,6 +236,7 @@ BEGIN
     -- Relacion verificada: ID_SALE identifica la venta, pero no es la
     -- clave de RelacionCptsDespachos. Se exigen ID_DESPACHO y ULDATE
     -- de Despachos frente al identificador de despacho y FECHA de la relacion.
+    -- DI_DESPACHO es una posible clave en RelacionCptsDespachos, nunca ID_SALE.
     SELECT TOP(1) @DKey=c.name FROM sys.columns c
       WHERE c.object_id=OBJECT_ID(N'dbo.Despachos')
         AND REPLACE(LOWER(c.name),'_','')='iddespacho';
