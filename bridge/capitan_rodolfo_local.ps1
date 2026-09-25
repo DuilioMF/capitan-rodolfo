@@ -789,7 +789,10 @@ function Get-StationReadOnlyCircuit {
         $joinProd=if($prodOk){$prodJoin.Replace('{SOURCE}','d')}else{''}
         $prodFields=if($prodOk){'p.DESCRIART AS Producto,'+$costExpr+' AS Costo,'+$priceExpr+' AS PrecioProducto,'}
             else{'CAST(NULL AS NVARCHAR(120)) AS Producto,CAST(NULL AS DECIMAL(18,2)) AS Costo,CAST(NULL AS DECIMAL(18,2)) AS PrecioProducto,'}
-        $dispatchSql='SELECT TOP (200) d.ID_SALE AS IdSale,d.SURTIDOR AS Cara,'+
+        $dispatchId=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ID_DESPACHO'){'d.ID_DESPACHO'}else{'CAST(NULL AS INT)'}
+        $dispatchDate=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE'){"CONVERT(VARCHAR(23),d.ULDATE,121)"}else{'CAST(NULL AS VARCHAR(23))'}
+        $dispatchSql='SELECT TOP (200) d.ID_SALE AS IdSale,'+$dispatchId+' AS IdDespacho,'+
+             $dispatchDate+' AS FechaDespacho,d.SURTIDOR AS Cara,'+
              $manguera+' AS Manguera,d.CODART AS CodArt,'+
              $prodFields+'d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,'+
              'd.ESTADOVTA AS EstadoVta,'+$hora+' AS Hora '+
@@ -799,8 +802,10 @@ function Get-StationReadOnlyCircuit {
             $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station
         } catch {$warnings.Add('Carga no disponible en modo lectura: '+$_.Exception.Message)}
         $receiptStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.RelacionCptsDespachos'
-        if($receiptStation -and
-           (Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO')){
+        $receiptKey=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'ID_DESPACHO'){'r.ID_DESPACHO'}elseif(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO'){'r.DI_DESPACHO'}else{''}
+        $receiptDate=Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'FECHA'
+        $hasDispatchKeys=(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ID_DESPACHO') -and (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE')
+        if($receiptKey -and $receiptDate -and $hasDispatchKeys){
             $fields=@()
             foreach($col in @(
                 @{source='LETRA';target='Letra'},
@@ -812,12 +817,15 @@ function Get-StationReadOnlyCircuit {
                     $fields+=('r.['+$col.source+'] AS ['+$col.target+']')
                 }else{$fields+=('CAST(NULL AS NVARCHAR(30)) AS ['+$col.target+']')}
             }
-            $receiptSql='SELECT TOP(200) r.DI_DESPACHO AS Venta,'+($fields -join ',')+
+            $receiptSql='SELECT TOP(200) d.ID_SALE AS Venta,'+($fields -join ',')+
                ' FROM dbo.RelacionCptsDespachos r INNER JOIN dbo.Despachos d ON '+
-               'd.ID_SALE=r.DI_DESPACHO AND d.'+$dispatchStation+'=@Station '+
-               'WHERE r.'+$receiptStation+'=@Station;'
+               'd.ID_DESPACHO='+$receiptKey+' AND d.ULDATE=r.FECHA AND d.'+$dispatchStation+'=@Station '+
+               $(if($receiptStation){'WHERE r.'+$receiptStation+'=@Station '}else{''})+
+               'ORDER BY d.ID_SALE DESC;'
             try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
             catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
+        } else {
+            $warnings.Add('Comprobantes no enlazados: faltan ID_DESPACHO y/o ULDATE/FECHA verificados en las tablas.')
         }
     }
     $warnings.Add('El SP no pudo ejecutarse: '+$Failure+'. Mostrando solamente las tablas autorizadas en modo lectura.')
