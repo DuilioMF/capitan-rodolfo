@@ -1109,6 +1109,82 @@ function Invoke-CircuitAutoInstall {
     }
 }
 
+
+# CAP-SQL-DISCOVERY: la detección no prueba acceso ni modifica credenciales.
+function Add-SqlDiscoveryResult {
+ param([System.Collections.ArrayList]$Items,[string]$Server,[string]$Source,[bool]$Connected=$false)
+ $name=$Server.Trim()
+ if(-not $name -or $name.Length -gt 200 -or $name -notmatch '^[A-Za-z0-9._\\,:\-\[\]]+$'){return}
+ foreach($item in $Items){
+  if([string]::Equals([string]$item.server,$name,[StringComparison]::OrdinalIgnoreCase)){
+   if($Connected){$item.connected=$true};return
+  }
+ }
+ if($Items.Count -lt 64){[void]$Items.Add([ordered]@{server=$name;source=$Source;connected=$Connected})}
+}
+function Get-DiscoveredSqlServers {
+ param([switch]$Network)
+ $items=New-Object System.Collections.ArrayList
+ $active=Ensure-ActiveSession
+ if($active -and $active.server){Add-SqlDiscoveryResult -Items $items -Server ([string]$active.server) -Source 'Conexión activa' -Connected $true}
+ $saved=Load-SqlProfile
+ if($saved -and $saved.server){Add-SqlDiscoveryResult -Items $items -Server ([string]$saved.server) -Source 'Configuración guardada'}
+ $hostName=[string]$env:COMPUTERNAME
+ if($hostName -match '^[A-Za-z0-9._-]{1,128}$'){
+  try{
+   foreach($service in @(Get-CimInstance -ClassName Win32_Service -Filter "Name LIKE 'MSSQL%'" -ErrorAction Stop)){
+    $name=[string]$service.Name
+    if($name -eq 'MSSQLSERVER'){$instance=''}
+    elseif($name -match '^MSSQL\$(.+)$'){$instance=$Matches[1]}
+    else{continue}
+    if($instance -and $instance -notmatch '^[A-Za-z0-9_-]{1,128}$'){continue}
+    $address=if($instance){$hostName+'\'+$instance}else{$hostName}
+    $source=if([string]$service.State -eq 'Running'){'Servicio SQL activo'}else{'Servicio SQL instalado'}
+    Add-SqlDiscoveryResult -Items $items -Server $address -Source $source
+   }
+  }catch{}
+  foreach($path in @('HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Microsoft SQL Server\Instance Names\SQL')){
+   try{
+    $key=Get-ItemProperty -LiteralPath $path -ErrorAction Stop
+    foreach($prop in $key.PSObject.Properties){
+     $instance=[string]$prop.Name
+     if($instance -match '^PS' -or $instance -notmatch '^[A-Za-z0-9_-]{1,128}$'){continue}
+     $address=if($instance -eq 'MSSQLSERVER'){$hostName}else{$hostName+'\'+$instance}
+     Add-SqlDiscoveryResult -Items $items -Server $address -Source 'Registro de Windows'
+    }
+   }catch{}
+  }
+ }
+ $timedOut=$false
+ if($Network){
+  # Consulta SQL Browser sólo con acción explícita. Nunca escanear subredes.
+  $job=$null
+  try{
+   $job=Start-Job -ScriptBlock {
+    try{
+     Add-Type -AssemblyName System.Data
+     $table=[System.Data.Sql.SqlDataSourceEnumerator]::Instance.GetDataSources()
+     foreach($row in @($table.Rows | Select-Object -First 32)){
+      $hostName=[string]$row['ServerName'];$instance=[string]$row['InstanceName']
+      if($hostName -notmatch '^[A-Za-z0-9._-]{1,128}$' -or ($instance -and $instance -notmatch '^[A-Za-z0-9_-]{1,128}$')){continue}
+      if($instance){$hostName+'\'+$instance}else{$hostName}
+     }
+    }catch{}
+   }
+   if($null -eq (Wait-Job -Job $job -Timeout 6)){$timedOut=$true}
+   else{
+    foreach($found in @(Receive-Job -Job $job -ErrorAction SilentlyContinue)){
+     Add-SqlDiscoveryResult -Items $items -Server ([string]$found) -Source 'SQL Browser (red)'
+    }
+   }
+  }catch{$timedOut=$true}
+  finally{
+   if($null -ne $job){try{Stop-Job -Job $job -ErrorAction SilentlyContinue}catch{};try{Remove-Job -Job $job -Force -ErrorAction SilentlyContinue}catch{}}
+  }
+ }
+ return @{servers=@($items.ToArray());networkSearched=[bool]$Network;networkTimedOut=$timedOut}
+}
+
 function Open-SqlSession {
     param([string]$Server,[string]$Auth,[string]$User,[string]$Password)
     $cn = New-SqlConnection -Server $Server -Auth $Auth -User $User -Password $Password
@@ -1186,7 +1262,11 @@ button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:14px;backg
   <div class="rCap"></div><div class="rHead"></div><div class="rEye l"></div><div class="rEye r"></div><div class="rMust"></div><div class="rBody"></div><div class="rTie"></div>
 </div>
 </div>
-<div id="status" class="status">Servicio SQL local v$Version listo.</div><label>Servidor / instancia</label><input id="server" value="DUILIO\SQLEXPRESS" autocomplete="off">
+<div id="status" class="status">Servicio SQL local v$Version listo.</div><label>Servidor / instancia</label><input id="server" value="" list="detectedSqlServers" placeholder="Buscando servidor…" autocomplete="off">
+<datalist id="detectedSqlServers"></datalist>
+<button id="discoverLocal" type="button">Buscar servidores locales</button>
+<button id="discoverNetwork" type="button">Buscar servidores en la red</button>
+<div id="discoveryStatus" class="note">Detectar no equivale a conectar.</div><div id="discoveryOptions" class="list"></div>
 <label>Autenticacion</label>
 <select id="auth"><option value="sql">Usuario y contrasena SQL Server</option><option value="windows">Windows</option></select>
 <div id="sqlCreds"><label>Usuario SQL</label><input id="user" autocomplete="username"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password" placeholder="Ingresá la contraseña la primera vez"></div>
@@ -1232,6 +1312,29 @@ function showDatabases(d,autoDb){
    if(autoDb&&name===autoDb)setTimeout(()=>loadTables(name,b),0);
  });
 }
+async function discoverServers(network){
+ const label=document.getElementById('discoveryStatus');
+ const results=document.getElementById('discoveryOptions');
+ label.textContent=network?'Consultando SQL Browser…':'Buscando instancias instaladas…';
+ results.innerHTML='';
+ try{
+  const d=network?await api('/api/discover-servers',{}):await getJson('/api/discover-servers');
+  const entries=d.servers||[],suggestions=document.getElementById('detectedSqlServers');
+  suggestions.innerHTML='';
+  entries.forEach(entry=>{
+   const option=document.createElement('option');option.value=entry.server;suggestions.appendChild(option);
+   const choose=document.createElement('button');choose.type='button';choose.className='item';
+   choose.textContent=entry.server+' · '+entry.source+(entry.connected?' · conectado':' · detectado');
+   choose.onclick=()=>{serverInput.value=entry.server;label.textContent='Servidor seleccionado: '+entry.server+'. Conectá para validar el acceso.'};
+   results.appendChild(choose);
+  });
+  label.textContent=entries.length?'Detectados '+entries.length+' servidor(es); elegí uno.':'No hubo resultados. Podés ingresar un servidor manualmente.';
+  if(!network&&!serverInput.value&&entries.length===1)serverInput.value=entries[0].server;
+  if(d.networkTimedOut)label.textContent+=' SQL Browser no respondió en 6 segundos.';
+ }catch(e){label.textContent='No se pudo descubrir: '+e.message+'. Podés ingresarlo manualmente.';}
+}
+document.getElementById('discoverLocal').onclick=()=>discoverServers(false);
+document.getElementById('discoverNetwork').onclick=()=>discoverServers(true);
 async function restoreSaved(){
  try{
   const p=await getJson('/api/profile-status');
@@ -1247,6 +1350,7 @@ async function restoreSaved(){
     status('Reconectando automáticamente…');
     state=await api('/api/reconnect-saved',{});
   }
+  if(!state.connected){await discoverServers(false)}
   if(state.connected){
     serverInput.value=state.server||serverInput.value;authInput.value=state.auth||authInput.value;userInput.value=state.user||userInput.value;updateAuth();
     showDatabases(state,state.database||p.database);
@@ -1389,6 +1493,14 @@ try {
         $db = ""
         if($null -ne $st){ $db = [string]$st.database }
         Send-Json $stream 200 @{ok=$true;service='Capitan Rodolfo Local';version=$Version;apiSqlObject=$true;mode='background';scheduledTask=$TaskName;statusFile=$ServiceStatusPath;profileSaved=(Test-Path $ProfilePath);connected=($null -ne $st);database=$db}
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/discover-servers'){
+        try{Send-Json $stream 200 (Get-DiscoveredSqlServers)}
+        catch{Send-Json $stream 500 @{error='Falló el descubrimiento local de SQL Server.'}}
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/discover-servers'){
+        try{Send-Json $stream 200 (Get-DiscoveredSqlServers -Network)}
+        catch{Send-Json $stream 500 @{error='SQL Browser no pudo consultar la red.'}}
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/profile-status'){
         $p = Load-SqlProfile

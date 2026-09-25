@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual del código: **85** (validación final contra la base SQL local pendiente)
+- Versión actual del código: **86** (validación final contra la base SQL local pendiente)
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -87,3 +87,7 @@ El código propio de Capitán aparece discretamente como `R·84`, leído de `VER
 ## Hotfix v85: procedencia de Cobros
 
 El puente SQL corregido consulta **Maestros.dbo.PA_VentasFormasPago**, no SiSRL, con los 7 parametros reales. Para verificar pagos MP/YPF utiliza Maestros y exige identidad/estación confirmadas. Las consultas de Despachos/RelacionCptsDespachos permanecen en SiSRL y conservan el vínculo de fecha e ID_DESPACHO publicado en v84. Si el usuario SQL no tiene acceso a Maestros, el conector comunica el bloqueo. **Pendiente:** cotejar resultados contra SiSRL/Maestros reales y aprobar la prueba funcional antes de declarar que Cobros funciona.
+
+## v86 — CAP-SQL-DISCOVERY
+
+Tarjeta: https://trello.com/c/ZzeiPPPy. El conector residente expone GET `/api/discover-servers` para enumerar servicios SQL realmente instalados y registro de Windows. POST (botón explícito) consulta los anuncios SQL Browser de red con 6 segundos de límite, sin barridos de IP. Núcleo > Datos ofrece un selector de servidores detectados y conserva ingreso manual. La conexión guardada y su contraseña cifrada no se reemplazan automáticamente. La versión esperada de web y conector vuelve a coincidir: v86. La prueba de autenticación y selección de base en el equipo real permanece pendiente.
