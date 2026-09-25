@@ -1823,16 +1823,45 @@ try {
           if($turnoDesde -lt 0 -or $turnoHasta -lt $turnoDesde -or $turnoHasta -gt 99999){
              Send-Json $stream 400 @{error='El rango de turnos debe estar entre 0 y 99999.'};continue
           }
-          $params=[pscustomobject]@{
-            FechaDesde=$from
-            FechaHasta=$until.Date.AddDays(1).AddMilliseconds(-3)
-            IdEstacion=$station
-            TurnoDesde=$turnoDesde
-            TurnoHasta=$turnoHasta
-          }
+          # La llamada comprobada tiene SIETE argumentos posicionales:
+          # fecha desde/hasta, estacion, rango 0..999, rango 0..999.
+          # No suponer nombres de parametros: resolver su orden desde SQL Server.
+          # Si cambió la firma, fallar antes de devolver cobros incorrectos.
+          $cn.ChangeDatabase('SiSRL')
+          $meta=$cn.CreateCommand()
           try {
-            # 5.000 rows per set; if any set reaches that limit the browser
-            # shows an incomplete-data warning, not a fictitious daily total.
+            $meta.CommandText=@"
+SELECT p.name AS Name,TYPE_NAME(p.user_type_id) AS TypeName
+FROM sys.parameters p
+WHERE p.object_id=OBJECT_ID('dbo.PA_VentasFormasPago','P')
+  AND p.is_output=0
+ORDER BY p.parameter_id;
+"@
+            $reader=$meta.ExecuteReader()
+            $signature=New-Object System.Collections.Generic.List[object]
+            try {
+              while($reader.Read()){
+                $signature.Add([pscustomobject]@{Name=[string]$reader['Name'];Type=[string]$reader['TypeName']})
+              }
+            }finally{$reader.Close()}
+          }finally{$meta.Dispose()}
+          if($signature.Count -ne 7){
+            Send-Json $stream 422 @{error=('Firma inesperada: PA_VentasFormasPago presenta '+$signature.Count+' parámetros y el ejemplo aprobado utiliza 7. Revisá el procedimiento.');parametros=@($signature.ToArray())}
+            continue
+          }
+          if(@($signature[0].Type,$signature[1].Type | Where-Object {$_ -notin @('date','datetime','datetime2','smalldatetime')}).Count -gt 0){
+            Send-Json $stream 422 @{error='Los dos primeros parámetros de PA_VentasFormasPago no son fechas. No se asumirá una firma incompatible.'}
+            continue
+          }
+          $arguments=@($from.Date,$until.Date,$station,$turnoDesde,$turnoHasta,0,999)
+          $named=[ordered]@{}
+          for($i=0;$i -lt 7;$i++){
+            $named[$signature[$i].Name.TrimStart('@')]=$arguments[$i]
+          }
+          $params=[pscustomobject]$named
+          try {
+            # Mantener los dos ultimos argumentos 0..999 indicados por Duilio.
+            # Nunca sintetizar importes desde Despachos.
             $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
             $sets=@($result.resultSets)
             if($sets.Count -eq 0){throw 'PA_VentasFormasPago no devolvió un conjunto de resultados.'}
