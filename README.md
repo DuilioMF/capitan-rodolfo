@@ -81,3 +81,7 @@ La vista Estación muestra directamente la respuesta de `dbo.PA_CapitanRodolfo_C
 ## Comprobantes — corrección propuesta v84
 
 Dado un `ID_SALE`, el vínculo con el comprobante se resuelve con `Despachos.ULDATE = RelacionCptsDespachos.FECHA` **y** `Despachos.ID_DESPACHO = RelacionCptsDespachos.ID_DESPACHO`, siempre filtrando la estación desde Despachos. La página consulta individualmente cada venta para no depender del tope de relaciones del circuito. Caso de validación: `sql/PRUEBA_RELACION_DESPACHO.sql` con `ID_SALE = 1293`. El resultado real de SiSRL y los permisos del conector siguen pendientes de prueba antes de publicar.
+
+## PA_VentasFormasPago — firma informada (24/09/2026)
+
+Ejemplo confirmado por Duilio: `EXEC PA_VENTASFORMASPAGO '21/09/2026','21/09/2026',1,0,999,0,999`. El conector anterior pasaba solamente **cinco** argumentos con nombres supuestos. En esta rama primero inspecciona los siete nombres y tipos de `sys.parameters`, respeta el orden del ejemplo y mantiene los dos últimos valores `0,999` hasta verificar su significado real. No equiparar un total de medios de pago del día con un despacho: primero resolver su comprobante y luego identificar la fila del reporte por las claves reales de ese comprobante. La firma y sus resultados reales siguen pendientes de ejecutar en SiSRL.
