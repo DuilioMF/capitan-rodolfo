@@ -1478,7 +1478,13 @@ try {
   while($true){
     $client = $listener.AcceptTcpClient()
     try {
+      # El servidor atiende solicitudes secuencialmente: una peticion HTTP
+      # incompleta no debe retener indefinidamente el listener local.
+      $client.ReceiveTimeout = 5000
+      $client.SendTimeout = 10000
       $stream = $client.GetStream()
+      $stream.ReadTimeout = 5000
+      $stream.WriteTimeout = 10000
       $req = Read-Request -Stream $stream
       if($null -eq $req){ continue }
       $script:CurrentOrigin = ""
