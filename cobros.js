@@ -295,7 +295,7 @@ async function search(){
    data=response;rows=s&&Array.isArray(s.rows)?s.rows:[];columnNames=s?s.columns:[];
    paramsKey=JSON.stringify(p);visible=50;method='all';
    const incomplete=!!(response.truncated||s?.truncated);
-   if(!s)notice('El SP respondió, pero no devolvió columnas reconocibles de medios de pago. Revisá su resultado real.','warn');
+   if(!s){const columns=sets.flatMap(x=>Array.isArray(x.columns)?x.columns:[]).slice(0,32);notice('Maestros.PA_VentasFormasPago respondió, pero no reconozco los medios de pago. Columnas SQL recibidas: '+(columns.join(', ')||'ninguna')+'. Revisá el SP de la base Maestros.','warn')}
    else if(incomplete)notice('ATENCIÓN: se alcanzó el límite de 5.000 filas. Los totales son PARCIALES; acotá las fechas.','error');
    else if(saleFilter&&!rows.some(matchesSale))notice('El comprobante '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero+' no apareció en el SP para las fechas y turnos seleccionados. No se atribuyen otros cobros.','warn');
    else if(sets.length>1)notice('Se muestra un único resultado del SP para evitar duplicar importes de otros conjuntos.','warn');
