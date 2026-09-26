@@ -23,6 +23,11 @@
   <section class="card">
     <h2>Conector local</h2>
     <div id="bridgeStatus" class="status">Buscando conector en este equipo…</div>
+    <div class="install" id="conector">
+      <p class="muted">¿Se desconectó el servicio? Podés volver a ejecutar el instalador local sin borrar el perfil SQL guardado, y después comprobar la conexión.</p>
+      <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=86" download="CAPITAN_RODOLFO.bat" style="text-decoration:none"><button type="button">Descargar / volver a iniciar conector</button></a><button class="ghost" id="retryBridgeVisible" type="button">Comprobar conexión</button></div>
+      <p class="small">Por seguridad, ejecutá el archivo descargado desde Windows. La página web no puede iniciar procesos locales directamente.</p>
+    </div>
     <div id="installBox" class="install hidden">
       <p class="muted">No encuentro el conector. Descargalo o actualizalo una vez: se instala en <strong>C:\Sistemas\DoingLioConnector</strong>, queda oculto y se inicia con Windows.</p>
       <div class="actions"><a href="CAPITAN_RODOLFO.bat?v=86" download><button type="button">Descargar / actualizar conector</button></a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
@@ -436,7 +441,8 @@
  $('copyDiag').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('diagLog').textContent);logDiag('Diagnóstico copiado al portapapeles')}catch(e){logDiag('No pude copiar: '+e.message)}});
  $('clearDiag').addEventListener('click',()=>{$('diagLog').textContent='';logDiag('Log limpiado')});
  $('auth').addEventListener('change',authUi);
- $('retryBridge').addEventListener('click',boot);
+ $('retryBridgeVisible').addEventListener('click',()=>{$('retryBridge').click()});
+  $('retryBridge').addEventListener('click',boot);
  $('changePassword').addEventListener('click',()=>{$('connectionForm').classList.remove('hidden');$('passwordWrap').classList.remove('hidden');$('password').focus()});
  $('discoverLocal').addEventListener('click',()=>discoverServers(false));
  $('discoverNetwork').addEventListener('click',()=>discoverServers(true));
