@@ -10,7 +10,7 @@ set "ALLOWLIST=%APPROOT%\sp_allowlist.json"
 set "LOG=%APPROOT%\install.log"
 set "TASK=CapitanRodolfoLocal"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main"
-set "EXPECTED_VERSION=86"
+set "EXPECTED_VERSION="
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
 if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
@@ -29,6 +29,8 @@ echo.
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
+for /f "usebackq delims=" %%V in ("%VERSION_FILE%") do if not defined EXPECTED_VERSION set "EXPECTED_VERSION=%%V"
+if not defined EXPECTED_VERSION goto :error
 
 schtasks /End /TN "%TASK%" >nul 2>nul
 schtasks /Delete /F /TN "%TASK%" >nul 2>nul
