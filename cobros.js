@@ -45,6 +45,19 @@ const today=()=>{
 const modal=$('paymentsModal');
 let data=null,rows=[],columnNames=[],method='all',visible=50,paramsKey='',working=false,saleFilter=null;
 let latestRequest=0;
+const localDesktop=['127.0.0.1','localhost'].includes(location.hostname);
+const bridgeCandidates=localDesktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+async function resolveBridge(){
+ if(window.capitanSqlBridge)return window.capitanSqlBridge;
+ for(const base of bridgeCandidates){
+  try{const res=await fetch(base+'/health',{cache:'no-store',...(localDesktop?{}:{targetAddressSpace:'local'}),signal:AbortSignal.timeout(2500)});
+   if(!res.ok)continue;
+   const h=await res.json();
+   if(h.ok&&h.service==='Capitan Rodolfo Local')return base;
+  }catch(_){}
+ }
+ throw Error('No responde el conector SQL local. Abrí Núcleo → Datos, descargá/levantá el conector y comprobá la conexión.');
+}
 $('paymentsFrom').value=today();$('paymentsTo').value=today();
 function notice(message,type=''){
  const el=$('paymentsNotice');el.className='payments-notice'+(type?' '+type:'');el.textContent=message;
@@ -99,8 +112,7 @@ function range(){
  return {idEstacion:station(),fechaDesde:a,fechaHasta:b,turnoDesde:Number(t1),turnoHasta:Number(t2)};
 }
 async function api(path,body){
- const base=window.capitanSqlBridge;
- if(!base)throw Error('No hay conector SQL activo. Abrí DoingLio desde el cerebro y conectá SiSRL en Núcleo → Datos.');
+ const base=await resolveBridge();
  const r=await fetch(base+path,{
    method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},
    body:JSON.stringify(body),
@@ -273,7 +285,7 @@ async function search(){
  if(!p.idEstacion){notice('Elegí la estación en el tablero antes de consultar cobros.','error');return}
  const request=++latestRequest;
  working=true;$('paymentsSearch').disabled=true;
- notice('Consultando PA_VentasFormasPago en SiSRL…');
+ notice('Consultando Maestros.dbo.PA_VentasFormasPago mediante la conexión SQL local…');
  $('paymentsEvidence').hidden=true;
  try{
    const response=await api('/api/station/payments',p);
