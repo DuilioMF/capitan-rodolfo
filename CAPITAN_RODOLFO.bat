@@ -38,7 +38,7 @@ schtasks /End /TN "%TASK%" >nul 2>nul
 schtasks /Delete /F /TN "%TASK%" >nul 2>nul
 
 schtasks /End /TN "%SQL_WORKER_TASK%" >nul 2>nul
-schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%SQL_WORKER_TASK%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%SQL_WORKER%\"" >>"%LOG%" 2>&1
+schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%SQL_WORKER_TASK%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File %SQL_WORKER%" >>"%LOG%" 2>&1
 start "" powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%SQL_WORKER%"
 
 echo [%date% %time%] Iniciando PowerShell bridge >>"%LOG%"
