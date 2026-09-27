@@ -92,7 +92,7 @@
   }
   function message(text){status.textContent=text}
   function redraw(){
-    link.disabled=busy||!base||!last?.sqlConnected||!last?.workerTokenInstalled||!confirm.checked||!/^\\d{9,15}$/.test(phone.value.replace(/\\D/g,''))||!choices.querySelector('input:checked');
+    link.disabled=busy||!base||!last?.sqlConnected||!last?.workerTokenInstalled||!confirm.checked||!/^\d{9,15}$/.test(phone.value.replace(/\D/g,''))||!choices.querySelector('input:checked');
   }
   async function load(){
     base='';last=null;link.disabled=true;choices.textContent='Buscando estaciones…';message('Buscando el conector de Capitán en esta PC…');
