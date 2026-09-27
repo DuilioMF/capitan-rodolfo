@@ -91,3 +91,13 @@ El puente SQL corregido consulta **Maestros.dbo.PA_VentasFormasPago**, no SiSRL,
 ## v86 — CAP-SQL-DISCOVERY
 
 Tarjeta: https://trello.com/c/ZzeiPPPy. El conector residente expone GET `/api/discover-servers` para enumerar servicios SQL realmente instalados y registro de Windows. POST (botón explícito) consulta los anuncios SQL Browser de red con 6 segundos de límite, sin barridos de IP. Núcleo > Datos ofrece un selector de servidores detectados y conserva ingreso manual. La conexión guardada y su contraseña cifrada no se reemplazan automáticamente. La versión esperada de web y conector vuelve a coincidir: v86. La prueba de autenticación y selección de base en el equipo real permanece pendiente.
+
+## v88 — Conexión de núcleos con DoingLio (27/09/2026)
+
+- Núcleo muestra un tercer apartado **Conexión de núcleos**; **Datos** e **Inteligencia** mantienen sus conexiones sin cambios.
+- Un conector local v88 descubre las estaciones reales mediante `GET /api/station/ids` / `ParamStock`; el administrador elige expresamente cuáles vincular a DoingLio y escribe su número WhatsApp completo.
+- El nuevo módulo `bridge/doinglio_core_link.ps1` lee localmente el token protegido del trabajador y llama por HTTPS a la acción `link_installation` de `doinglio-sql-queue`. No expone el token al navegador ni toca las credenciales SQL guardadas.
+- Supabase valida que el número ya sea administrador habilitado de `capitan-rodolfo`, registra un identificador de instalación y actualiza `doinglio_phone_access.station_ids` **únicamente después de la confirmación explícita**.
+- La actualización requiere **ejecutar una vez** `CAPITAN_RODOLFO.bat` en la PC de la estación: descarga el módulo nuevo y arranca la versión 88 sin borrar las credenciales de Datos.
+- Tras instalarlo: Capitán → Núcleo → Conexión de núcleos → Comprobar estado → elegir estaciones → ingresar WhatsApp → confirmar → Vincular con DoingLio. Estado final debe decir `Núcleo vinculado`.
+- **Pendiente de prueba real:** instalación de v88 en la PC, registro con el teléfono autorizado, consulta de tanques por WhatsApp y validación de resultado SQL. La versión v88 incorpora el registro de una instalación administrativa; el enrutamiento universal entre múltiples instalaciones de distintos clientes todavía no está habilitado.
