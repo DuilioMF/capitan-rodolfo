@@ -123,7 +123,7 @@
     }
     if(!ids.length){choices.textContent='SQL no devolvió estaciones';message('SQL conectado, pero falta el descubrimiento de estaciones en ParamStock.');return}
     if(last.linked){message('Núcleo vinculado a DoingLio ('+last.linkedPhone+'). Estaciones autorizadas: '+last.linkedStations.join(', ')+'. Podés actualizar la selección con el mismo administrador.')}
-    else{message('Servicio v'+last.version+' y SQL conectados. Elegí las estaciones y confirmá la vinculación.')}
+    else{message('Conector v'+last.version+' conectado a la base '+last.database+'. Elegí las estaciones detectadas y confirmá la vinculación.')}
     redraw();
   }
   link.addEventListener('click',async()=>{
