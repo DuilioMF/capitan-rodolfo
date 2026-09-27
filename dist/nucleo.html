@@ -23,9 +23,154 @@
 .core-note{font-size:12px;color:var(--muted)}
 @media(max-width:700px){.core-fields{grid-template-columns:1fr}}
 </style>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+/* Núcleo v88: continuidad visual con Tablero Vivo. Reutiliza variables de theme.css. */
+:root{
+  --bg:#090806;--paper:#12100c;--panel:#15120e;--ink:#efe7d5;--muted:#9a9180;
+  --copper:#d9823b;--gold:#c9a05d;--green:#5ee6a8;--cyan:#70d3dd;--line:#d7b16b24;
+  --n-card:linear-gradient(145deg,#17130eea,#0d0e10ed);
+  --n-border:#75603d65;--n-soft:#d9823b13;--n-field:#0e0d0bea;--n-field-line:#aa86595e;
+  --n-action-bg:#382214;--n-action-fg:#ffcb92;--n-head-bg:#100e0bde;--n-shadow:#0007;
+}
+html[data-theme="light"]{
+  --n-card:linear-gradient(145deg,#fffaf2,#f3e8d6);
+  --n-border:#bca683;--n-soft:#d9823b12;--n-field:#fffdf8;--n-field-line:#aa9471;
+  --n-action-bg:#fff0dc;--n-action-fg:#71451e;--n-head-bg:#fffaf2ee;--n-shadow:#6e4c251d;
+}
+html[data-style="chaty"][data-theme="dark"]{
+  --n-card:linear-gradient(145deg,#101a2beb,#080d18ed);--n-border:#75e8ff4c;
+  --n-soft:#75e8ff12;--n-field:#0c1727;--n-field-line:#75e8ff55;
+  --n-action-bg:#103143;--n-action-fg:#b7f5ff;--n-head-bg:#08101bde;--n-shadow:#0008;
+}
+html[data-style="chaty"][data-theme="light"]{
+  --n-card:linear-gradient(145deg,#ffffffef,#edfaffec);--n-border:#6bb9cf8a;
+  --n-soft:#75e8ff18;--n-field:#fff;--n-field-line:#74b9cb;
+  --n-action-bg:#e1f6fb;--n-action-fg:#14536a;--n-head-bg:#fffffff0;--n-shadow:#438fab20;
+}
+html[data-style="estacion"]{
+  --n-card:linear-gradient(145deg,#101e2c,#08121d);--n-border:#2dd9ff55;
+  --n-soft:#2dd9ff12;--n-field:#0b1b29;--n-field-line:#2dd9ff55;
+  --n-action-bg:#123244;--n-action-fg:#aaf3ff;--n-head-bg:#09141eee;--n-shadow:#0009;
+}
+html[data-style="estacion"][data-theme="light"]{
+  --n-card:linear-gradient(145deg,#fff,#eaf5f9);--n-border:#8ba7b8;
+  --n-soft:#2dd9ff13;--n-field:#fff;--n-field-line:#8ba7b8;
+  --n-action-bg:#e9f9fd;--n-action-fg:#13536b;--n-head-bg:#ffffffee;--n-shadow:#42677924;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%;color:var(--ink);background:var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif}
+body{
+  background:radial-gradient(circle at 70% 12%,#2b1b10 0,#15110b 24%,transparent 46%),
+    radial-gradient(circle at 20% 86%,#19201a 0,transparent 36%),#090806;
+}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;
+  background-image:linear-gradient(#c9a05d12 1px,transparent 1px),
+    linear-gradient(90deg,#c9a05d12 1px,transparent 1px),
+    radial-gradient(circle at center,#c9a05d15 1px,transparent 1.5px);
+  background-size:44px 44px,44px 44px,22px 22px;
+  mask-image:radial-gradient(circle at 50% 42%,#000 0,transparent 82%);
+}
+.nucleus{width:min(1120px,94vw);margin:8px auto 60px;position:relative;z-index:2}
+.nucleus .nucleus-head{
+  display:flex;align-items:center;gap:22px;padding:27px 30px;
+  border:1px solid var(--n-border)!important;border-radius:19px;
+  background:var(--n-head-bg)!important;box-shadow:0 18px 45px var(--n-shadow);
+  backdrop-filter:blur(15px);
+  margin-bottom:25px;position:relative;overflow:hidden;
+}
+.nucleus .nucleus-head:after{
+  content:"";position:absolute;right:-55px;top:-100px;width:250px;height:250px;
+  border-radius:50%;border:1px solid var(--n-border);pointer-events:none;opacity:.35;
+}
+.nucleus .nucleus-brain{width:90px;height:90px;flex:0 0 90px;display:grid;place-items:center;
+  border:1px solid var(--n-border);border-radius:50%;
+  background:radial-gradient(circle,var(--n-soft),transparent 75%);
+  box-shadow:0 0 0 8px var(--n-soft);
+}
+.nucleus .nucleus-brain img{width:68px;height:68px;object-fit:contain;
+  filter:drop-shadow(0 0 9px #d9823b55)}
+.nucleus .nucleus-head-copy{min-width:0}
+.nucleus .nucleus-head .eyebrow{font-weight:900;font-size:11px;letter-spacing:.24em;color:var(--copper)}
+.nucleus .nucleus-head h1{font:600 clamp(46px,6.8vw,78px)/.95 "Cormorant Garamond",Georgia,serif;letter-spacing:-.035em;margin:11px 0;color:var(--ink)}
+.nucleus .nucleus-head h1 em{font-weight:500;color:var(--gold)}
+.nucleus .nucleus-head p{color:var(--muted);max-width:620px;line-height:1.6;margin:0}
+.nucleus .nucleus-grid{gap:18px;align-items:stretch}
+.nucleus .nucleus-card{
+  background:var(--n-card)!important;color:var(--ink)!important;
+  border:1px solid var(--n-border)!important;
+  border-radius:19px;padding:26px;position:relative;overflow:hidden;
+  box-shadow:0 17px 42px var(--n-shadow),inset 0 1px 0 #ffffff0a;
+  transition:transform .18s ease,border-color .18s ease;
+}
+.nucleus .nucleus-card:hover{transform:translateY(-2px);border-color:var(--copper)!important}
+.nucleus .nucleus-card:before{
+  content:"";position:absolute;left:0;right:0;top:0;height:3px;
+  background:linear-gradient(90deg,var(--copper),var(--gold),transparent);
+}
+.nucleus .nucleus-icon{width:56px;height:56px;display:grid;place-items:center;
+  border-radius:15px;border:1px solid var(--n-border);
+  background:var(--n-soft);font-size:30px;color:var(--copper)}
+.nucleus .nucleus-card h2{font:600 36px/1.1 "Cormorant Garamond",Georgia,serif;
+  color:var(--ink);margin:17px 0 9px}
+.nucleus .nucleus-card p,.nucleus .memory-note,.nucleus .core-note{color:var(--muted)!important}
+.nucleus .nucleus-action,.nucleus .memory-link,.nucleus .memory-check,
+.nucleus .core-link-btn,.nucleus .engine-form button{
+  border-radius:12px;background:var(--n-action-bg)!important;
+  color:var(--n-action-fg)!important;border:1px solid var(--copper)!important;
+  text-decoration:none;font-weight:800;box-shadow:inset 0 1px 0 #ffffff12;
+}
+.nucleus .memory-link,.nucleus .core-link-btn{
+  background:var(--copper)!important;color:#180f08!important;
+}
+html[data-style="chaty"][data-theme="dark"] .nucleus .memory-link,
+html[data-style="chaty"][data-theme="dark"] .nucleus .core-link-btn,
+html[data-style="estacion"] .nucleus .memory-link,
+html[data-style="estacion"] .nucleus .core-link-btn{color:#081621!important}
+.nucleus .nucleus-action:hover,.nucleus .memory-check:hover,.nucleus .core-link-btn:hover{
+  filter:brightness(1.14);box-shadow:0 0 0 3px var(--n-soft);
+}
+.nucleus :is(button,a,input):focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.nucleus :is(button):disabled{opacity:.48;cursor:not-allowed}
+.nucleus .memory-guide,.nucleus .core-status,.nucleus .architecture-note{
+  background:var(--n-soft)!important;border-color:var(--n-border)!important;color:var(--ink);
+}
+.nucleus .memory-guide h3,.nucleus .memory-guide strong{color:var(--ink)}
+.nucleus .memory-guide ol,.nucleus .engine small,.nucleus .engine-status{color:var(--muted)}
+.nucleus .engine,.nucleus .core-choices label{background:var(--n-soft);border-color:var(--n-border);color:var(--ink)}
+.nucleus .engine-default{color:var(--green)}
+.nucleus .engine-form input,.nucleus .core-fields input[type=tel]{
+  background:var(--n-field)!important;color:var(--ink)!important;
+  border:1px solid var(--n-field-line)!important;border-radius:12px;
+}
+.nucleus .core-fields label,.nucleus .core-choices label,.nucleus .core-agree{color:var(--ink)}
+.nucleus .core-status{line-height:1.6}
+.nucleus .core-card{border-color:var(--copper)!important}
+.nucleus .core-card .core-fields{margin-top:20px}
+.nucleus .core-note a{color:var(--copper);text-underline-offset:3px}
+html[data-theme="light"] .nucleus .nucleus-card p,
+html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
+@media(max-width:760px){
+  .nucleus{margin-top:4px;width:min(100% - 24px,1120px)}
+  .nucleus .nucleus-head{padding:22px 19px;gap:13px}
+  .nucleus .nucleus-brain{width:60px;height:60px;flex-basis:60px}
+  .nucleus .nucleus-brain img{width:46px;height:46px}
+  .nucleus .nucleus-head h1{font-size:clamp(42px,10vw,58px)}
+  .nucleus .nucleus-card{padding:20px}
+}
+@media(max-width:420px){
+  .nucleus .nucleus-head{align-items:flex-start}
+  .nucleus .nucleus-brain{width:48px;height:48px;flex-basis:48px}
+  .nucleus .nucleus-brain img{width:36px;height:36px}
+}
+@media(prefers-reduced-motion:reduce){.nucleus .nucleus-card{transition:none}}
+
+</style>
 </head>
 <body data-capitan-back="true"><main class="nucleus">
- <header class="nucleus-head"><div class="eyebrow">CAPITÁN RODOLFO · v<span id="nucleoVersion">88</span></div><h1>Núcleo</h1><p>El centro del especialista: las fuentes que aportan información y la inteligencia que conversa con esos datos.</p></header>
+ <header class="nucleus-head"><div class="nucleus-brain" aria-hidden="true"><img src="brain-davinci.svg" alt=""></div><div class="nucleus-head-copy"><div class="eyebrow">CAPITÁN RODOLFO · v<span id="nucleoVersion">88</span></div><h1>Núcleo</h1><p>El centro del especialista: las fuentes que aportan información y la inteligencia que conversa con esos datos.</p></header>
  <section class="nucleus-grid">
   <article class="nucleus-card"><div class="nucleus-icon">◫</div><h2>Datos</h2><p>Conexiones y fuentes de la estación. SQL Server continúa protegido detrás del conector local y no expone contraseñas en la web.</p><a class="nucleus-action" href="conexion-sql.html">Abrir conexión SQL →</a></article>
   <article class="nucleus-card"><div class="nucleus-icon">✦</div><h2>Inteligencia</h2><p>Rodolfo puede trabajar con varios motores de IA. La cuenta conserva uno predeterminado y permite cambiarlo sin modificar las fuentes de datos.</p>
