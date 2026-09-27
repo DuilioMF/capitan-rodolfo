@@ -31,13 +31,17 @@ function Api([string]$token,[hashtable]$body){
   return Invoke-RestMethod -Uri $QueueUrl -Method POST -Headers @{"x-doinglio-token"=$token} -Body $json -ContentType "application/json" -TimeoutSec 15
 }
 function Local-Bridge {
+  # Preferir el conector conectado más nuevo si conviven versiones antiguas.
+  $best="";$bestVersion=-1
   foreach($p in @(8787,8797,18787,27877,37877,48787,57877)){
     try {
-      $health = Invoke-RestMethod -Uri ("http://127.0.0.1:"+$p+"/health") -TimeoutSec 1
-      if($health.ok) { return ("http://127.0.0.1:"+$p) }
+      $health=Invoke-RestMethod -Uri ("http://127.0.0.1:"+$p+"/health") -TimeoutSec 1
+      if(-not $health.ok -or -not $health.connected){continue}
+      $v=0;[int]::TryParse([string]$health.version,[ref]$v)|Out-Null
+      if($v -gt $bestVersion){$best="http://127.0.0.1:$p";$bestVersion=$v}
     } catch {}
   }
-  return ""
+  return $best
 }
 function Set-Count($value) {
   if($null -eq $value){return 0}
