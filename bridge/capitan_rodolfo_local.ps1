@@ -26,6 +26,8 @@ $ActiveSessionId = $null
 
 # Datos persistentes fuera del codigo. Git puede actualizar el programa sin tocar la conexion.
 $DataRoot = "C:\Sistemas\DoingLio\data\capitan"
+$CoreLinkScript=Join-Path $PSScriptRoot 'doinglio_core_link.ps1'
+if(Test-Path $CoreLinkScript){. $CoreLinkScript}
 if(-not (Test-Path $DataRoot)){ New-Item -ItemType Directory -Path $DataRoot -Force | Out-Null }
 $ProfilePath = Join-Path $DataRoot "conexion.json"
 $PasswordPath = Join-Path $DataRoot "credenciales.dat"
@@ -1507,6 +1509,35 @@ try {
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/discover-servers'){
         try{Send-Json $stream 200 (Get-DiscoveredSqlServers -Network)}
         catch{Send-Json $stream 500 @{error='SQL Browser no pudo consultar la red.'}}
+      }
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/doinglio/status'){
+        try{
+          $st=Ensure-ActiveSession
+          $stations=@()
+          $database=''
+          if($null -ne $st){
+            $database=[string]$st.database
+            $stations=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database $database)
+          }
+          $response=Get-DoingLioCoreStatus -Root $DataRoot -SqlConnected ($null -ne $st) -Database $database -Stations $stations
+          Send-Json $stream 200 $response
+        }catch{Send-Json $stream 400 @{ok=$false;error='Actualiza el conector o verifica el descubrimiento SQL.'}}
+      }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/doinglio/link'){
+        $allowed=@('https://duiliomf.github.io','https://capitan.revalsoftia.com.ar')
+        $local=([string]$script:CurrentOrigin -match '^http://(127\.0\.0\.1|localhost):(8787|8797|18787|27877|37877|48787|57877|8790)$')
+        if($script:CurrentOrigin -and -not $local -and $allowed -notcontains [string]$script:CurrentOrigin){
+          Send-Json $stream 403 @{ok=$false;error='Origen no autorizado.'};continue
+        }
+        try{
+          $st=Ensure-ActiveSession
+          if($null -eq $st){throw 'Conecta primero SQL desde Nucleo > Datos.'}
+          $d=$req.Body | ConvertFrom-Json
+          $available=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database ([string]$st.database))
+          $selected=@($d.station_ids | ForEach-Object {[int]$_})
+          $response=Set-DoingLioCoreLink -Root $DataRoot -Phone ([string]$d.phone) -Selected $selected -Available $available -Database ([string]$st.database) -Confirmed ($d.confirmed -eq $true)
+          Send-Json $stream 200 $response
+        }catch{Send-Json $stream 400 @{ok=$false;error='No se pudo vincular. Verifica telefono administrador, estaciones y servicio local.'}}
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/profile-status'){
         $p = Load-SqlProfile
