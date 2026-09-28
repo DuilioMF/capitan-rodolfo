@@ -95,7 +95,7 @@ h1 em{font-weight:500;color:#d9ae65}
 .kpi small{color:#837b6e;font-size:10px;letter-spacing:.08em}
 .kpi strong{display:block;font:600 30px "Cormorant Garamond",serif;margin-top:7px}.ok{color:var(--green)}.warn{color:#ffb36b}
 .footer{display:flex;justify-content:space-between;align-items:center;margin-top:22px;color:#686155;font-size:9px;letter-spacing:.16em}
-.build{border:1px solid #6d583b45;border-radius:999px;padding:6px 9px;color:#9a8468}
+.build{border:1px solid #6d583b24;border-radius:999px;padding:4px 7px;color:#766655;font-size:8px;letter-spacing:.22em;opacity:.5;user-select:text}.build:hover{opacity:.86}
 .scribble{position:absolute;left:-55px;bottom:25px;color:#6f6556;font:italic 15px "Cormorant Garamond",serif;transform:rotate(-8deg)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.32}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -105,10 +105,28 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[data-action]{cursor:pointer}.step[data-action]:focus{outline:2px solid var(--copper);outline-offset:3px}.step[data-action]:hover b{color:#ffd09b}
 .tank-modal{position:fixed;inset:0;z-index:5000;background:#050403d9;backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:24px}
 .tank-modal.open{display:flex}.tank-dialog{width:min(1180px,96vw);max-height:88vh;overflow:hidden;border:1px solid #b76c357d;background:#100d09;box-shadow:0 30px 100px #000c;display:flex;flex-direction:column}
-.tank-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 20px;border-bottom:1px solid #75603d55}.tank-head h2{margin:0;font:600 30px "Cormorant Garamond",serif}.tank-close{border:1px solid #75603d77;background:#ffffff08;color:var(--ink);width:38px;height:38px;cursor:pointer;font-size:20px}
+ .tank-head{display:flex;justify-content:flex-start;align-items:center;gap:16px;padding:18px 20px;border-bottom:1px solid #75603d55}.tank-head>div{flex:1;min-width:0}.tank-head .tank-close{order:-1;flex:0 0 38px;border-radius:9px}.tank-head h2{margin:0;font:600 30px "Cormorant Garamond",serif}.tank-close{border:1px solid #75603d77;background:#ffffff08;color:var(--ink);width:38px;height:38px;cursor:pointer;font-size:20px}
 .tank-status{padding:12px 20px;color:var(--muted);font-size:12px;border-bottom:1px solid #75603d30}.tank-status.ok{color:var(--green)}.tank-status.warn{color:#ffb36b}
 .tank-table-wrap{overflow:auto;max-height:65vh}.tank-table{width:100%;border-collapse:collapse;font-size:12px}.tank-table th,.tank-table td{padding:10px 12px;border-bottom:1px solid #75603d30;text-align:left;white-space:nowrap}.tank-table th{position:sticky;top:0;background:#18130d;color:#ffd09b;z-index:1}.tank-table tbody tr:hover{background:#ffffff05}
 .tank-empty{padding:28px 20px;color:var(--muted)}
+.link-btn{color:#ffd09b;border:0;border-bottom:1px dashed #c58f55;background:transparent;font:inherit;padding:2px 0;cursor:pointer}
+.link-btn:hover{color:#fff0cb}.link-btn:focus-visible{outline:2px solid #ffd09b}
+.linked-filter{padding:10px 20px;display:flex;gap:12px;align-items:center;color:var(--copper);border-bottom:1px solid #70503355;font-size:12px}
+.linked-filter[hidden]{display:none}.linked-filter button,.linked-back{background:#2d1e12;color:#ffd09b;border:1px solid #d9823b7d;border-radius:7px;padding:8px 12px;cursor:pointer}
+.dispatch-tabs{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px 9px;border-bottom:1px solid #70503355}
+.dispatch-tabs button{background:#20180f;color:#e2d0bb;border:1px solid #85613c;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+.dispatch-tabs button[aria-pressed="true"]{background:#bf6b2f;color:#1b1008;border-color:#f1b16e}
+.dispatch-tabs button:focus-visible{outline:2px solid #f5ce84;outline-offset:3px}
+.dispatch-tabs span{font-variant-numeric:tabular-nums;margin-left:5px}
+.payment-note{margin:0;padding:7px 20px;color:#c7b49a;font-size:12px}
+.linked-back{margin:16px 20px;align-self:flex-start}.mini-dialog{width:min(680px,94vw)}
+.product-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:20px}
+.product-facts>div{border:1px solid #c9a05d40;border-radius:9px;padding:13px;background:#261b1047}
+.product-facts small{display:block;color:#c9a05d;margin-bottom:7px}.product-facts strong{font-size:18px;overflow-wrap:anywhere}
+#tankModal .tank-dialog,#pumpModal .tank-dialog,#dispatchModal .tank-dialog{width:min(1340px,98vw)}
+#tankModal .tank-table-wrap,#pumpModal .tank-table-wrap,#dispatchModal .tank-table-wrap{max-height:70vh}
+@media(max-width:600px){.product-facts{grid-template-columns:1fr}}
+
 @media(max-width:700px){.tank-modal{padding:8px}.tank-dialog{max-height:94vh}.tank-head h2{font-size:24px}.tank-table th,.tank-table td{padding:9px 10px;font-size:11px}}
 
 .station-picker{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#22190d99;border:1px solid #b76c3577;padding:11px 14px}
@@ -119,14 +137,15 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 #truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
-<link rel="stylesheet" href="theme.css?v=62">
-<script src="theme.js?v=62" defer></script>
+<link rel="stylesheet" href="../cobros.css?v=87">
+<link rel="stylesheet" href="../theme.css?v=84">
+<script src="../theme.js?v=84" defer></script>
 </head>
 <body>
 <div class="wrap">
 <header>
   <div class="brand">
-    <div class="brain" aria-label="Cerebro"><img src="brain-davinci.svg" alt=""></div>
+    <div class="brain" aria-label="Cerebro"><img src="../brain-davinci.svg" alt=""></div>
     <div><b>Capitán Rodolfo</b><small>DOINGLIO · TABLERO VIVO</small></div>
   </div>
   <nav class="nav">
@@ -158,7 +177,12 @@ h1 em{font-weight:500;color:#d9ae65}
   <select id="stationId" aria-label="Elegir estación"></select>
   <button id="reloadCircuit" type="button">Actualizar circuito SQL</button>
 </div>
-<div class="station-error" id="stationError" role="status" aria-live="polite"></div>
+<div class="station-error" id="stationError" role="status" aria-live="polite"></div><div class="station-error" id="circuitInstallStatus" role="status" aria-live="polite"></div>
+<div id="circuitInstallHelp" class="station-error" hidden>
+  Si tu usuario SQL no tiene permisos para instalar el procedimiento,
+  <a href="https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql" target="_blank" rel="noopener noreferrer">descargá el instalador para un administrador de SiSRL</a>.
+  Después reabrí DoingLio desde el cerebro.
+</div>
 <div class="company-card" id="companyCard" hidden aria-live="polite">
   <div><span class="company-ey">EMPRESA · PARAMSTOCK</span><h2 id="stationName">Estación</h2></div>
   <div class="company-meta" id="stationCompanyInfo"></div>
@@ -178,8 +202,8 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="step" id="truckStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="truckModal"><span class="symbol">I</span><small>CAMIÓN · CLIC PARA SUBIR</small><b>Descarga combustible</b><span>Factura, recibo o transferencia · arrastrá un archivo</span></div>
   <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
   <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
-  <div class="step"><span class="symbol">IV</span><small>AUTO</small><b>Carga finalizada</b><span>Despacho completado</span></div>
-  <div class="step"><span class="symbol">V</span><small>COBRO</small><b id="paymentStatus">—</b><span>Formas de pago: pendiente de enlazar</span></div>
+  <div class="step" id="loadStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="dispatchModal"><span class="symbol">IV</span><small>CARGA · CLIC PARA VER</small><b>Carga</b><span id="loadCaption">Despachos, importe y cobro</span></div>
+  <div class="step" id="paymentStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="paymentsModal"><span class="symbol">V</span><small>COBRO · CLIC PARA VER</small><b id="paymentStatus">—</b><span id="paymentCaption">Ver despachos cobrados y sus comprobantes</span></div>
 </section>
 
 <div class="tank-modal" id="truckModal" role="dialog" aria-modal="true" aria-labelledby="truckTitle">
@@ -190,16 +214,90 @@ h1 em{font-weight:500;color:#d9ae65}
 </div>
 <div class="tank-modal" id="tankModal" role="dialog" aria-modal="true" aria-labelledby="tankModalTitle">
   <div class="tank-dialog">
-    <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques de la estación</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
     <div class="tank-status" id="tankStatus">Esperando conexión SQL…</div>
     <div class="tank-table-wrap" id="tankTableWrap"><div class="tank-empty">Hacé clic en TANQUES para consultar dbo.Tanque.</div></div>
   </div>
 </div>
 <div class="tank-modal" id="pumpModal" role="dialog" aria-modal="true" aria-labelledby="pumpModalTitle">
   <div class="tank-dialog">
-    <div class="tank-head"><div><div class="eyebrow">SQL · SURTIDORES</div><h2 id="pumpModalTitle">Caras, mangueras y tanques</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-head"><div><div class="eyebrow">SQL · SURTIDORES</div><h2 id="pumpModalTitle">Surtidores</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
     <div class="tank-status" id="pumpStatus">Esperando SP de la estación…</div>
     <div class="tank-table-wrap" id="pumpTableWrap"><div class="tank-empty">Seleccioná una estación.</div></div>
+  </div>
+</div>
+
+<div class="tank-modal" id="dispatchModal" role="dialog" aria-modal="true" aria-labelledby="dispatchModalTitle">
+  <div class="tank-dialog">
+    <div class="tank-head"><div><div class="eyebrow">CARGA Y COBROS</div><h2 id="dispatchModalTitle">Despachos</h2></div><button class="tank-close" id="dispatchClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="dispatchStatus">Esperando despachos…</div>
+    <div class="dispatch-tabs" role="group" aria-label="Filtrar despachos por cobro">
+      <button id="dispatchShowAll" type="button" data-state="all" aria-pressed="true">Todos <span id="dispatchCountAll">0</span></button>
+      <button id="dispatchShowPaid" type="button" data-state="paid" aria-pressed="false">Cobrados <span id="dispatchCountPaid">0</span></button>
+      <button id="dispatchShowPending" type="button" data-state="pending" aria-pressed="false">Pendientes <span id="dispatchCountPending">0</span></button>
+    </div>
+    <p class="payment-note">Tocá <strong>Cobrado ↗</strong> en una venta para abrir su comprobante, si existe una relación verificada.</p>
+    <div class="tank-table-wrap" id="dispatchTableWrap"></div>
+  </div>
+</div>
+<div class="tank-modal" id="productModal" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+  <div class="tank-dialog mini-dialog">
+    <div class="tank-head"><div><div class="eyebrow">FICHA DE PRODUCTO</div><h2 id="productModalTitle">Producto</h2></div><button class="tank-close" id="productClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="product-facts" id="productFacts"></div>
+    <button type="button" id="productBack" class="linked-back">← Volver</button>
+  </div>
+</div>
+<div class="tank-modal" id="receiptModal" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
+  <div class="tank-dialog mini-dialog">
+    <div class="tank-head"><div><div class="eyebrow">COBRO</div><h2 id="receiptModalTitle">Comprobante</h2></div><button class="tank-close" id="receiptClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="receiptStatus"></div>
+    <div class="tank-table-wrap" id="receiptTableWrap"></div>
+    <button type="button" id="receiptBack" class="linked-back">← Volver a Carga</button>
+  </div>
+</div>
+<div class="tank-modal" id="paymentsModal" role="dialog" aria-modal="true" aria-labelledby="paymentsTitle" aria-hidden="true">
+  <div class="tank-dialog payments-dialog">
+    <div class="tank-head payments-head">
+      <div><div class="eyebrow">CAPITÁN RODOLFO · MOVIMIENTOS REALES</div><h2 id="paymentsTitle">Cobros</h2></div>
+      <button class="tank-close" id="paymentsClose" type="button" aria-label="Cerrar Cobros">×</button>
+    </div>
+    <div class="payments-range">
+      <label>Desde <input type="date" id="paymentsFrom" autocomplete="off"></label>
+      <label>Hasta <input type="date" id="paymentsTo" autocomplete="off"></label>
+      <label>Turno desde <input type="number" id="paymentsShiftFrom" value="0" min="0" max="99999"></label>
+      <label>Turno hasta <input type="number" id="paymentsShiftTo" value="99999" min="0" max="99999"></label>
+      <button type="button" id="paymentsSearch">Consultar cobros</button>
+      <label>ID_SALE <input type="number" id="paymentsSaleId" min="1" step="1" placeholder="Nº de despacho"></label>
+      <button type="button" id="paymentsFindSale" class="payments-find-sale">Buscar despacho</button>
+    </div>
+    <p id="paymentsNotice" class="payments-notice" role="status" aria-live="polite">Elegí un período y consultá los cobros reales.</p>
+    <div class="payments-layout">
+      <aside class="payments-left">
+        <div class="payments-left-head">
+          <span class="payments-logo" aria-hidden="true">▱</span>
+          <div><strong>Cobros</strong><small>POR FORMA DE PAGO</small></div>
+        </div>
+        <div id="paymentsMethods" class="payments-methods" aria-label="Seleccionar forma de pago"></div>
+        <p class="payments-footnote">Montos según PA_VentasFormasPago; nunca estimados desde despachos.</p>
+      </aside>
+      <section class="payments-main" aria-label="Detalle de cobros">
+        <div class="payments-main-head">
+          <div><div class="eyebrow">DETALLE DE MOVIMIENTOS</div><h3 id="paymentsMethodTitle">Todas las formas</h3></div>
+          <div class="payments-selected"><span id="paymentsSelection" aria-live="polite"></span><button id="paymentsClearInvoice" type="button" hidden>Ver todos los comprobantes</button><button id="paymentsOpenPaid" type="button">Ver despachos cobrados ↗</button></div>
+          <span id="paymentsSource" class="payments-source">Sin consultar</span>
+        </div>
+        <div class="payments-overview">
+          <div><small>Monto de los registros visibles</small><strong id="paymentsAmount">—</strong></div>
+          <div><small>Movimientos</small><strong id="paymentsCount">—</strong></div>
+          <div><small>Estación</small><strong id="paymentsStation">—</strong></div>
+        </div>
+        <div id="paymentsList" class="payments-list" role="region" aria-live="polite">
+          <p class="payments-empty">Los cobros aparecerán cuando el procedimiento devuelva datos.</p>
+        </div>
+        <button id="paymentsMore" class="payments-more" type="button" hidden>Mostrar 50 más</button>
+        <div id="paymentsEvidence" class="payments-evidence" hidden aria-live="polite"></div>
+      </section>
+    </div>
   </div>
 </div>
 
@@ -208,11 +306,11 @@ h1 em{font-weight:500;color:#d9ae65}
   <div class="kpi"><small>Litros en despachos</small><strong id="liveLiters">—</strong></div>
   <div class="kpi"><small>Importe en despachos</small><strong id="livePesos">—</strong></div>
   <div class="kpi"><small>Despachos</small><strong id="liveDispatches">—</strong></div>
-  <div class="kpi"><small>Base SQL</small><strong class="ok" id="liveDbKpi">Sin conexión</strong></div>
+  <div class="kpi"><small>Estación</small><strong class="ok" id="liveDbKpi">Sin conexión</strong></div>
 </section>
 <section id="spResults" hidden style="margin-top:18px;border:1px solid #97623d;border-radius:16px;padding:16px;background:#141a1c">
-  <details id="spResultsDetails" open>
-    <summary style="cursor:pointer;color:#ffb67e;font-weight:800;font-size:18px">Datos reales de la estación · Resultado completo del SP</summary>
+  <details id="spResultsDetails">
+    <summary style="cursor:pointer;color:#ffb67e;font-weight:800;font-size:18px">Diagnóstico técnico (opcional)</summary>
     <p id="spResultStatus" style="color:#c7d5db;overflow-wrap:anywhere"></p>
     <div id="spResultsTables"></div>
     <button type="button" id="spCopy" style="cursor:pointer;background:#ef923e;color:#1b1208;padding:10px 14px;border:0;border-radius:9px;font-weight:bold;margin-top:12px">Copiar respuesta JSON del SP</button>
@@ -221,13 +319,13 @@ h1 em{font-weight:500;color:#d9ae65}
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build">55</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build" aria-label="Código interno">R·…</span></div>
 </div>
 <script>
 (async()=>{
  try{
   const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
-  if(r.ok) document.getElementById('build').textContent=(await r.text()).trim();
+  if(r.ok) document.getElementById('build').textContent='R·'+(await r.text()).trim();
  }catch(_){}
 })();
 
@@ -252,7 +350,7 @@ h1 em{font-weight:500;color:#d9ae65}
  const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
  const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
  const desktop=['127.0.0.1','localhost'].includes(location.hostname);
- const bridges=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+ const bridges=[...(desktop?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
  const localFetch=(url,opts={})=>fetch(url,{cache:'no-store',...opts,...(desktop?{}:{targetAddressSpace:'local'})});
  const stationSelect=document.getElementById('stationId');
  const stationPicker=document.getElementById('stationPicker');
@@ -262,33 +360,218 @@ h1 em{font-weight:500;color:#d9ae65}
  let activeBridge=null,stationConnected=false,activeDatabase='',stations=[],circuit=null,loading=false;
  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'}[ch]));
  const warn=msg=>{stationError.textContent=msg;connection.innerHTML='<span class="dot" style="background:#ffb36b"></span> '+esc(msg)};
- function modalRows(modal,statusId,tableId,set,title,empty){
-   const status=document.getElementById(statusId),root=document.getElementById(tableId);
+
+ const loadStep=document.getElementById('loadStep'),dispatchModal=document.getElementById('dispatchModal');
+ const productModal=document.getElementById('productModal'),receiptModal=document.getElementById('receiptModal');
+ const allDataModals=[tankModal,pumpModal,dispatchModal,productModal,receiptModal];
+ let productParent=null,receiptParent=null;
+ const getRows=set=>Array.isArray(set?.rows)?set.rows:[];
+ const hasValue=x=>x!==null&&x!==undefined&&String(x).trim()!=='';
+ const num=x=>hasValue(x)&&Number.isFinite(Number(x))?Number(x):null;
+ const fmtNumber=x=>num(x)!==null?nf.format(num(x)):'—';
+ const fmtMoney=x=>num(x)!==null?money.format(num(x)):'No disponible';
+ const getIsla=row=>{
+   if(num(row?.Isla)!==null)return Number(row.Isla);
+   const cara=num(row?.Cara);
+   return cara!==null&&Number.isInteger(cara)&&cara>0?Math.ceil(cara/2):null;
+ };
+ const valueText=x=>hasValue(x)?String(x):'—';
+ const hourText=row=>{
+   const v=row?.Hora??row?.Fecha;
+   if(!hasValue(v))return '—';
+   const time=String(v).match(/(?:T|\s)(\d{2}:\d{2})(?::\d{2})?/);
+   return time?time[1]:String(v).match(/^(\d{2}:\d{2})/)?.[1]||'—';
+ };
+ function openModal(modal){
+   allDataModals.forEach(m=>m.classList.remove('open'));
    modal.classList.add('open');
-   if(!stationConnected||!circuit||!set){
-     status.className='tank-status warn';
-     status.textContent=stationError.textContent||'No hay datos reales del SP para la estación seleccionada.';
-     root.innerHTML='<div class="tank-empty">Abrí Núcleo → Datos si tenés que verificar la conexión o el SP.</div>';
-     return;
-   }
-   const rows=Array.isArray(set.rows)?set.rows:[];
-   const cols=Array.isArray(set.columns)?set.columns:[];
-   status.className='tank-status ok';status.textContent='SQL '+activeDatabase+' · Estación '+circuit.station+' · '+title+' · '+rows.length+' filas';
-   if(!rows.length){root.innerHTML='<div class="tank-empty">'+empty+'</div>';return}
-   const h='<thead><tr>'+cols.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead>';
-   const b='<tbody>'+rows.map(row=>'<tr>'+cols.map(k=>'<td>'+esc(row[k])+'</td>').join('')+'</tr>').join('')+'</tbody>';
-   root.innerHTML='<table class="tank-table">'+h+b+'</table>';
  }
- const tanks=()=>modalRows(tankModal,'tankStatus','tankTableWrap',circuit?.tanks,'Tanques','No hay tanques para esta estación.');
- const pumps=()=>modalRows(pumpModal,'pumpStatus','pumpTableWrap',circuit?.hoses,'Mangueras','No hay mangueras para esta estación.');
- function closeModals(){tankModal.classList.remove('open');pumpModal.classList.remove('open')}
- tankStep.addEventListener('click',tanks);
- pumpStep.addEventListener('click',pumps);
- for(const [node,action] of [[tankStep,tanks],[pumpStep,pumps]])node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action()}});
- document.getElementById('tankClose').addEventListener('click',closeModals);
- document.getElementById('pumpClose').addEventListener('click',closeModals);
- tankModal.addEventListener('click',e=>{if(e.target===tankModal)closeModals()});
- pumpModal.addEventListener('click',e=>{if(e.target===pumpModal)closeModals()});
+ function closeModals(){
+   allDataModals.forEach(m=>m.classList.remove('open'));
+   productParent=null;receiptParent=null;
+ }
+ function tableView(modal,statusId,wrapId,rows,columns,empty,filterNote=''){
+   openModal(modal);
+   const status=document.getElementById(statusId),root=document.getElementById(wrapId);
+   const ready=stationConnected&&circuit;
+   status.className='tank-status '+(ready?'ok':'warn');
+   status.textContent=ready?(rows.length+' registros'+(filterNote?' · '+filterNote:'')):
+     'Todavía no hay datos. Verificá Núcleo → Datos.';
+   root.replaceChildren();
+   if(!ready||!rows.length){
+     const block=document.createElement('div');block.className='tank-empty';
+     block.textContent=ready?empty:'No hay datos disponibles para esta estación.';
+     root.appendChild(block);return;
+   }
+   if(filterNote){
+     const filter=document.createElement('div');filter.className='linked-filter';
+     const label=document.createElement('span');label.textContent=filterNote;
+     const all=document.createElement('button');all.type='button';all.textContent='Ver todos';
+     all.addEventListener('click',()=>{if(modal===tankModal)tanks();else if(modal===pumpModal)pumps();else loads()});
+     filter.append(label,all);root.appendChild(filter);
+   }
+   const table=document.createElement('table');table.className='tank-table';
+   const th=document.createElement('thead'),tr=document.createElement('tr');
+   for(const col of columns){const cell=document.createElement('th');cell.textContent=col.label;tr.appendChild(cell)}
+   th.appendChild(tr);table.appendChild(th);
+   const body=document.createElement('tbody');
+   for(const row of rows){
+     const tr=document.createElement('tr');
+     for(const col of columns){
+       const td=document.createElement('td');
+       const raw=col.value(row);
+       const value=col.format?col.format(raw,row):valueText(raw);
+       if(col.action&&hasValue(raw)){
+         const button=document.createElement('button');button.type='button';
+         button.className='link-btn';button.textContent=value+' ↗';
+         button.title=col.hint||('Abrir '+col.label);
+         button.addEventListener('click',()=>col.action(row,modal));
+         td.appendChild(button);
+       }else td.textContent=value;
+       tr.appendChild(td);
+     }
+     body.appendChild(tr);
+   }
+   table.appendChild(body);root.appendChild(table);
+ }
+ function showProduct(row,parentModal){
+   if(!hasValue(row?.Producto))return;
+   productParent=parentModal;
+   const title=document.getElementById('productModalTitle');
+   title.textContent=String(row.Producto);
+   const facts=document.getElementById('productFacts');facts.replaceChildren();
+   const price=row.Precio??row.PrecioProducto??null;
+   const fields=[['Producto',row.Producto],['Costo',fmtMoney(row.Costo)],['Precio final',fmtMoney(price)]];
+   for(const [label,val] of fields){
+     const item=document.createElement('div'),caption=document.createElement('small'),answer=document.createElement('strong');
+     caption.textContent=label;answer.textContent=val;
+     item.append(caption,answer);facts.appendChild(item);
+   }
+   if(num(row.Costo)===null||num(price)===null){
+     const note=document.createElement('div');note.className='tank-empty';
+     note.textContent='Falta costo o precio en la respuesta actual. Instalá el SP v81 y actualizá el circuito.';
+     facts.appendChild(note);
+   }
+   openModal(productModal);
+ }
+ function tanks(filterTank=null){
+   const all=getRows(circuit?.tanks);
+   const rows=filterTank===null?all:all.filter(row=>String(row.NTanque)===String(filterTank));
+   const cols=[
+     {label:'Nro. Tanque',value:r=>r.NTanque},
+     {label:'Denominación',value:r=>r.Denominacion},
+     {label:'Producto',value:r=>r.Producto,action:showProduct,hint:'Abrir producto y precios'},
+     {label:'Capacidad',value:r=>r.Capacidad,format:fmtNumber},
+     {label:'Litros',value:r=>r.Litros,format:fmtNumber}
+   ];
+   tableView(tankModal,'tankStatus','tankTableWrap',rows,cols,
+     'No hay tanques para esta selección.',filterTank===null?'':'Nro. Tanque '+filterTank);
+ }
+ function pumps(filter=null){
+   const all=getRows(circuit?.hoses);
+   const rows=!filter?all:all.filter(row=>{
+     const v=filter.key==='Isla'?getIsla(row):row[filter.key];
+     return hasValue(v)&&String(v)===String(filter.value);
+   });
+   const cols=[
+     {label:'Isla',value:getIsla},
+     {label:'Cara',value:r=>r.Cara},
+     {label:'Manguera',value:r=>r.Manguera},
+     {label:'Producto',value:r=>r.Producto,action:showProduct,hint:'Ver producto y precios'},
+     {label:'Tanque',value:r=>hasValue(r.NTanque)?('Nº '+r.NTanque+(hasValue(r.Tanque)?' · '+r.Tanque:'')):r.Tanque,
+       action:r=>tanks(r.NTanque),hint:'Ir a Tanques'},
+     {label:'Controlador',value:r=>r.Controlador}
+   ];
+   tableView(pumpModal,'pumpStatus','pumpTableWrap',rows,cols,
+     'No hay surtidores para esta selección.',filter?'Filtrado: '+filter.key+' '+filter.value:'');
+ }
+ function showReceipt(sale,parentModal){
+   receiptParent=parentModal;
+   const records=getRows(circuit?.receipts);
+   const matched=records.filter(r=>{
+     const key=r.Venta??r.DI_DESPACHO??r.Di_Despacho??r.IdSale;
+     return hasValue(key)&&String(key)===String(sale);
+   });
+   document.getElementById('receiptModalTitle').textContent='Venta '+sale+' · comprobante';
+   tableView(receiptModal,'receiptStatus','receiptTableWrap',matched,[
+     {label:'Letra',value:r=>r.Letra??r.letra},
+     {label:'Sucursal',value:r=>r.Sucursal??r.sucursal},
+     {label:'Número',value:r=>r.Numero??r.NCOMPRO??r.NCompro},
+     {label:'Turno',value:r=>r.Turno??r.turno},
+     {label:'Formas de pago',value:()=>sale,
+       format:()=> 'Ver medios',
+       action:()=>{
+         // El número puede no venir en el circuito inicial: resolverlo con
+         // ID_SALE en SQL y verificar ID_DESPACHO + ULDATE/FECHA en el bridge.
+         // Nunca deshabilitar el botón por NCOMPRO vacío ni atribuir por ID_SALE.
+         closeModals();
+         window.capitanOpenCobrosForDispatch?.(sale);
+       },hint:'Abrir Cobros y localizar los medios reales de esta venta'}
+   ],'No hay un comprobante vinculado mediante el identificador y la fecha del despacho. No se atribuyen cobros por coincidencia de ID_SALE.');
+ }
+ let dispatchView='all';
+ const paymentStep=document.getElementById('paymentStep');
+ const paymentState=r=>!hasValue(r?.EstadoVta)?'unknown':Number(r.EstadoVta)===1?'paid':Number(r.EstadoVta)===0?'pending':'unknown';
+ function loads(selected=dispatchView){
+   dispatchView=selected;
+   const all=getRows(circuit?.dispatches);
+   const paid=all.filter(r=>paymentState(r)==='paid').length;
+   const pending=all.filter(r=>paymentState(r)==='pending').length;
+   const rows=selected==='all'?all:all.filter(r=>paymentState(r)===selected);
+   for(const [id,val] of [['dispatchCountAll',all.length],['dispatchCountPaid',paid],['dispatchCountPending',pending]]){
+     document.getElementById(id).textContent=nf.format(val);
+   }
+   for(const [id,view] of [['dispatchShowAll','all'],['dispatchShowPaid','paid'],['dispatchShowPending','pending']]){
+     document.getElementById(id).setAttribute('aria-pressed',String(selected===view));
+   }
+   const cols=[
+     {label:'Venta',value:r=>r.IdSale??r.Venta},
+     {label:'Isla',value:getIsla,action:r=>pumps({key:'Isla',value:getIsla(r)}),hint:'Ver surtidores de esta isla'},
+     {label:'Cara',value:r=>r.Cara,action:r=>pumps({key:'Cara',value:r.Cara}),hint:'Ver esta cara'},
+     {label:'Manguera',value:r=>r.Manguera,action:r=>pumps({key:'Manguera',value:r.Manguera}),hint:'Ir a surtidores'},
+     {label:'Producto',value:r=>r.Producto,action:showProduct,hint:'Ver producto y precios'},
+     {label:'Litros',value:r=>r.Litros,format:fmtNumber},
+     {label:'Precio',value:r=>r.PPU,format:fmtMoney},
+     {label:'Pesos',value:r=>r.Pesos,format:fmtMoney},
+     {label:'Cobro',value:r=>paymentState(r)==='paid'?(r.IdSale??r.Venta):null,
+       format:(v,r)=>paymentState(r)==='paid'?'Cobrado':paymentState(r)==='pending'?'Pendiente':'Sin estado',
+       action:r=>showReceipt(r.IdSale??r.Venta,dispatchModal),hint:'Ver comprobante del cobro'},
+     {label:'Hora',value:r=>hourText(r)}
+   ];
+   tableView(dispatchModal,'dispatchStatus','dispatchTableWrap',rows,cols,
+     selected==='paid'?'No hay despachos cobrados entre los registros cargados.':
+     selected==='pending'?'No hay despachos pendientes entre los registros cargados.':
+     circuit?.source==='lectura_tablas'?'Los despachos requieren lectura autorizada en SQL.':'No hay despachos para esta estación.');
+   // Estos números corresponden a los despachos realmente cargados (máximo
+   // @MaxDespachos), no a todas las ventas históricas de la base.
+   document.getElementById('dispatchStatus').textContent=
+      (selected==='paid'?'Cobrados':selected==='pending'?'Pendientes':'Todos')+
+      ': '+rows.length+' de '+all.length+' despachos cargados · Estación '+(circuit?.station||'—');
+ }
+ for(const [id,view] of [
+    ['dispatchShowAll','all'],['dispatchShowPaid','paid'],['dispatchShowPending','pending']
+ ])document.getElementById(id).addEventListener('click',()=>loads(view));
+ window.capitanOpenCobrados=()=>loads('paid');
+ paymentStep.addEventListener('click',()=>window.capitanOpenCobros?.());
+ paymentStep.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();window.capitanOpenCobros?.()}
+ });
+ tankStep.addEventListener('click',()=>tanks());
+ pumpStep.addEventListener('click',()=>pumps());
+ loadStep.addEventListener('click',()=>loads('all'));
+ for(const [node,fn] of [[tankStep,tanks],[pumpStep,pumps],[loadStep,()=>loads('all')]]){
+   node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fn()}});
+ }
+ for(const [id,fn] of [
+  ['tankClose',closeModals],['pumpClose',closeModals],['dispatchClose',closeModals],
+  ['productClose',()=>{const prev=productParent;productModal.classList.remove('open');if(prev)openModal(prev)}],
+  ['productBack',()=>{const prev=productParent;productModal.classList.remove('open');if(prev)openModal(prev)}],
+  ['receiptClose',()=>{const prev=receiptParent;receiptModal.classList.remove('open');if(prev)openModal(prev)}],
+  ['receiptBack',()=>{const prev=receiptParent;receiptModal.classList.remove('open');if(prev)openModal(prev)}]
+ ])document.getElementById(id).addEventListener('click',fn);
+ for(const modal of allDataModals){
+   modal.addEventListener('click',e=>{if(e.target===modal)closeModals()});
+ }
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModals()});
  async function read(base,path,opts){
    const res=await localFetch(base+path,opts);
@@ -299,40 +582,21 @@ h1 em{font-weight:500;color:#d9ae65}
  const spResultSection=document.getElementById('spResults');
  const spResultTables=document.getElementById('spResultsTables');
  function renderSpResult(data){
-   const sets=[
-     ['1 · TANQUES',data.tanks],
-     ['2 · SURTIDORES Y MANGUERAS',data.hoses],
-     ['3 · DESPACHOS',data.dispatches],
-     ['4 · RELACIONES CON COMPROBANTES',data.receipts],
-     ['5 · EMPRESA / ESTACIÓN (ParamStock)',data.company]
+   const names=[
+     ['Tanques',data.tanks],['Surtidores',data.hoses],
+     ['Carga',data.dispatches],['Cobros',data.receipts],
+     ['Estación',data.company]
    ];
-   document.getElementById('spResultStatus').textContent='Base '+(data.database||activeDatabase)+' · Estación '+data.station+' · EXEC dbo.PA_CapitanRodolfo_CircuitoEstacion @IdEstacion='+data.station+' · Respuesta real del conector local';
    spResultTables.replaceChildren();
-   for(const [title,set] of sets){
-     const details=document.createElement('details');
-     details.style.cssText='margin-top:12px;padding:10px;border:1px solid #405868;border-radius:10px;background:#0d1720';
-     const rows=Array.isArray(set?.rows)?set.rows:[];
-     const cols=Array.isArray(set?.columns)?set.columns:[];
-     const summary=document.createElement('summary');
-     summary.style.cssText='cursor:pointer;color:#f4bb8b;font-weight:750';
-     summary.textContent=title+' · '+(set?rows.length+' registros':'resultado no disponible');
-     details.appendChild(summary);
-     const wrap=document.createElement('div');
-     wrap.className='tank-table-wrap';
-     wrap.style.marginTop='10px';
-     if(!set){wrap.textContent='Este resultado no llegó desde el procedimiento instalado. Revisá la versión del SP en SiSRL.'}
-     else if(!rows.length){wrap.textContent='La consulta no devolvió registros para esta estación.'}
-     else{
-       const columns=cols.length?cols:Object.keys(rows[0]);
-       const head='<thead><tr>'+columns.map(col=>'<th>'+esc(col)+'</th>').join('')+'</tr></thead>';
-       const body='<tbody>'+rows.map(row=>'<tr>'+columns.map(col=>'<td>'+esc(row[col]??'')+'</td>').join('')+'</tr>').join('')+'</tbody>';
-       wrap.innerHTML='<table class="tank-table">'+head+body+'</table>';
-     }
-     details.appendChild(wrap);
-     spResultTables.appendChild(details);
+   for(const [name,set] of names){
+     const item=document.createElement('p');item.className='small';
+     item.textContent=name+': '+(set&&Array.isArray(set.rows)?set.rows.length+' registros':'no disponible');
+     spResultTables.appendChild(item);
    }
+   document.getElementById('spResultStatus').textContent=data.source==='lectura_tablas'?
+     'Modo lectura: pendiente la ejecución del SP de circuito.':
+     'Circuito completo cargado desde el procedimiento.';
    spResultSection.hidden=false;
-   document.getElementById('spResultsDetails').open=true;
  }
  document.getElementById('spCopy').addEventListener('click',async()=>{
    const label=document.getElementById('spCopyStatus');
@@ -344,10 +608,12 @@ h1 em{font-weight:500;color:#d9ae65}
    spResultSection.hidden=true;spResultTables.replaceChildren();
    circuit=null;stationConnected=false;
    document.getElementById('companyCard').hidden=true;
-   set('liveTanks','—');set('liveHoses','Sin datos de tanques');
-   set('livePumps','—');set('liveDatabase',activeDatabase||'Sin SQL');
+   set('liveTanks','—');set('liveHoses','Esperando tanques…');
+   set('livePumps','—');set('liveDatabase','Esperando surtidores…');
    set('liveLiters','—');set('livePesos','—');set('liveDispatches','—');
-   set('liveDbKpi',activeDatabase||'Sin conexión');
+   set('loadCaption','Despachos, importe y cobro');
+   set('paymentStatus','—');set('paymentCaption','Ver despachos cobrados y sus comprobantes');
+   set('liveDbKpi',stationSelect.value?('Estación '+stationSelect.value):'Sin conexión');
  }
  function paint(data){
    if(!data.tanks||!data.hoses||!data.dispatches||!data.receipts)throw new Error('El SP no devolvió cuatro resultados completos.');
@@ -366,23 +632,29 @@ h1 em{font-weight:500;color:#d9ae65}
      company?.Localidad||null,
      company?.Telefono?'Tel.: '+company.Telefono:null
    ].filter(Boolean);
-   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):'ParamStock: actualizá el SP para ver la empresa (quinto resultado).';
+   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):(data.source==='lectura_tablas'?'Empresa y circuito completo disponibles cuando SQL permita ejecutar el SP.':'ParamStock: actualizá el SP para ver la empresa (quinto resultado).');
    const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));const islands=new Set(hoses.map(x=>String(x.Isla??'')).filter(x=>x&&x!=='null'));
-   stationError.textContent='';
-   connection.innerHTML='<span class="dot"></span> SQL conectado · '+esc(activeDatabase)+' · Estación '+data.station+' · SP v'+esc(data.version||'?');
+   const isDirect=data.source==='lectura_tablas';
+   stationError.textContent=isDirect&&!dispatches.length?'Tanques y surtidores disponibles. Para completar Carga y Cobros, autorizá el SP desde Núcleo → Datos.':'';
+   connection.innerHTML='<span class="dot"></span> Estación activa · '+esc(company?.NombreEstacion||('Estación '+data.station))+(isDirect?' · lectura parcial':' · circuito conectado');
    set('liveTanks',nf.format(tanksRows.length)+' tanques');
-   set('liveHoses',nf.format(hoses.length)+' mangueras asociadas');
+   set('liveHoses','Tocá para ver cada tanque');
    set('livePumps',nf.format(islands.size||Math.ceil(faces.size/2))+' surtidores · '+nf.format(faces.size)+' caras');
-   set('liveDatabase','Estación '+data.station+' · '+activeDatabase);
+   set('liveDatabase',nf.format(hoses.length)+' mangueras');
    set('liveLiters',nf.format(dispatches.reduce((sum,row)=>sum+Number(row.Litros||0),0))+' L');
    set('livePesos',money.format(dispatches.reduce((sum,row)=>sum+Number(row.Pesos||0),0)));
    set('liveDispatches',nf.format(dispatches.length));
-   set('liveDbKpi',activeDatabase);
+   set('loadCaption',dispatches.length+' despachos · abrí Carga para verlos');
+   const paidCount=dispatches.filter(r=>paymentState(r)==='paid').length;
+   set('paymentStatus',nf.format(paidCount)+' cobrados');
+   document.dispatchEvent(new CustomEvent('capitan:station-loaded',{detail:{station:data.station,bridge:activeBridge}}));
+   set('paymentCaption','Tocá para ver cobrados y comprobantes');
+   set('liveDbKpi',company?.NombreEstacion||('Estación '+data.station));
  }
  async function loadCircuit(){
    if(loading||!activeBridge||!stationSelect.value)return;
    loading=true;
-   stationError.textContent='Ejecutando dbo.PA_CapitanRodolfo_CircuitoEstacion…';
+   stationError.textContent='Actualizando circuito de la estación…';
    try{
      const data=await read(activeBridge,'/api/station/circuit',{
        method:'POST',headers:{'Content-Type':'application/json'},
@@ -394,20 +666,60 @@ h1 em{font-weight:500;color:#d9ae65}
      warn('No pude leer tanques/surtidores desde el SP: '+e.message+' · Núcleo → Datos para verificar el SP.');
    }finally{loading=false}
  }
+ async function refreshInstallState(base){
+   const label=document.getElementById('circuitInstallStatus');
+   const help=document.getElementById('circuitInstallHelp');
+   if(!base){label.textContent='';help.hidden=true;return}
+   try{
+     const state=await read(base,'/api/circuit/install-state');
+     if(state.state==='installed'){
+       label.textContent='SP: instalado y autorizado en '+(state.database||'SiSRL')+'.';
+       help.hidden=true;
+     }else if(state.state==='pending_permission'||state.state==='deployment_error'){
+       label.textContent='SP pendiente: '+String(state.message||'Revisar permisos de SQL Server.');
+       help.hidden=false;
+     }else{
+       label.textContent='SP: '+String(state.message||'Esperando instalación al conectar SiSRL.');
+       help.hidden=true;
+     }
+   }catch(e){
+     label.textContent='No se pudo consultar el estado del instalador automático: '+e.message;
+     help.hidden=true;
+   }
+ }
  async function refreshStation(){
    if(loading)return;
    let found=null,lastError='';
-   for(const base of bridges){
-     try{found={base,data:await read(base,'/api/station/ids')};break}
-     catch(e){lastError=e.message;if(desktop)break}
-   }
+   // Evitar bloqueos y conexiones de versiones anteriores: leer salud en paralelo.
+   const healths=await Promise.all(bridges.map(async base=>{
+     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),1600);
+     try{
+       const r=await localFetch(base+'/health',{signal:ctrl.signal});
+       if(!r.ok)return null;
+       const h=await r.json();
+       if(!h.ok||!h.connected)return null;
+       return {base,version:Number.parseInt(String(h.version),10)||0};
+     }catch(_){return null}finally{clearTimeout(timer)}
+   }));
+   const candidates=healths.filter(Boolean).sort((a,b)=>b.version-a.version);
+   if(candidates.length){
+     const preferred=candidates[0];
+     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),18500);
+     try{found={base:preferred.base,data:await read(preferred.base,'/api/station/ids',{signal:ctrl.signal})}}
+     catch(e){lastError='El SQL del conector v'+preferred.version+' no devolvió estaciones: '+e.message}
+     finally{clearTimeout(timer)}
+   }else lastError='No hay un conector con SQL conectado; abrí Núcleo → Datos.';
    if(!found){
-     activeBridge=desktop?bridges[0]:null;
+     activeBridge=null;
+     window.capitanSqlBridge=null;
+     await refreshInstallState(null);
      clearCircuit();
      warn(lastError||'No hay conexión SQL. Abrí Núcleo → Datos.');
      return;
    }
    activeBridge=found.base;
+   window.capitanSqlBridge=activeBridge;
+   await refreshInstallState(activeBridge);
    const data=found.data;
    if(activeDatabase!==data.database){
      activeDatabase=data.database||'';
@@ -443,11 +755,11 @@ h1 em{font-weight:500;color:#d9ae65}
 
 (function(){
  const button=document.getElementById('voiceMic'),status=document.getElementById('voiceStatus'),transcript=document.getElementById('voiceTranscript');
- const BRIDGES=(['127.0.0.1','localhost'].includes(location.hostname))?[location.origin+'/_doinglio_sql']:['http://127.0.0.1:8787','http://localhost:8787','http://127.0.0.1:8797','http://localhost:8797','http://127.0.0.1:18787','http://localhost:18787','http://127.0.0.1:27877','http://localhost:27877','http://127.0.0.1:37877','http://localhost:37877','http://127.0.0.1:48787','http://localhost:48787','http://127.0.0.1:57877','http://localhost:57877'];
+ const BRIDGES=[...(['127.0.0.1','localhost'].includes(location.hostname)?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
  let pc=null,dc=null,stream=null,bridge=null,active=false,assistantLine=null;
  const addLine=(who,text)=>{const p=document.createElement('p');p.className='voice-line';const b=document.createElement('b');b.textContent=who+': ';p.append(b,document.createTextNode(text));transcript.appendChild(p);transcript.scrollTop=transcript.scrollHeight;return p};
  const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,...(['127.0.0.1','localhost'].includes(location.hostname)?{}:{targetAddressSpace:'local'})});
- async function findBridge(){for(const base of BRIDGES){try{const r=await localFetch(base+'/health');if(r.ok)return base}catch(_){}}throw new Error('Abrí el conector local desde Núcleo → Datos.')}
+ async function findBridge(){const found=await Promise.all(BRIDGES.map(async base=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),1600);try{const r=await localFetch(base+'/health',{signal:c.signal});if(!r.ok)return null;const h=await r.json();return h.ok?{base,connected:!!h.connected,version:Number.parseInt(String(h.version),10)||0}:null}catch(_){return null}finally{clearTimeout(t)}}));const ready=found.filter(Boolean).sort((a,b)=>Number(b.connected)-Number(a.connected)||b.version-a.version);if(ready.length)return ready[0].base;throw new Error('Conector local no encontrado. Abrí Núcleo → Datos.')}
  async function callSql(args){
    const stateResponse=await localFetch(bridge+'/api/state'),state=await stateResponse.json();
    const sessionId=state.sessionId,database=state.database;
@@ -481,6 +793,7 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 </script>
 
+<script src="../cobros.js?v=87-sql-hotfix1"></script>
 
 </body>
 </html>
