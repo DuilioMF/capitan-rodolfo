@@ -13,6 +13,7 @@ on:
       - "theme.js"
       - "cobros.js"
       - "cobros.css"
+      - "tests/ver-medios-navigation.test.js"
       - ".github/workflows/pages.yml"
       - ".github/workflows/validar-paquete-sql.yml"
   workflow_dispatch:
