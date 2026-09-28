@@ -28,3 +28,19 @@ test('El conector verifica ID_DESPACHO y ULDATE/FECHA antes de atribuir cobros',
  assert.match(js,/entries\.filter\(r=>Number\(r\.estadoVta\)===1\)/);
  assert.match(js,/invoiceEq\(id\.numero,saleFilter\.numero\)/);
 });
+
+test('Cobros comparte la sesión SiSRL y no exige otra base',()=>{
+ const evidence=bridge.slice(bridge.indexOf('function Get-VerifiedPaymentEvidence'),bridge.indexOf('function Invoke-AllowedStoredProcedure'));
+ assert.match(evidence,/ChangeDatabase\('SiSRL'\)/);
+ const payments=bridge.slice(bridge.indexOf("'/api/station/payments'"),bridge.indexOf("'/api/station/today-dispatches'"));
+ assert.match(payments,/-Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago'/);
+ assert.match(payments,/-notcontains 'SiSRL'/);
+ assert.doesNotMatch(payments,/Maestros/);
+ assert.doesNotMatch(evidence,/Maestros/);
+});
+test('La fecha de Cobros es de Argentina y el SP toma el rango elegido',()=>{
+ assert.match(js,/America\/Argentina\/Buenos_Aires/);
+ assert.match(js,/fechaDesde:a,fechaHasta:b/);
+ assert.match(js,/\$('paymentsFrom'\)\.value=date\[1\]/);
+ assert.match(js,/\$('paymentsTo'\)\.value=date\[1\]/);
+});
