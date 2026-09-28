@@ -119,23 +119,25 @@ try {
             }
           }
           # El SP de la pantalla ya devuelve despachos ordenados por hora e ID_SALE.
-          $d=if($records.Count){$records[0]}else{$null}
-          $reply="Capitan Rodolfo - estacion $($job.idEstacion). "
-          if($null -eq $d){
-            $reply+="No hay despachos para esta estacion en la fecha "+[string]$circuit.fecha+"."
-          }else{
+          $reply="Capitan Rodolfo - estacion $($job.idEstacion), fecha $($circuit.fecha). "
+          if(-not $records.Count){
+            $reply+="No hay despachos en el circuito verificado de esta fecha."
+          } else {
+            $limit=[Math]::Min(5,$records.Count)
+            $reply+="Ultimos $limit de $($records.Count) despachos del mismo circuito que muestra Capitan: "
             $details=New-Object System.Collections.Generic.List[string]
-            if($null -ne $d.IdSale){$details.Add("venta "+[string]$d.IdSale)}
-            if($null -ne $d.IdDespacho){$details.Add("despacho "+[string]$d.IdDespacho)}
-            if($d.FechaDespacho){$details.Add("fecha "+[string]$d.FechaDespacho)}
-            if($d.Hora){$details.Add("hora "+[string]$d.Hora)}
-            if($null -ne $d.Cara){$details.Add("cara "+[string]$d.Cara)}
-            if($null -ne $d.Manguera){$details.Add("manguera "+[string]$d.Manguera)}
-            if($d.CodArt){$details.Add("articulo "+[string]$d.CodArt)}
-            if($null -ne $d.Litros){$details.Add("litros "+[string]$d.Litros)}
-            if($null -ne $d.Pesos){$details.Add("importe "+[string]$d.Pesos)}
-            if($null -ne $d.EstadoVta){$details.Add("estado de venta "+[string]$d.EstadoVta)}
-            $reply+="Ultimo despacho del dia "+[string]$circuit.fecha+" segun el mismo SP de Capitan: "+($details -join ", ")+"."
+            foreach($d in @($records | Select-Object -First 5)){
+              $parts=New-Object System.Collections.Generic.List[string]
+              if($null -ne $d.IdSale){$parts.Add("venta "+[string]$d.IdSale)}
+              if($null -ne $d.IdDespacho){$parts.Add("despacho "+[string]$d.IdDespacho)}
+              if($d.Hora){$parts.Add("hora "+[string]$d.Hora)}
+              if($null -ne $d.Cara){$parts.Add("cara "+[string]$d.Cara)}
+              if($null -ne $d.Litros){$parts.Add("litros "+[string]$d.Litros)}
+              if($null -ne $d.Pesos){$parts.Add("importe "+[string]$d.Pesos)}
+              if($null -ne $d.EstadoVta){$parts.Add("estado "+[string]$d.EstadoVta)}
+              $details.Add(($parts -join ", "))
+            }
+            $reply+=($details -join "; ")+"."
           }
           Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{idEstacion=[int]$job.idEstacion;fecha=[string]$circuit.fecha;source="dbo.PA_CapitanRodolfo_CircuitoEstacion"}} | Out-Null
           Log ("Ultimo despacho consultado: "+$job.id)
