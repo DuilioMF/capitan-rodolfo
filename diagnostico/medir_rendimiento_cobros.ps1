@@ -50,7 +50,8 @@ try {
   $proc="dbo.PA_VentasFormasPago"
   $perm=@(Query "SELECT DB_NAME() AS base,OBJECT_ID(N'dbo.PA_VentasFormasPago',N'P') AS objeto,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'EXE'+N'CUTE') AS puedeEjecutar,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'VIEW DEFINITION') AS puedeVerCodigo" '01_PERMISOS.json')
   if(!$perm.Count -or !$perm[0].objeto){throw 'El procedimiento no es visible en SiSRL con esta conexión. Confirmá su existencia.'}
-  Say ('SP encontrado: '+$proc+'. EXECUTE='+(if($null -eq $perm[0].puedeEjecutar){'sin información'}else{$perm[0].puedeEjecutar}))
+  $access=if($null -eq $perm[0].puedeEjecutar){'sin informacion'}else{[string]$perm[0].puedeEjecutar}
+  Say ('SP encontrado: '+$proc+'. EXECUTE='+$access)
   if($perm[0].puedeEjecutar -eq 0){Say 'ATENCION: falta permiso EXECUTE; esto es independiente del error de lentitud.'}
   $parameters=@(Query "SELECT p.parameter_id,p.name,TYPE_NAME(p.user_type_id) AS tipo,p.max_length,p.is_output FROM sys.parameters p WHERE p.object_id=OBJECT_ID(N'dbo.PA_VentasFormasPago',N'P') ORDER BY p.parameter_id" '02_PARAMETROS.json')
   Say ('Parámetros observados: '+$parameters.Count)
