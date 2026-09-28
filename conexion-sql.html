@@ -128,7 +128,7 @@
  const logDiag=msg=>{const el=$('diagLog');if(!el)return;const ts=new Date().toLocaleTimeString('es-AR',{hour12:false});if(el.textContent==='Iniciando diagnóstico…')el.textContent='';el.textContent+='['+ts+'] '+msg+'\n';el.scrollTop=el.scrollHeight};
  logDiag('Página v88 · '+location.href);
  logDiag('Origen: '+location.origin);
- const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+ const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=[...(desktop?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
  let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SISRL';
 
  const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:((url.endsWith('/api/circuit/install')||url.endsWith('/api/circuit/admin-install'))?120000:25000));try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
