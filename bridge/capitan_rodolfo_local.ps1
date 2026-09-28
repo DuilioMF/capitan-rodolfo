@@ -1993,6 +1993,68 @@ try {
           Send-Json $stream 500 @{error=('Error al consultar Cobros: '+$_.Exception.Message)}
         }
       }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/latest-dispatch'){
+        # Operacion de solo lectura. SQL parametrizado y estacion verificada.
+        try {
+          $state=Ensure-ActiveSession
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Falta conectar SQL desde Nucleo > Datos.'}
+            continue
+          }
+          $requestData=$req.Body | ConvertFrom-Json
+          $station=0
+          if(-not [int]::TryParse([string]$requestData.idEstacion,[ref]$station) -or $station -le 0){
+            Send-Json $stream 400 @{error='Estacion invalida.'}
+            continue
+          }
+          $cn=$Sessions[$state.sessionId].connection
+          $dbName=[string]$state.database
+          $available=@(Get-StationOptions -Connection $cn -Database $dbName)
+          if($available -notcontains $station){
+            Send-Json $stream 403 @{error='Estacion no disponible en esta conexion SQL.'}
+            continue
+          }
+          $cn.ChangeDatabase($dbName)
+          $stationCol=Find-StationColumn -Connection $cn -ObjectName 'dbo.Despachos'
+          if(-not $stationCol){Send-Json $stream 422 @{error='No se encontro una columna de estacion verificable en Despachos.'};continue}
+          if(-not (Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ULDATE') -or
+             -not (Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ID_SALE')){
+            Send-Json $stream 422 @{error='No puedo verificar el ultimo despacho: faltan ULDATE o ID_SALE.'}
+            continue
+          }
+          $hourCol=if(Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ULTIME'){
+            'CONVERT(VARCHAR(8),d.ULTIME,108)'
+          }else{"CAST(NULL AS VARCHAR(8))"}
+          $orderHour=if(Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ULTIME'){',d.ULTIME DESC'}else{''}
+          $opt=@{}
+          foreach($column in @('ID_DESPACHO','SURTIDOR','MANGUERA','CODART','LITROS','PPU','PESOS','ESTADOVTA')){
+            $opt[$column]=(Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name $column)
+          }
+          $fields=@('d.ID_SALE AS IdSale','CONVERT(VARCHAR(23),d.ULDATE,121) AS FechaDespacho',$hourCol+' AS Hora')
+          foreach($spec in @(
+             @{col='ID_DESPACHO';alias='IdDespacho'},
+             @{col='SURTIDOR';alias='Cara'},
+             @{col='MANGUERA';alias='Manguera'},
+             @{col='CODART';alias='CodArt'},
+             @{col='LITROS';alias='Litros'},
+             @{col='PPU';alias='PPU'},
+             @{col='PESOS';alias='Pesos'},
+             @{col='ESTADOVTA';alias='EstadoVta'}
+          )){
+            if($opt[$spec.col]){$fields+=('d.['+$spec.col+'] AS '+$spec.alias)}
+            else{$fields+=('NULL AS '+$spec.alias)}
+          }
+          $sql='SELECT TOP (1) '+($fields -join ',')+
+            ' FROM dbo.Despachos d WHERE d.'+$stationCol+
+            '=@Station ORDER BY d.ULDATE DESC'+$orderHour+',d.ID_SALE DESC'
+          $result=Read-StationReadOnlyQuery -Connection $cn -Sql $sql -Station $station
+          $record=if(@($result.rows).Count -gt 0){$result.rows[0]}else{$null}
+          Send-Json $stream 200 @{connected=$true;station=$station;database=$dbName;
+            source='dbo.Despachos';dispatch=$record;version=$Version}
+        } catch {
+          Send-Json $stream 500 @{error=('No se pudo consultar el ultimo despacho: '+$_.Exception.Message)}
+        }
+      }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/circuit'){
         try {
           $state=Ensure-ActiveSession
