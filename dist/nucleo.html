@@ -199,7 +199,7 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
   <p>Vinculá esta instalación de Capitán con DoingLio. La conexión SQL de Datos no se modifica: el servicio local envía y recibe solicitudes de forma segura.</p>
   <p id="coreStatus" class="core-status" role="status" aria-live="polite">Comprobando el servicio de esta PC…</p>
   <div class="core-fields">
-    <div><label for="corePhone">WhatsApp del administrador</label><input id="corePhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="Número completo con país y área" /></div>
+    <div><label for="corePhone">WhatsApp del administrador</label><input id="corePhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="549 + código de área + celular" /><small class="core-note" id="corePhoneHint">Argentina: 54 + 9 + código de área + número, sin 0 ni 15.</small></div>
     <div><label>Estaciones descubiertas desde SQL (elegí las autorizadas)</label><div id="coreStations" class="core-choices">Esperando conexión SQL…</div></div>
   </div>
   <label class="core-agree"><input type="checkbox" id="coreConfirm"/> Confirmo que soy administrador y autorizo vincular las estaciones seleccionadas con DoingLio.</label>
@@ -270,7 +270,14 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
   }
   function message(text){status.textContent=text}
   function redraw(){
-    link.disabled=busy||!base||!last?.sqlConnected||!last?.workerTokenInstalled||!confirm.checked||!/^\d{9,15}$/.test(phone.value.replace(/\D/g,''))||!choices.querySelector('input:checked');
+    const digits=phone.value.replace(/\D/g,'');
+    const arMissingNine=/^54[1-9]\d{9}$/.test(digits) && !digits.startsWith('549');
+    const hint=document.getElementById('corePhoneHint');
+    if(hint){
+      hint.textContent=arMissingNine?'Falta el 9 de celular después de 54. Ejemplo: 549 + código de área + número.':'Argentina: 54 + 9 + código de área + número, sin 0 ni 15.';
+      hint.style.color=arMissingNine?'#ffb36b':'';
+    }
+    link.disabled=busy||!base||!last?.sqlConnected||!last?.workerTokenInstalled||!confirm.checked||arMissingNine||!/^\d{9,15}$/.test(digits)||!choices.querySelector('input:checked');
   }
 
   async function load(){
