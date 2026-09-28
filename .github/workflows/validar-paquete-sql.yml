@@ -105,6 +105,9 @@ jobs:
       - name: Regresión Ver medios y conexión SiSRL
         shell: powershell
         run: node --test tests/ver-medios-navigation.test.js
+      - name: Verificar SP de Cobros compatible con SQL antiguo
+        shell: powershell
+        run: node --test tests/cobros-legacy-sql.test.js
       - name: Verificar versiones en todas las ventanas
         shell: powershell
         run: node --test tests/version-every-window.test.js
