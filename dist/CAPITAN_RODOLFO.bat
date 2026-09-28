@@ -5,12 +5,16 @@ title DoingLio - Conector SQL
 set "APPROOT=C:\Sistemas\DoingLioConnector"
 set "BRIDGEDIR=%APPROOT%\bridge"
 set "BRIDGE=%BRIDGEDIR%\capitan_rodolfo_local.ps1"
+set "SQL_WORKER=%BRIDGEDIR%\doinglio_sql_queue_worker.ps1"
+set "CORE_LINK=%BRIDGEDIR%\doinglio_core_link.ps1"
+set "STOPPER=%BRIDGEDIR%\stop_stale_capitan.ps1"
+set "SQL_WORKER_TASK=CapitanRodolfoSqlQueue"
 set "VERSION_FILE=%APPROOT%\VERSION"
 set "ALLOWLIST=%APPROOT%\sp_allowlist.json"
 set "LOG=%APPROOT%\install.log"
 set "TASK=CapitanRodolfoLocal"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main"
-set "EXPECTED_VERSION=76"
+set "EXPECTED_VERSION="
 
 if not exist "C:\Sistemas" mkdir "C:\Sistemas" >nul 2>nul
 if not exist "%APPROOT%" mkdir "%APPROOT%" >nul 2>nul
@@ -27,11 +31,19 @@ echo Carpeta local: %APPROOT%
 echo Actualizando conector...
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/doinglio_sql_queue_worker.ps1' -OutFile '%SQL_WORKER%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/doinglio_core_link.ps1' -OutFile '%CORE_LINK%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/stop_stale_capitan.ps1' -OutFile '%STOPPER%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
+for /f "usebackq delims=" %%V in ("%VERSION_FILE%") do if not defined EXPECTED_VERSION set "EXPECTED_VERSION=%%V"
+if not defined EXPECTED_VERSION goto :error
 
 schtasks /End /TN "%TASK%" >nul 2>nul
 schtasks /Delete /F /TN "%TASK%" >nul 2>nul
+
+schtasks /End /TN "%SQL_WORKER_TASK%" >nul 2>nul
+echo [%date% %time%] Cerrando solo procesos antiguos de este conector >>"%LOG%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%STOPPER%" >>"%LOG%" 2>&1
+schtasks /Create /F /SC ONLOGON /RL LIMITED /TN "%SQL_WORKER_TASK%" /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File %SQL_WORKER%" >>"%LOG%" 2>&1
+start "" powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%SQL_WORKER%"
 
 echo [%date% %time%] Iniciando PowerShell bridge >>"%LOG%"
 powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%BRIDGE%" -AppDir "%APPROOT%" >>"%LOG%" 2>&1
