@@ -575,6 +575,7 @@ function Get-StationOptions {
     $Connection.ChangeDatabase($Database)
     if(-not (Test-Path $SpAllowlistPath)){throw 'Falta configuración local del conector.'}
     $nameCmd=$Connection.CreateCommand()
+    $nameCmd.CommandTimeout=7
     $nameCmd.CommandText=@"
 SELECT TOP(1) c.name FROM sys.columns c
 WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock','U')
@@ -587,6 +588,7 @@ ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
     }
     $name='['+([string]$col).Replace(']',']]')+']'
     $cmd=$Connection.CreateCommand()
+    $cmd.CommandTimeout=7
     # Compatibilidad SQL Server antiguo / bases con compatibilidad anterior a 110.
     # No convertir la columna en SQL: convertir los IDs en memoria y rechazar
     # cualquier valor que no sea un entero de estación válido.
