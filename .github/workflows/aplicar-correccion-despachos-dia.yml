@@ -1,0 +1,60 @@
+name: Aplicar corrección de despachos del día
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/aplicar-correccion-despachos-dia.yml
+      - tools/patch_dispatch_day.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener repositorio
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Verificar que todavía corresponda aplicar corrección
+        id: check
+        shell: bash
+        run: |
+          if grep -q 'CORRECCION DESPACHOS POR FECHA - 2026-09-27' sql/PA_CapitanRodolfo_CircuitoEstacion.sql && grep -q 'CORRECCION DESPACHOS POR FECHA - 2026-09-27' sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql; then
+            echo 'already=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'already=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Modificar los dos archivos SQL de producción
+        if: steps.check.outputs.already == 'false'
+        run: python3 tools/patch_dispatch_day.py
+      - name: Validar que ambos instaladores sean consistentes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files = [Path('sql/PA_CapitanRodolfo_CircuitoEstacion.sql'), Path('sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql')]
+          for file in files:
+              sql = file.read_text(encoding='utf-8')
+              assert 'CORRECCION DESPACHOS POR FECHA - 2026-09-27' in sql, str(file)
+              assert '@Fecha         DATE = NULL' in sql, str(file)
+              assert 'SET @Dia = ISNULL(@Fecha, CONVERT(date, GETDATE()))' in sql, str(file)
+              assert "AND d.'+QUOTENAME(@DDate)+N' >= @Fecha" in sql, str(file)
+              assert "AND d.'+QUOTENAME(@DDate)+N' < DATEADD(day,1,@Fecha)" in sql, str(file)
+              assert "SET @WhereRel=N'(@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)'" in sql, str(file)
+              assert 'SELECT TOP(@MaxDespachos)' not in sql and 'SELECT TOP(@MaxRelaciones)' not in sql, str(file)
+              assert '@MaxDespachos INT' not in sql and '@MaxRelaciones INT' not in sql, str(file)
+              print('PASS:', file)
+          PY
+      - name: Confirmar cambios en GitHub
+        if: steps.check.outputs.already == 'false'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sql/PA_CapitanRodolfo_CircuitoEstacion.sql sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql
+          git diff --cached --exit-code && exit 0
+          git commit -m 'fix(sql): filtrar despachos y comprobantes por fecha actual sin topes'
+          git push origin HEAD:main
