@@ -29,11 +29,16 @@ jobs:
           enablement: true
       - name: Regression test — Ver medios from paid dispatch
         run: node --test tests/ver-medios-navigation.test.js
+      - name: Regression test — verified SQL circuit
+        run: node --test verificable/verified-circuit.test.cjs
       - name: Prepare canonical GitHub source
         run: |
           mkdir -p dist
           cp *.html *.svg *.bat VERSION theme.css theme.js cobros.css cobros.js dist/
           cp -R assets bridge connector-node sql dist/
+          mkdir -p dist/verificable
+          cp verificable/verified-circuit.js dist/verificable/
+          test -s dist/verificable/verified-circuit.js
           touch dist/.nojekyll
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
