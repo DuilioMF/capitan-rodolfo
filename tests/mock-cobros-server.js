@@ -10,7 +10,17 @@ const server=http.createServer(async(req,res)=>{
  for await(const chunk of req)chunks.push(chunk);
  let data={};try{data=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{}
  if(req.url==='/health')return body(res,200,{ok:true,service:'Capitan Rodolfo Local',version:'94',connected:true,database:'SiSRL'});
- if(req.url==='/api/state')return body(res,200,{connected:true,database:'SiSRL'});
+ if(req.url==='/api/state')return body(res,200,{connected:true,database:'SiSRL',sessionId:'simulada-ci'});
+ if(req.url==='/api/ai/sql-read'){
+   if(data.database!=='SiSRL'||data.sessionId!=='simulada-ci')return body(res,403,{error:'Sesion/base incorrectas'});
+   const q=String(data.sql||'');
+   if(q.includes('HAS_PERMS_BY_NAME'))return body(res,200,{rows:[{base:'SiSRL',objeto:1,puedeEjecutar:1,puedeVerCodigo:1}]});
+   if(q.includes('sys.parameters'))return body(res,200,{rows:[{parameter_id:1,name:'@FechaDesde',tipo:'datetime'}]});
+   if(q.includes('sys.sql_modules'))return body(res,200,{rows:[{definition:'CREATE PROCEDURE dbo.PA_VentasFormasPago AS SELECT 1'}]});
+   if(q.includes('sys.dm_exec_procedure_stats'))return body(res,200,{rows:[]});
+   if(q.includes('sys.sql_expression_dependencies'))return body(res,200,{rows:[]});
+   return body(res,400,{error:'Consulta no simulada'});
+ }
  if(req.url==='/api/station/ids')return body(res,200,{stations:[1]});
  if(req.url==='/api/station/payments'){
    if(failure)return body(res,422,{error:'SP no disponible en SiSRL: permiso EXECUTE faltante'});
