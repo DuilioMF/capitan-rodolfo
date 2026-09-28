@@ -171,16 +171,16 @@ h1 em{font-weight:500;color:#d9ae65}
     <div class="live"><span class="dot"></span> OPERACIÓN EN VIVO</div>
     <h1>Capitán Rodolfo<br><em>· Estación</em></h1>
     <div class="sub">Flujo: combustible → despacho → venta → cobro</div>
-    <div class="live" id="stationConnection"><span class="dot"></span> Buscando conexión SQL local…</div>
+    <div class="live" id="stationConnection"><span class="dot"></span> Comprobando los datos de la estación…</div>
 <div class="station-picker" id="stationPicker" hidden>
   <label for="stationId">ESTACIÓN ACTIVA</label>
   <select id="stationId" aria-label="Elegir estación"></select>
-  <button id="reloadCircuit" type="button">Actualizar circuito SQL</button>
+  <button id="reloadCircuit" type="button">Actualizar datos</button>
 </div>
 <div class="station-error" id="stationError" role="status" aria-live="polite"></div><div class="station-error" id="circuitInstallStatus" role="status" aria-live="polite"></div>
 <div id="circuitInstallHelp" class="station-error" hidden>
-  Si tu usuario SQL no tiene permisos para instalar el procedimiento,
-  <a href="https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql" target="_blank" rel="noopener noreferrer">descargá el instalador para un administrador de SiSRL</a>.
+  Si los datos no están disponibles, solicitá asistencia al administrador.
+  <a href="https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql" target="_blank" rel="noopener noreferrer">Herramientas para el administrador</a>.
   Después reabrí DoingLio desde el cerebro.
 </div>
 <div class="company-card" id="companyCard" hidden aria-live="polite">
@@ -200,7 +200,7 @@ h1 em{font-weight:500;color:#d9ae65}
 <div class="section-title">ANATOMÍA DEL CIRCUITO</div>
 <section class="flow">
   <div class="step" id="truckStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="truckModal"><span class="symbol">I</span><small>CAMIÓN · CLIC PARA SUBIR</small><b>Descarga combustible</b><span>Factura, recibo o transferencia · arrastrá un archivo</span></div>
-  <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos SQL</span></div>
+  <div class="step" id="tankStep" data-action="tanks" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="tankModal"><span class="symbol">II</span><small>TANQUES · CLIC PARA VER</small><b id="liveTanks">—</b><span id="liveHoses">Esperando datos</span></div>
   <div class="step" id="pumpStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="pumpModal"><span class="symbol">III</span><small>SURTIDORES · CLIC PARA VER</small><b id="livePumps">—</b><span id="liveDatabase">Base no conectada</span></div>
   <div class="step" id="loadStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="dispatchModal"><span class="symbol">IV</span><small>CARGA · CLIC PARA VER</small><b>Carga</b><span id="loadCaption">Despachos, importe y cobro</span></div>
   <div class="step" id="paymentStep" role="button" tabindex="0" aria-haspopup="dialog" aria-controls="paymentsModal"><span class="symbol">V</span><small>COBRO · CLIC PARA VER</small><b id="paymentStatus">—</b><span id="paymentCaption">Ver despachos cobrados y sus comprobantes</span></div>
@@ -214,14 +214,14 @@ h1 em{font-weight:500;color:#d9ae65}
 </div>
 <div class="tank-modal" id="tankModal" role="dialog" aria-modal="true" aria-labelledby="tankModalTitle">
   <div class="tank-dialog">
-    <div class="tank-head"><div><div class="eyebrow">SQL · TANQUES</div><h2 id="tankModalTitle">Tanques</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
-    <div class="tank-status" id="tankStatus">Esperando conexión SQL…</div>
+    <div class="tank-head"><div><div class="eyebrow">ESTACIÓN · TANQUES</div><h2 id="tankModalTitle">Tanques</h2></div><button class="tank-close" id="tankClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-status" id="tankStatus">Comprobando datos…</div>
     <div class="tank-table-wrap" id="tankTableWrap"><div class="tank-empty">Hacé clic en TANQUES para consultar dbo.Tanque.</div></div>
   </div>
 </div>
 <div class="tank-modal" id="pumpModal" role="dialog" aria-modal="true" aria-labelledby="pumpModalTitle">
   <div class="tank-dialog">
-    <div class="tank-head"><div><div class="eyebrow">SQL · SURTIDORES</div><h2 id="pumpModalTitle">Surtidores</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
+    <div class="tank-head"><div><div class="eyebrow">ESTACIÓN · SURTIDORES</div><h2 id="pumpModalTitle">Surtidores</h2></div><button class="tank-close" id="pumpClose" type="button" aria-label="Cerrar">×</button></div>
     <div class="tank-status" id="pumpStatus">Esperando SP de la estación…</div>
     <div class="tank-table-wrap" id="pumpTableWrap"><div class="tank-empty">Seleccioná una estación.</div></div>
   </div>
@@ -542,7 +542,7 @@ h1 em{font-weight:500;color:#d9ae65}
    tableView(dispatchModal,'dispatchStatus','dispatchTableWrap',rows,cols,
      selected==='paid'?'No hay despachos cobrados entre los registros cargados.':
      selected==='pending'?'No hay despachos pendientes entre los registros cargados.':
-     circuit?.source==='lectura_tablas'?'Los despachos requieren lectura autorizada en SQL.':'No hay despachos para esta estación.');
+     circuit?.source==='lectura_tablas'?'No se pudieron consultar los despachos. Contactá al administrador.':'No hay despachos para esta estación.');
    // Estos números corresponden a los despachos realmente cargados (máximo
    // @MaxDespachos), no a todas las ventas históricas de la base.
    document.getElementById('dispatchStatus').textContent=
@@ -637,7 +637,7 @@ h1 em{font-weight:500;color:#d9ae65}
      company?.Localidad||null,
      company?.Telefono?'Tel.: '+company.Telefono:null
    ].filter(Boolean);
-   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):(data.source==='lectura_tablas'?'Empresa y circuito completo disponibles cuando SQL permita ejecutar el SP.':'ParamStock: actualizá el SP para ver la empresa (quinto resultado).');
+   document.getElementById('stationCompanyInfo').textContent=company?details.join(' · '):(data.source==='lectura_tablas'?'Los datos de la empresa todavía no están disponibles.':'Los datos de la empresa todavía no están disponibles.');
    const faces=new Set(hoses.map(x=>String(x.Cara??'')).filter(Boolean));const islands=new Set(hoses.map(x=>String(x.Isla??'')).filter(x=>x&&x!=='null'));
    const isDirect=data.source==='lectura_tablas';
    stationError.textContent=isDirect&&!dispatches.length?'Tanques y surtidores disponibles. Para completar Carga y Cobros, autorizá el SP desde Núcleo → Datos.':'';
@@ -678,13 +678,13 @@ h1 em{font-weight:500;color:#d9ae65}
    try{
      const state=await read(base,'/api/circuit/install-state');
      if(state.state==='installed'){
-       label.textContent='SP: instalado y autorizado en '+(state.database||'SiSRL')+'.';
+       label.textContent='Datos de la estación habilitados.';
        help.hidden=true;
      }else if(state.state==='pending_permission'||state.state==='deployment_error'){
-       label.textContent='SP pendiente: '+String(state.message||'Revisar permisos de SQL Server.');
+       label.textContent='Hay datos de la estación pendientes de configurar. Consultá al administrador.';
        help.hidden=false;
      }else{
-       label.textContent='SP: '+String(state.message||'Esperando instalación al conectar SiSRL.');
+       label.textContent='Esperando la configuración de los datos de la estación.';
        help.hidden=true;
      }
    }catch(e){
@@ -711,16 +711,16 @@ h1 em{font-weight:500;color:#d9ae65}
      const preferred=candidates[0];
      const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),18500);
      try{found={base:preferred.base,data:await read(preferred.base,'/api/station/ids',{signal:ctrl.signal})}}
-     catch(e){lastError='El SQL del conector v'+preferred.version+' no devolvió estaciones: '+e.message}
+     catch(e){lastError='No se pudieron recuperar las estaciones. Consultá al administrador.'}
      finally{clearTimeout(timer)}
-   }else lastError='No hay un conector con SQL conectado; abrí Núcleo → Datos.';
+   }else lastError='Los datos no están disponibles. Revisá la conexión desde Núcleo → Datos.';
    if(!found){
      activeBridge=null;
      window.capitanSqlBridge=null;
      window.dispatchEvent(new Event('capitan:bridge-changed'));
      await refreshInstallState(null);
      clearCircuit();
-     warn(lastError||'No hay conexión SQL. Abrí Núcleo → Datos.');
+     warn(lastError||'Los datos no están disponibles. Abrí Núcleo → Datos.');
      return;
    }
    activeBridge=found.base;
@@ -745,7 +745,7 @@ h1 em{font-weight:500;color:#d9ae65}
    }
    if(!stations.length){clearCircuit();warn('La base '+activeDatabase+' no tiene tanques con ID de estación reconocido.');return}
    if(!stationSelect.value){
-     clearCircuit();warn('SQL conectado a '+activeDatabase+' · elegí la estación para no mezclar datos.');
+     clearCircuit();warn('Datos disponibles · elegí la estación para continuar.');
      return;
    }
    await loadCircuit();
@@ -770,7 +770,7 @@ h1 em{font-weight:500;color:#d9ae65}
  async function callSql(args){
    const stateResponse=await localFetch(bridge+'/api/state'),state=await stateResponse.json();
    const sessionId=state.sessionId,database=state.database;
-   if(!state.connected||!sessionId||!database)return {error:'No hay una conexión SQL activa con una base seleccionada. Abrí Núcleo → Datos.'};
+   if(!state.connected||!sessionId||!database)return {error:'Los datos no están disponibles. Abrí Núcleo → Datos.'};
    const r=await localFetch(bridge+'/api/ai/sql-read',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,database,sql:args.consulta})});return await r.json();
  }
  function send(event){if(dc&&dc.readyState==='open')dc.send(JSON.stringify(event))}
