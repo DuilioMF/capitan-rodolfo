@@ -211,7 +211,7 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
 </main><script>
 (function(){
  const form=document.getElementById('openaiForm'),input=document.getElementById('openaiKey'),status=document.getElementById('engineStatus'),guide=document.getElementById('memoryGuide'),guideToggle=document.getElementById('guideToggle'),checkConnector=document.getElementById('checkConnector'),saveOpenAI=document.getElementById('saveOpenAI');
- const desktop=['127.0.0.1','localhost'].includes(location.hostname);const ports=[8787,8797,18787,27877,37877,48787,57877];const bridges=desktop?[location.origin+'/_doinglio_sql']:ports.map(p=>'http://127.0.0.1:'+p);let bridge=null;
+ const desktop=['127.0.0.1','localhost'].includes(location.hostname);const ports=[8787,8797,18787,27877,37877,48787,57877];const bridges=[...(desktop?[location.origin+'/_doinglio_sql']:[]),...ports.map(p=>'http://127.0.0.1:'+p)];let bridge=null;
  const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:25000);try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
  function showGuide(show){guide.hidden=!show;guideToggle.setAttribute('aria-expanded',String(show));guideToggle.textContent=show?'Ocultar guía de Memoria Duilio':'¿No tenés la clave? Memoria Duilio te guía'}
  guideToggle.addEventListener('click',()=>showGuide(guide.hidden));
