@@ -1515,11 +1515,17 @@ try {
           $st=Ensure-ActiveSession
           $stations=@()
           $database=''
+          $stationError=''
           if($null -ne $st){
             $database=[string]$st.database
-            $stations=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database $database)
+            try{
+              $stations=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database $database)
+            }catch{
+              $stationError='SQL está conectado, pero no pude identificar las estaciones desde ParamStock. Revisá los permisos y el esquema en Datos.'
+            }
           }
           $response=Get-DoingLioCoreStatus -Root $DataRoot -SqlConnected ($null -ne $st) -Database $database -Stations $stations
+          $response['sqlError']=$stationError
           Send-Json $stream 200 $response
         }catch{Send-Json $stream 400 @{ok=$false;error='Actualiza el conector o verifica el descubrimiento SQL.'}}
       }
