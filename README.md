@@ -113,3 +113,12 @@ Incidente: Núcleo en v88 apuntaba a una conexión SQL web v86, mientras que `di
 - **Sin cambios** en `C:\Sistemas\DoingLio\data\capitan` ni en contraseñas SQL, autorizaciones históricas o claves de OpenAI.
 
 **Validación pendiente en la PC:** ejecutar la descarga v89 desde Núcleo → Datos (una sola vez), esperar conector local v89 y base conectada, abrir Núcleo → Conexión de núcleos, seleccionar estaciones descubiertas y confirmar la vinculación con la cuenta de administrador. Solo entonces probar WhatsApp → consulta SQL → respuesta real. Los controles automáticos de sintaxis web y estructura no sustituyen esta prueba. Ver tarjeta https://trello.com/c/P9P2rXjv.
+
+## v91 — Despachos por fecha en DoingLio (27/09/2026)
+
+- Gateway WhatsApp v18: reconoce "despachos del 27/09/2026", "despachos de hoy", "despachos de ayer" y "cargas de hoy"; la fecha relativa usa zona horaria `America/Argentina/Buenos_Aires`, las fechas explícitas aceptan formato DD/MM/AAAA o AAAA-MM-DD. Sin fecha pregunta cuál consultar. Verifica teléfono y estación antes de encolar.
+- Cola SQL v10: conserva el parámetro `fecha` al tomar y completar cada trabajo; la consulta por fecha no se confunde con otros días. El mensaje "resultado" consulta el último trabajo del teléfono autorizado, con fecha de solicitud y estado real; "actualizá" pide otra lectura.
+- Conector local `POST /api/station/today-dispatches`: SQL parametrizado sobre `dbo.Despachos`, filtra `ULDATE >= fecha AND ULDATE < fecha+1` y estación real. Devuelve `COUNT_BIG(*)` sin límite artificial y muestra los últimos 5 registros ordenados por ULDATE, ULTIME (si existe) e ID_SALE; consulta de solo lectura.
+- Trabajador SQL actualizado: maneja `today_dispatches` y `latest_dispatch`, solicita la lectura al conector de la PC y responde usando solamente registros devueltos por SQL; se reparó un archivo anterior con estructura rota.
+- El instalador valida sintaxis PowerShell de los scripts descargados antes de reiniciar el servicio, sin borrar `C:\Sistemas\DoingLio\data\capitan`. Las pantallas y copia `dist/` muestran versión 91.
+- **Prueba local pendiente:** ejecutar una vez `CAPITAN_RODOLFO.bat?v=91` en la PC que tiene SQL. Desde WhatsApp enviar "despachos del 27/09/2026 de la estación 1"; luego "resultado" unos segundos después. Verificar en cola `today_dispatches` y `answered` con metadatos `fecha`, y cotejar registros con SQL. No declarar E2E completo hasta validar esos datos reales.
