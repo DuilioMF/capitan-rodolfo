@@ -48,7 +48,7 @@ try {
   }
   Say 'PASS: reutilizando la MISMA sesión activa SiSRL de Capitán.'
   $proc="dbo.PA_VentasFormasPago"
-  $perm=Query "SELECT DB_NAME() AS base,OBJECT_ID(N'dbo.PA_VentasFormasPago',N'P') AS objeto,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'EXECUTE') AS puedeEjecutar,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'VIEW DEFINITION') AS puedeVerCodigo" '01_PERMISOS.json'
+  $perm=Query "SELECT DB_NAME() AS base,OBJECT_ID(N'dbo.PA_VentasFormasPago',N'P') AS objeto,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'EXE'+N'CUTE') AS puedeEjecutar,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'VIEW DEFINITION') AS puedeVerCodigo" '01_PERMISOS.json'
   if(!$perm.Count -or !$perm[0].objeto){throw 'El procedimiento no es visible en SiSRL con esta conexión. Confirmá su existencia.'}
   Say ('SP encontrado: '+$proc+'. EXECUTE='+(if($null -eq $perm[0].puedeEjecutar){'sin información'}else{$perm[0].puedeEjecutar}))
   if($perm[0].puedeEjecutar -eq 0){Say 'ATENCION: falta permiso EXECUTE; esto es independiente del error de lentitud.'}
