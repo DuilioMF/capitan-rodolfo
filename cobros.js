@@ -1,4 +1,4 @@
-/* Capitán Rodolfo v87 · medios de pago exclusivamente desde SQL autorizado. */
+/* Capitán Rodolfo · medios de pago exclusivamente desde SiSRL autorizado. */
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
@@ -39,8 +39,9 @@ const pick=(row,aliases)=>{
  return null;
 };
 const today=()=>{
- const d=new Date(),n=x=>String(x).padStart(2,'0');
- return d.getFullYear()+'-'+n(d.getMonth()+1)+'-'+n(d.getDate());
+ const pieces=new Intl.DateTimeFormat('en-US',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const part=key=>pieces.find(p=>p.type===key)?.value;
+ return part('year')+'-'+part('month')+'-'+part('day');
 };
 const modal=$('paymentsModal');
 let data=null,rows=[],columnNames=[],method='all',visible=50,paramsKey='',working=false,saleFilter=null;
@@ -285,7 +286,7 @@ async function search(){
  if(!p.idEstacion){notice('Elegí la estación en el tablero antes de consultar cobros.','error');return}
  const request=++latestRequest;
  working=true;$('paymentsSearch').disabled=true;
- notice('Consultando Maestros.dbo.PA_VentasFormasPago mediante la conexión SQL local…');
+ notice('Consultando SiSRL.dbo.PA_VentasFormasPago mediante la conexión SQL local…');
  $('paymentsEvidence').hidden=true;
  try{
    const response=await api('/api/station/payments',p);
@@ -295,7 +296,7 @@ async function search(){
    data=response;rows=s&&Array.isArray(s.rows)?s.rows:[];columnNames=s?s.columns:[];
    paramsKey=JSON.stringify(p);visible=50;method='all';
    const incomplete=!!(response.truncated||s?.truncated);
-   if(!s){const columns=sets.flatMap(x=>Array.isArray(x.columns)?x.columns:[]).slice(0,32);notice('Maestros.PA_VentasFormasPago respondió, pero no reconozco los medios de pago. Columnas SQL recibidas: '+(columns.join(', ')||'ninguna')+'. Revisá el SP de la base Maestros.','warn')}
+   if(!s){const columns=sets.flatMap(x=>Array.isArray(x.columns)?x.columns:[]).slice(0,32);notice('SiSRL.PA_VentasFormasPago respondió, pero no reconozco los medios de pago. Columnas SQL recibidas: '+(columns.join(', ')||'ninguna')+'. Revisá el SP de la base SiSRL.','warn')}
    else if(incomplete)notice('ATENCIÓN: se alcanzó el límite de 5.000 filas. Los totales son PARCIALES; acotá las fechas.','error');
    else if(saleFilter&&!rows.some(matchesSale))notice('El comprobante '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero+' no apareció en el SP para las fechas y turnos seleccionados. No se atribuyen otros cobros.','warn');
    else if(sets.length>1)notice('Se muestra un único resultado del SP para evitar duplicar importes de otros conjuntos.','warn');

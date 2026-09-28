@@ -13,6 +13,7 @@ on:
       - "theme.js"
       - "cobros.js"
       - "cobros.css"
+      - "tests/ver-medios-navigation.test.js"
       - ".github/workflows/pages.yml"
       - ".github/workflows/validar-paquete-sql.yml"
   workflow_dispatch:
@@ -101,6 +102,9 @@ jobs:
           } finally {
             if($proc){Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue}
           }
+      - name: Regresión Ver medios y conexión SiSRL
+        shell: powershell
+        run: node --test tests/ver-medios-navigation.test.js
       - name: Comprobar versiones y autorizaciones
         shell: powershell
         run: |
@@ -205,13 +209,15 @@ jobs:
           }
           const paymentRoute=bridgeCode.slice(bridgeCode.indexOf("'/api/station/payments'"),
             bridgeCode.indexOf("'/api/station/circuit'",bridgeCode.indexOf("'/api/station/payments'")));
-          for(const expected of ["-Database 'Maestros' -Procedure 'dbo.PA_VentasFormasPago'",
-            'VendedorDesde=0','VendedorHasta=99999',"-notcontains 'Maestros'"]){
-            if(!paymentRoute.includes(expected))throw Error('Regresion: Cobros debe usar Maestros y 7 parametros: '+expected);
+          for(const expected of ["-Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago'",
+            'VendedorDesde=0','VendedorHasta=99999']){
+            if(!paymentRoute.includes(expected))throw Error('Regresion: Cobros debe usar SiSRL y 7 parametros: '+expected);
+          if(paymentRoute.includes('Ma'+'estros'))throw Error('Cobros usa una base distinta de SiSRL');
+          if(paymentRoute.includes('state.databases) -notcontains'))throw Error('Cobros exige un catálogo extra pese a tener sesión activa SiSRL');
           }
           const evidenceFn=bridgeCode.slice(bridgeCode.indexOf('function Get-VerifiedPaymentEvidence'),
             bridgeCode.indexOf('function Invoke-AllowedStoredProcedure'));
-          if(!evidenceFn.includes("ChangeDatabase('Maestros')"))throw Error('Regresion: detalle MP/YPF no usa Maestros');
+          if(!evidenceFn.includes("ChangeDatabase('SiSRL')"))throw Error('Regresion: detalle MP/YPF no usa SiSRL');
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
               'id="paymentsMethods"',

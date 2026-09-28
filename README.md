@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual del código: **86** (validación final contra la base SQL local pendiente)
+- Versión actual del código: **93** (validación final contra la base SQL local pendiente)
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -84,9 +84,9 @@ La relación para mostrar formas de pago por despacho usa `Despachos.ID_SALE` pa
 El código propio de Capitán aparece discretamente como `R·84`, leído de `VERSION`, al pie de la pantalla de inicio; DoingLio conserva su propia build D independiente.
 
 
-## Hotfix v85: procedencia de Cobros
+## Antecedente v85 (obsoleto; corregido en v93)
 
-El puente SQL corregido consulta **Maestros.dbo.PA_VentasFormasPago**, no SiSRL, con los 7 parametros reales. Para verificar pagos MP/YPF utiliza Maestros y exige identidad/estación confirmadas. Las consultas de Despachos/RelacionCptsDespachos permanecen en SiSRL y conservan el vínculo de fecha e ID_DESPACHO publicado en v84. Si el usuario SQL no tiene acceso a Maestros, el conector comunica el bloqueo. **Pendiente:** cotejar resultados contra SiSRL/Maestros reales y aprobar la prueba funcional antes de declarar que Cobros funciona.
+Ese antecedente exigía erróneamente una segunda base. Desde v93, `dbo.PA_VentasFormasPago` y la evidencia MP/YPF usan la misma sesión autorizada de **SiSRL** que los despachos. Se preservan vínculos verificados de ID_DESPACHO y fecha, autorización de estación y comprobante. No se adjudican cobros si faltan datos. **Pendiente:** cotejar resultados contra la base SiSRL real en la PC antes de confirmar la prueba funcional.
 
 ## v86 — CAP-SQL-DISCOVERY
 
@@ -122,3 +122,7 @@ Incidente: Núcleo en v88 apuntaba a una conexión SQL web v86, mientras que `di
 - Trabajador SQL actualizado: maneja `today_dispatches` y `latest_dispatch`, solicita la lectura al conector de la PC y responde usando solamente registros devueltos por SQL; se reparó un archivo anterior con estructura rota.
 - El instalador valida sintaxis PowerShell de los scripts descargados antes de reiniciar el servicio, sin borrar `C:\Sistemas\DoingLio\data\capitan`. Las pantallas y copia `dist/` muestran versión 91.
 - **Prueba local pendiente:** ejecutar una vez `CAPITAN_RODOLFO.bat?v=91` en la PC que tiene SQL. Desde WhatsApp enviar "despachos del 27/09/2026 de la estación 1"; luego "resultado" unos segundos después. Verificar en cola `today_dispatches` y `answered` con metadatos `fecha`, y cotejar registros con SQL. No declarar E2E completo hasta validar esos datos reales.
+
+## v93 — Cobros en SiSRL (28/09/2026)
+
+Se eliminó el requisito de otra base en las rutas `/api/station/payments` y `/api/station/payment-evidence`. Ambas usan la sesión SQL activa de SiSRL, sin cambiar claves ni credenciales. Las fechas de Cobros se inicializan en `America/Argentina/Buenos_Aires` y se envían desde el formulario, sin días fijos. La búsqueda por ID_SALE utiliza la fecha verdadera del despacho verificado, aunque no sea la de hoy. Pendiente prueba funcional con la PC conectada.

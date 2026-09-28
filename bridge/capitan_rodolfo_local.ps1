@@ -877,7 +877,7 @@ function Get-VerifiedPaymentEvidence {
        $Numero.Length -gt 40 -or -not $Letra -or -not $Sucursal -or -not $Numero){
        throw 'El comprobante necesita letra, sucursal y número para enlazar el pago.'
     }
-    $Connection.ChangeDatabase('Maestros')
+    $Connection.ChangeDatabase('SiSRL')
     $mfStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.MaeFac'
     $mfLetter=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('LETRA')
     $mfBranch=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('SUCURSAL')
@@ -1844,9 +1844,6 @@ try {
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
              Send-Json $stream 400 @{error='Estación inválida.'};continue
           }
-          if(@($state.databases) -notcontains 'Maestros'){
-            Send-Json $stream 403 @{error='Falta acceso SQL a Maestros para verificar el pago.'};continue
-          }
           $cn=$Sessions[$state.sessionId].connection
           if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
              Send-Json $stream 403 @{error='Estación no autorizada.'};continue
@@ -1933,9 +1930,6 @@ try {
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
             Send-Json $stream 400 @{error='Elegí una estación válida.'};continue
           }
-          if(@($state.databases) -notcontains 'Maestros'){
-            Send-Json $stream 403 @{error='Falta acceso SQL a Maestros para PA_VentasFormasPago.'};continue
-          }
           $cn=$Sessions[$state.sessionId].connection
           $ids=@(Get-StationOptions -Connection $cn -Database ([string]$state.database))
           if($ids -notcontains $station){
@@ -1975,11 +1969,11 @@ try {
           try {
             # 5.000 rows per set; if any set reaches that limit the browser
             # shows an incomplete-data warning, not a fictitious daily total.
-            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'Maestros' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
+            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
             $sets=@($result.resultSets)
             if($sets.Count -eq 0){throw 'PA_VentasFormasPago no devolvió un conjunto de resultados.'}
             Send-Json $stream 200 @{
-              source='dbo.PA_VentasFormasPago';database='Maestros';station=$station
+              source='dbo.PA_VentasFormasPago';database='SiSRL';station=$station
               fechaDesde=$from.ToString('yyyy-MM-dd');fechaHasta=$until.ToString('yyyy-MM-dd')
               turnoDesde=$turnoDesde;turnoHasta=$turnoHasta
               resultSets=$sets
