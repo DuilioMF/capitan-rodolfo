@@ -205,13 +205,14 @@ jobs:
           }
           const paymentRoute=bridgeCode.slice(bridgeCode.indexOf("'/api/station/payments'"),
             bridgeCode.indexOf("'/api/station/circuit'",bridgeCode.indexOf("'/api/station/payments'")));
-          for(const expected of ["-Database 'Maestros' -Procedure 'dbo.PA_VentasFormasPago'",
-            'VendedorDesde=0','VendedorHasta=99999',"-notcontains 'Maestros'"]){
-            if(!paymentRoute.includes(expected))throw Error('Regresion: Cobros debe usar Maestros y 7 parametros: '+expected);
+          for(const expected of ["-Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago'",
+            'VendedorDesde=0','VendedorHasta=99999',"-notcontains 'SiSRL'"]){
+            if(!paymentRoute.includes(expected))throw Error('Regresion: Cobros debe usar SiSRL y 7 parametros: '+expected);
+          if(paymentRoute.includes('Ma'+'estros'))throw Error('Cobros usa una base distinta de SiSRL');
           }
           const evidenceFn=bridgeCode.slice(bridgeCode.indexOf('function Get-VerifiedPaymentEvidence'),
             bridgeCode.indexOf('function Invoke-AllowedStoredProcedure'));
-          if(!evidenceFn.includes("ChangeDatabase('Maestros')"))throw Error('Regresion: detalle MP/YPF no usa Maestros');
+          if(!evidenceFn.includes("ChangeDatabase('SiSRL')"))throw Error('Regresion: detalle MP/YPF no usa SiSRL');
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
               'id="paymentsMethods"',
