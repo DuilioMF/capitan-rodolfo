@@ -59,7 +59,7 @@ try {
       $response=Api $token @{action="claim"}
       $job=$response.job
       if($null -eq $job){Start-Sleep -Seconds 8;continue}
-      if([string]$job.intent -ne "station_circuit" -or [int]$job.idEstacion -le 0){
+      if([string]$job.intent -notin @("station_circuit","latest_dispatch") -or [int]$job.idEstacion -le 0){
         Api $token @{action="complete";id=$job.id;ok=$false;reply_text="Operación no permitida."} | Out-Null
         continue
       }
@@ -70,6 +70,31 @@ try {
       }
       try {
         $payload=@{idEstacion=[int]$job.idEstacion} | ConvertTo-Json -Compress
+        if([string]$job.intent -eq "latest_dispatch"){
+          $latest=Invoke-RestMethod -Uri ($base+"/api/station/latest-dispatch") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 45
+          if(-not $latest.connected){throw "SQL no confirmo la conexion"}
+          $d=$latest.dispatch
+          $reply="Capitan Rodolfo - estacion $($job.idEstacion). "
+          if($null -eq $d){
+            $reply+="No hay despachos registrados para esta estacion en la base consultada."
+          }else{
+            $details=New-Object System.Collections.Generic.List[string]
+            if($null -ne $d.IdSale){$details.Add("venta "+[string]$d.IdSale)}
+            if($null -ne $d.IdDespacho){$details.Add("despacho "+[string]$d.IdDespacho)}
+            if($d.FechaDespacho){$details.Add("fecha "+[string]$d.FechaDespacho)}
+            if($d.Hora){$details.Add("hora "+[string]$d.Hora)}
+            if($null -ne $d.Cara){$details.Add("cara "+[string]$d.Cara)}
+            if($null -ne $d.Manguera){$details.Add("manguera "+[string]$d.Manguera)}
+            if($d.CodArt){$details.Add("articulo "+[string]$d.CodArt)}
+            if($null -ne $d.Litros){$details.Add("litros "+[string]$d.Litros)}
+            if($null -ne $d.Pesos){$details.Add("importe "+[string]$d.Pesos)}
+            if($null -ne $d.EstadoVta){$details.Add("estado de venta "+[string]$d.EstadoVta)}
+            $reply+="Ultimo despacho segun fecha y hora de SQL: "+($details -join ", ")+"."
+          }
+          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{idEstacion=[int]$job.idEstacion;source="dbo.Despachos"}} | Out-Null
+          Log ("Ultimo despacho consultado: "+$job.id)
+          continue
+        }
         $result=Invoke-RestMethod -Uri ($base+"/api/station/circuit") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 50
         if(-not $result.connected){throw "SQL no confirmó conexión"}
         $tc=Set-Count $result.tanks
