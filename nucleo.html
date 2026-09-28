@@ -169,8 +169,8 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
 
 </style>
 </head>
-<body data-capitan-back="true"><main class="nucleus">
- <header class="nucleus-head"><div class="nucleus-brain" aria-hidden="true"><img src="brain-davinci.svg" alt=""></div><div class="nucleus-head-copy"><div class="eyebrow">CAPITÁN RODOLFO · v<span id="nucleoVersion">93</span></div><h1>Núcleo</h1><p>El centro del especialista: las fuentes que aportan información y la inteligencia que conversa con esos datos.</p></header>
+<body data-capitan-back="true" data-capitan-build="94"><main class="nucleus">
+ <header class="nucleus-head"><div class="nucleus-brain" aria-hidden="true"><img src="brain-davinci.svg" alt=""></div><div class="nucleus-head-copy"><div class="eyebrow">CAPITÁN RODOLFO · v<span id="nucleoVersion">94</span></div><h1>Núcleo</h1><p>El centro del especialista: las fuentes que aportan información y la inteligencia que conversa con esos datos.</p></header>
  <section class="nucleus-grid">
   <article class="nucleus-card"><div class="nucleus-icon">◫</div><h2>Datos</h2><p>Conexiones y fuentes de la estación. SQL Server continúa protegido detrás del conector local y no expone contraseñas en la web.</p><a class="nucleus-action" href="conexion-sql.html?v=93">Abrir conexión SQL →</a><div class="memory-guide" aria-label="Recuperar conector SQL"><h3>Conector SQL local</h3><p>Si la conexión se corta, comprobá primero el servicio. Si no responde, descargá el instalador y ejecutalo en esta PC; no se borran tus credenciales guardadas.</p><div class="memory-actions"><a class="memory-link" href="CAPITAN_RODOLFO.bat?v=93" download="CAPITAN_RODOLFO.bat">Descargar / volver a iniciar</a><a class="memory-check" href="conexion-sql.html?v=93#conector">Comprobar conexión →</a></div><p class="memory-note">El navegador no puede iniciar programas de Windows por sí solo. Ejecutá el archivo descargado si hace falta volver a levantar el servicio.</p></div></article>
   <article class="nucleus-card"><div class="nucleus-icon">✦</div><h2>Inteligencia</h2><p>Rodolfo puede trabajar con varios motores de IA. La cuenta conserva uno predeterminado y permite cambiarlo sin modificar las fuentes de datos.</p>
@@ -205,7 +205,7 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
   <label class="core-agree"><input type="checkbox" id="coreConfirm"/> Confirmo que soy administrador y autorizo vincular las estaciones seleccionadas con DoingLio.</label>
   <button type="button" class="core-link-btn" id="coreLink" disabled>Vincular con DoingLio</button>
   <button type="button" class="memory-check" id="coreRefresh">Actualizar estado</button>
-  <p class="core-note">La clave del servicio permanece cifrada en esta PC; no se copia al navegador. Si el conector es anterior a v93, <a href="CAPITAN_RODOLFO.bat?v=93" download="CAPITAN_RODOLFO.bat">actualizalo con este archivo</a>, conservando las credenciales SQL existentes.</p>
+  <p class="core-note">La clave del servicio permanece cifrada en esta PC; no se copia al navegador. Si el conector es anterior a v94, <a href="CAPITAN_RODOLFO.bat?v=93" download="CAPITAN_RODOLFO.bat">actualizalo con este archivo</a>, conservando las credenciales SQL existentes.</p>
 </article>
 </section>
 </main><script>
@@ -308,8 +308,8 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
     }
     choices.textContent='';
     if(!base){
-      if(found.length&&found[0].version<93) message('SQL detectado en v'+found[0].version+'. Actualizá el servicio a v93 con el instalador, sin borrar las credenciales.');
-      else message(lastError||'No encuentro un servicio v93 compatible. Descargá e iniciá el instalador desde Datos.');
+      if(found.length&&found[0].version<93) message('SQL detectado en v'+found[0].version+'. Actualizá el servicio a v94 con el instalador, sin borrar las credenciales.');
+      else message(lastError||'No encuentro un servicio v94 compatible. Descargá e iniciá el instalador desde Datos.');
       return;
     }
     if(!last.sqlConnected){message('Servicio v'+last.version+' encontrado, pero SQL está desconectado. Abrí Datos para restaurar la conexión.');return}
