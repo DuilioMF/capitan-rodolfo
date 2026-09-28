@@ -19,9 +19,9 @@
 <script src="theme.js?v=94" defer></script>
 </head>
 <body data-capitan-build="94">
-<div id="gate" class="gate"><div class="gatebox"><h2>Validando conexión SQL…</h2><p id="gateText">El Mapa Vivo solo se abre con una sesión SQL válida.</p><a id="returnSql" href="conexion-sql.html" style="display:none">Volver a Conexión SQL</a></div></div>
+<div id="gate" class="gate"><div class="gatebox"><h2>Comprobando los datos de la estación…</h2><p id="gateText">El Mapa Vivo necesita una conexión de datos activa.</p><a id="returnSql" href="conexion-sql.html" style="display:none">Volver a Datos</a></div></div>
 <div id="app" class="app">
-  <header class="top"><div class="left"><a class="back" href="conexion-sql.html">← SQL</a><span class="badge ok">● SQL conectado</span><span id="dbBadge" class="badge"></span></div><span class="ver" data-version-prefix="v">v…</span></header>
+  <header class="top"><div class="left"><a class="back" href="conexion-sql.html">← Datos</a><span class="badge ok">● Datos disponibles</span><span id="dbBadge" class="badge"></span></div><span class="ver" data-version-prefix="v">v…</span></header>
   <main class="stage"><img src="assets/capitan-rodolfo-mapa-vivo.svg" alt="Mapa Vivo de la estación · Capitán Rodolfo"/></main>
   <div class="note">Conexión validada. Los valores visuales de esta pantalla todavía son de maqueta; los datos reales se conectarán cuando definas tablas y campos.</div>
 </div>
@@ -33,16 +33,16 @@ const preferred=sessionStorage.getItem('rodolfo.sql.bridge');
 const gate=document.getElementById('gate'),app=document.getElementById('app'),text=document.getElementById('gateText'),ret=document.getElementById('returnSql');
 async function localFetch(url,options={}){const opts={cache:'no-store',...options};if(!['127.0.0.1','localhost'].includes(location.hostname))opts.targetAddressSpace='local';return fetch(url,opts)}
 async function validate(){
- if(!sid||!db){text.textContent='No hay una conexión SQL activa ni una base seleccionada.';ret.style.display='inline-block';return}
+ if(!sid||!db){text.textContent='Los datos no están disponibles. Abrí Núcleo → Datos.';ret.style.display='inline-block';return}
  const list=[preferred,...BRIDGES].filter((x,i,a)=>x&&a.indexOf(x)===i);
  for(const base of list){
   try{
    const r=await localFetch(base+'/api/tables',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,database:db})});
-   if(r.ok){window.capitanSqlBridge=base;window.dispatchEvent(new Event('capitan:bridge-changed'));document.getElementById('dbBadge').textContent='Base: '+db;gate.style.display='none';app.style.display='block';return}
+   if(r.ok){window.capitanSqlBridge=base;window.dispatchEvent(new Event('capitan:bridge-changed'));document.getElementById('dbBadge').textContent='Estación conectada';gate.style.display='none';app.style.display='block';return}
   }catch(_){}
  }
  sessionStorage.removeItem('rodolfo.sql.sessionId');
- text.textContent='La sesión SQL ya no es válida o el bridge local no está disponible.';
+ text.textContent='Se perdió la conexión con los datos de la estación.';
  ret.style.display='inline-block';
 }
 validate();
