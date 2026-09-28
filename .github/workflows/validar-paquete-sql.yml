@@ -101,6 +101,9 @@ jobs:
           } finally {
             if($proc){Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue}
           }
+      - name: Regresión Ver medios y conexión SiSRL
+        shell: powershell
+        run: node --test tests/ver-medios-navigation.test.js
       - name: Comprobar versiones y autorizaciones
         shell: powershell
         run: |
