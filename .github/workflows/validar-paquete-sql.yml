@@ -210,9 +210,10 @@ jobs:
           const paymentRoute=bridgeCode.slice(bridgeCode.indexOf("'/api/station/payments'"),
             bridgeCode.indexOf("'/api/station/circuit'",bridgeCode.indexOf("'/api/station/payments'")));
           for(const expected of ["-Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago'",
-            'VendedorDesde=0','VendedorHasta=99999',"-notcontains 'SiSRL'"]){
+            'VendedorDesde=0','VendedorHasta=99999']){
             if(!paymentRoute.includes(expected))throw Error('Regresion: Cobros debe usar SiSRL y 7 parametros: '+expected);
           if(paymentRoute.includes('Ma'+'estros'))throw Error('Cobros usa una base distinta de SiSRL');
+          if(paymentRoute.includes('state.databases) -notcontains'))throw Error('Cobros exige un catálogo extra pese a tener sesión activa SiSRL');
           }
           const evidenceFn=bridgeCode.slice(bridgeCode.indexOf('function Get-VerifiedPaymentEvidence'),
             bridgeCode.indexOf('function Invoke-AllowedStoredProcedure'));
