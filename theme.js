@@ -164,7 +164,70 @@
  }
  controls.appendChild(oldBack);
 
+ // La versión del HTML identifica lo que está viendo realmente el usuario.
+ // VERSION remota sirve únicamente para advertir si esa pantalla quedó vieja.
+ const screenBuild=String(document.body.dataset.capitanBuild||'').trim();
+ const versionBadge=document.createElement('output');
+ versionBadge.className='capitan-version-status';
+ versionBadge.setAttribute('aria-live','polite');
+ versionBadge.setAttribute('aria-label','Versión de la pantalla y del conector SQL');
+ versionBadge.textContent='Pantalla '+(screenBuild?'v'+screenBuild:'sin identificar')+' · Comprobando SQL…';
+ controls.appendChild(versionBadge);
+ const modalBadges=[...document.querySelectorAll('.tank-modal .tank-head')].map(head=>{
+   const badge=document.createElement('small');
+   badge.className='capitan-modal-version';
+   badge.textContent=versionBadge.textContent;
+   (head.querySelector(':scope > div')||head).appendChild(badge);
+   return badge;
+ });
+ let checkingVersions=false;
+ async function checkVersions(){
+   if(checkingVersions)return;
+   checkingVersions=true;
+   try{
+     const desktop=['127.0.0.1','localhost'].includes(location.hostname);
+     const active=typeof window.capitanSqlBridge==='string'?window.capitanSqlBridge:'';
+     const candidates=[...new Set([active,...(desktop?[location.origin+'/_doinglio_sql']:[]),
+       ...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)].filter(Boolean))];
+     const [published,healths]=await Promise.all([
+       fetch('VERSION?ts='+Date.now(),{cache:'no-store'}).then(async r=>r.ok?(await r.text()).trim():'').catch(()=>''),
+       Promise.all(candidates.map(async base=>{
+         const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),1600);
+         try{
+           const response=await fetch(base+'/health',{cache:'no-store',signal:ctrl.signal,
+             ...(desktop?{}:{targetAddressSpace:'local'})});
+           if(!response.ok)return null;
+           const h=await response.json();
+           return h.ok&&h.service==='Capitan Rodolfo Local'?
+             {base,version:String(h.version||'?'),connected:h.connected===true,database:String(h.database||'')}:null;
+         }catch(_){return null}finally{clearTimeout(timer)}
+       }))
+     ]);
+     const found=healths.filter(Boolean).sort((a,b)=>
+       Number(b.connected)-Number(a.connected)||(Number(b.version)||0)-(Number(a.version)||0));
+     const sql=found.find(x=>x.base===active)||found[0]||null;
+     const staleWeb=!!(published&&screenBuild&&published!==screenBuild);
+     const staleSql=!!(sql&&screenBuild&&sql.version!==screenBuild);
+     const webLabel='Pantalla '+(screenBuild?'v'+screenBuild:'SIN IDENTIFICAR')+
+       (staleWeb?' · Publicada v'+published+' (recargar)':'');
+     const sqlLabel=!sql?'Conector no detectado':'Conector v'+sql.version+
+       (sql.connected?' · SQL '+(sql.database||'conectada'):' · SQL desconectada')+
+       (staleSql?' · ACTUALIZAR CONECTOR':'');
+     const label=webLabel+'  |  '+sqlLabel;
+     versionBadge.textContent=label;
+     versionBadge.classList.toggle('outdated',staleWeb||staleSql);
+     for(const badge of modalBadges){
+       badge.textContent=label;
+       badge.classList.toggle('outdated',staleWeb||staleSql);
+     }
+   }finally{checkingVersions=false}
+ }
+
+
  document.body.appendChild(controls);
+ checkVersions();
+ window.addEventListener('capitan:bridge-changed',checkVersions);
+ setInterval(checkVersions,60000);
 
  const initialTheme=safeGet(STORAGE_THEME,document.documentElement.dataset.theme||'dark');
  const initialStyle=validStyle(safeGet(STORAGE_STYLE,document.documentElement.dataset.style||'leon'));
