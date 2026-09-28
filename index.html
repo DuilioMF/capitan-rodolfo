@@ -151,7 +151,7 @@ h1 em{font-weight:500;color:#d9ae65}
   <nav class="nav">
     <a class="doinglio-home" href="https://duiliomf.github.io/doinglio/" target="_self" aria-label="Volver a DoingLio">← DoingLio</a>
     
-    <a class="primary" href="nucleo.html?v=91">◉ Núcleo</a>
+    <a class="primary" href="nucleo.html?v=92">◉ Núcleo</a>
   </nav>
 </header>
 
@@ -321,6 +321,7 @@ h1 em{font-weight:500;color:#d9ae65}
 <div class="scribble">stazione · flusso · controllo · memoria</div>
 <div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build" aria-label="Código interno">R·…</span></div>
 </div>
+<script src="verificable/verified-circuit.js"></script>
 <script>
 (async()=>{
  try{
@@ -605,6 +606,7 @@ h1 em{font-weight:500;color:#d9ae65}
    catch(e){label.textContent='No se pudo copiar: '+e.message}
  });
  function clearCircuit(){
+   closeModals();
    spResultSection.hidden=true;spResultTables.replaceChildren();
    circuit=null;stationConnected=false;
    document.getElementById('companyCard').hidden=true;
@@ -616,6 +618,9 @@ h1 em{font-weight:500;color:#d9ae65}
    set('liveDbKpi',stationSelect.value?('Estación '+stationSelect.value):'Sin conexión');
  }
  function paint(data){
+   // DOINGLIO_VERIFICABLE_UI_V1: no pintar datos de lectura_tablas ni SP sin prueba.
+   if(!window.DoingLioVerificable)throw new Error('Falta el verificador de datos. No se muestran resultados.');
+   window.DoingLioVerificable.verifyCircuit(data,stationSelect.value);
    if(!data.tanks||!data.hoses||!data.dispatches||!data.receipts)throw new Error('El SP no devolvió cuatro resultados completos.');
    circuit=data;stationConnected=true;activeDatabase=data.database||activeDatabase;
    renderSpResult(data);

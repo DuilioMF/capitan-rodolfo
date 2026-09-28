@@ -108,7 +108,7 @@ jobs:
           $bat=Get-Content CAPITAN_RODOLFO.bat -Raw
           $nucleo=Get-Content nucleo.html -Raw
           $datos=Get-Content conexion-sql.html -Raw
-          if($bat -notmatch ('EXPECTED_VERSION='+[regex]::Escape($version))){throw "BAT desfasado"}
+          if($bat -notmatch 'set "EXPECTED_VERSION="' -or $bat -notmatch 'do if not defined EXPECTED_VERSION set "EXPECTED_VERSION=%%V"'){throw "BAT no obtiene VERSION canónica"}
           if($nucleo -notmatch ('v'+[regex]::Escape($version))){throw "Nucleo desfasado"}
           if($datos -notmatch ('v'+[regex]::Escape($version))){throw "Datos desfasado"}
           $cfg=Get-Content sp_allowlist.json -Raw|ConvertFrom-Json
@@ -214,17 +214,20 @@ jobs:
           if(!evidenceFn.includes("ChangeDatabase('Maestros')"))throw Error('Regresion: detalle MP/YPF no usa Maestros');
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
-              'id="paymentsMethods"','cobros.css?v=85','cobros.js?v=85',
+              'id="paymentsMethods"',
               'window.capitanSqlBridge=activeBridge','window.capitanOpenCobros?.()',
               'id="paymentsSaleId"','id="paymentsFindSale"']){
             if(!ui.includes(marker))throw Error('Pantalla Cobros incompleta: '+marker);
+          }
+          if(!/href="cobros\.css\?v=[^"\s]+"/.test(ui) || !/src="cobros\.js\?v=[^"\s]+"/.test(ui)){
+            throw Error('Faltan referencias versionadas de los archivos reales de Cobros');
           }
           const allowlist=JSON.parse(fs.readFileSync('sp_allowlist.json','utf8'));
           if(!allowlist.procedures.includes('dbo.PA_ListarTarjXTurno')||
              !allowlist.procedures.includes('dbo.PA_VentasFormasPago')){
             throw Error('Lista local no permite ambos SP de cobros');
           }
-          console.log('Cobros v85: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
+          console.log('Cobros: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
           const doc=fs.readFileSync('documentos.html','utf8');
           const index=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="drop"','id="truckWrap"','id="file"','dragover','drop','/functions/v1/extract-document-json','JSON.stringify(extracted,null,2)','Otro (revisar)']){
@@ -287,7 +290,7 @@ jobs:
              if(!fallback.includes(marker))throw Error('Conector sin vínculo compuesto: '+marker);
           }
           for(const marker of ["loadStep.addEventListener('click',()=>loads('all'))",
-             "window.capitanOpenCobrosForSale?.(invoice)","window.capitanOpenCobrados=()=>loads('paid')",'id="paymentsOpenPaid"']){
+             "window.capitanOpenCobrosForDispatch?.(sale)","window.capitanOpenCobrados=()=>loads('paid')",'id="paymentsOpenPaid"']){
              if(!index.includes(marker))throw Error('Pantalla sin acceso al cobro: '+marker);
           }
           if(!cobros.includes('window.capitanOpenCobrosForSale=openForSale;')||
@@ -297,7 +300,7 @@ jobs:
              !fallback.includes("'d.ID_DESPACHO=r.'+$rkey+' AND d.ULDATE=r.FECHA '") ||
              !cobros.includes("api('/api/station/payment-sale'"))
              throw Error('La búsqueda por ID_SALE no usa relación compuesta validada');
-          console.log('Cobros v85: comprobante por identificador + fecha; apertura y filtro por factura OK');
+          console.log('Cobros: comprobante por identificador + fecha; apertura y filtro por factura OK');
           console.log('Cierres izquierda y cobros: estados, filtros y navegación OK');
 
           const explorer=fs.readFileSync('conexion-sql.html','utf8');
@@ -312,7 +315,7 @@ jobs:
           if(!bridge.includes('function Lookup-NamedSqlObject'))throw Error('Falta resolver de objetos SQL');
           if(!bridge.includes('function Get-StationOptions'))throw Error('Falta resolver ParamStock');
           if(!bridge.includes("dbo.ParamStock"))throw Error('Falta consultar ParamStock');
-          if(!bridge.includes('companyAvailable=($sets.Count -ge 5)'))throw Error('Falta quinto resultado en bridge');
+          if(!bridge.includes('if($sets.Count -lt 5)') || !bridge.includes('companyAvailable=$true'))throw Error('El circuito no exige el quinto conjunto de estación');
           for(const marker of ['function Invoke-CircuitAutoInstall','function Get-CircuitDatabasePermission','/api/circuit/install-state','Get-StationReadOnlyCircuit','Save-CircuitInstallStatus']){
             if(!bridge.includes(marker))throw Error('Falta instalación segura automática o lectura de respaldo: '+marker);
           }
