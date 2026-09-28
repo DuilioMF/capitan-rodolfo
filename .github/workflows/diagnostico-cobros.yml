@@ -24,9 +24,11 @@ jobs:
       - name: Analizar sintaxis PS 5.1 y JS
         shell: powershell
         run: |
-          $tok=$null;$err=$null
-          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'diagnostico/verificar_cobros_sisrl.ps1'),[ref]$tok,[ref]$err)|Out-Null
-          if($err.Count){$err | ForEach-Object {Write-Host $_.Message};throw 'Sintaxis PowerShell invalida'}
+          foreach($file in @('diagnostico/verificar_cobros_sisrl.ps1','diagnostico/medir_rendimiento_cobros.ps1')){
+            $tok=$null;$err=$null
+            [Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tok,[ref]$err)|Out-Null
+            if($err.Count){$err | ForEach-Object {Write-Host ($file+': '+$_.Message)};throw 'Sintaxis PowerShell invalida'}
+          }
           node --check tests/mock-cobros-server.js
           Write-Host 'Sintaxis PowerShell y JS: OK'
       - name: Caso correcto con servicio local simulado
