@@ -179,7 +179,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
        (selected.d.connected?' · SQL conectado':' · SQL aún sin conectar')+
        ' · puerto '+port,'ok');
      logDiag('Seleccionado '+bridge+' v'+selected.version+' connected='+selected.d.connected);
-     if(selected.version<88)logDiag('Para Conexión de núcleos se requiere v88; Datos SQL funciona desde v88.');
+     if(selected.version<91)logDiag('Para la consulta WhatsApp por fecha se requiere v91; Datos SQL es compatible desde v86.');
      return true;
    }
    const why='No hay un conector compatible respondiendo. Los datos SQL guardados no se borraron. Descargá e iniciá el conector actual si es necesario.';
