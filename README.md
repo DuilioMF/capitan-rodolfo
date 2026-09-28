@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual del código: **93** (validación final contra la base SQL local pendiente)
+- Versión actual del código: **94** (visibilidad de versión; la validación de Cobros con SiSRL real sigue pendiente)
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -126,3 +126,7 @@ Incidente: Núcleo en v88 apuntaba a una conexión SQL web v86, mientras que `di
 ## v93 — Cobros en SiSRL (28/09/2026)
 
 Se eliminó el requisito de otra base en las rutas `/api/station/payments` y `/api/station/payment-evidence`. Ambas usan la sesión SQL activa de SiSRL, sin cambiar claves ni credenciales. Las fechas de Cobros se inicializan en `America/Argentina/Buenos_Aires` y se envían desde el formulario, sin días fijos. La búsqueda por ID_SALE utiliza la fecha verdadera del despacho verificado, aunque no sea la de hoy. Pendiente prueba funcional con la PC conectada.
+
+## v94 — Identificación visible de cada ventana (28/09/2026)
+
+El HTML de Inicio, Núcleo, Datos, Mapa Vivo y Lector identifica **su propia versión cargada**, y las siete ventanas superpuestas de Estación (Camión, Tanques, Surtidores, Carga, Producto, Comprobante y Cobros) muestran versión y estado del conector en el encabezado. `VERSION` remoto se usa solo para advertir sobre una publicación más reciente; nunca etiqueta una pantalla vieja como nueva. El indicador identifica la versión real devuelta por `/health`, informa si SQL está conectado, y pide actualizar cuando la versión del conector difiere de la pantalla. En todas las páginas se usa el mismo número canónico `VERSION`, con recursos web `?v=94` para evitar caché antigua. Esto no altera relaciones de cobros, credenciales ni contenido SQL. Para comprobar la instalación local, descargar y ejecutar el BAT desde Núcleo → Datos, y cotejar la conexión con `SiSRL`.

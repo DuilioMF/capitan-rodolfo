@@ -23,10 +23,10 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
 @media(max-width:620px){body{padding:10px}.truck-wrap{min-height:130px}}
 </style>
 </head>
-<body>
+<body data-capitan-build="94">
 <main>
 <div class="ey">CAPITÁN RODOLFO · RECEPCIÓN DIGITAL</div>
-<div class="headline"><h1>Descarga de combustible</h1><span id="docVersion" class="ey">LECTOR</span></div>
+<div class="headline"><h1>Descarga de combustible</h1><span id="docVersion" class="ey">LECTOR · CAPITÁN v94</span><span id="docConnectorVersion" class="ey" style="letter-spacing:0">Conector: comprobando…</span></div>
 <p class="desc">El camión utiliza el lector de Revalsoft SaaS: recibe factura, recibo o transferencia y transforma el documento al mismo contrato JSON.</p>
 <p class="note">La función protegida de Supabase obtiene la clave de OpenAI en el servidor. Nunca se copia ni se muestra en el navegador o SiSRL.</p>
 <div class="truck-wrap" id="truckWrap" aria-label="Camión cisterna digital">
@@ -223,7 +223,37 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
   a.click();URL.revokeObjectURL(url);
  });
  $('copy').addEventListener('click',async()=>{if(!extracted)return;try{await navigator.clipboard.writeText(JSON.stringify(extracted,null,2));status('JSON copiado. Revisalo antes de usarlo.','ok')}catch(e){status('No se pudo copiar: '+e.message,'bad')}});
- fetch('VERSION?ts='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{$('docVersion').textContent='LECTOR · CAPITÁN v'+(v.trim()||'?')}).catch(()=>{});
+ const pageVersion=document.body.dataset.capitanBuild;
+ $('docVersion').textContent='LECTOR · CAPITÁN v'+pageVersion;
+ fetch('VERSION?ts='+Date.now(),{cache:'no-store'}).then(async r=>r.ok?(await r.text()).trim():'').then(published=>{
+   if(published&&published!==pageVersion)$('docVersion').textContent+=' · Publicada v'+published+' (recargar)';
+ }).catch(()=>{});
+ async function showConnectorVersion(){
+   const ports=[8787,8797,18787,27877,37877,48787,57877];
+   const desktop=['127.0.0.1','localhost'].includes(location.hostname);
+   const bases=[...(desktop?[location.origin+'/_doinglio_sql']:[]),
+     ...ports.map(p=>'http://127.0.0.1:'+p)];
+   const results=await Promise.all(bases.map(async base=>{
+     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),1600);
+     try{
+       const r=await fetch(base+'/health',{cache:'no-store',signal:ctrl.signal,
+         ...(desktop?{}:{targetAddressSpace:'local'})});
+       if(!r.ok)return null;
+       const h=await r.json();
+       return h.ok&&h.service==='Capitan Rodolfo Local'?
+         {version:String(h.version||'?'),connected:h.connected===true,database:String(h.database||'')}:null;
+     }catch(_){return null}finally{clearTimeout(timer)}
+   }));
+   const found=results.filter(Boolean).sort((a,b)=>
+     Number(b.connected)-Number(a.connected)||(Number(b.version)||0)-(Number(a.version)||0));
+   const current=found[0];
+   $('docConnectorVersion').textContent=current?
+     'Conector v'+current.version+(current.version!==pageVersion?' · ACTUALIZAR':'')+
+     (current.connected?' · SQL '+(current.database||'conectada'):' · sin conexión'):
+     'Conector no detectado';
+ }
+ showConnectorVersion();
+ setInterval(showConnectorVersion,60000);
 })();
 </script>
 </body>
