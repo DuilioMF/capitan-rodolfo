@@ -52,3 +52,4 @@ jobs:
             if($LASTEXITCODE -eq 0){throw 'El script declaro exitoso un SP con error'}
             if(!$output.Contains('RESULTADO: BLOQUEADO')){throw 'No informo el bloqueo'}
           }finally{Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}
+          $global:LASTEXITCODE=0
