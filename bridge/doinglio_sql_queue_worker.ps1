@@ -98,27 +98,48 @@ try {
           continue
         }
         if([string]$job.intent -eq "latest_dispatch"){
-          $latest=Invoke-RestMethod -Uri ($base+"/api/station/latest-dispatch") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 45
-          if(-not $latest.connected){throw "SQL no confirmo la conexion"}
-          $d=$latest.dispatch
-          $reply="Capitan Rodolfo - estacion $($job.idEstacion). "
-          if($null -eq $d){
-            $reply+="No hay despachos registrados para esta estacion en la base consultada."
-          }else{
-            $details=New-Object System.Collections.Generic.List[string]
-            if($null -ne $d.IdSale){$details.Add("venta "+[string]$d.IdSale)}
-            if($null -ne $d.IdDespacho){$details.Add("despacho "+[string]$d.IdDespacho)}
-            if($d.FechaDespacho){$details.Add("fecha "+[string]$d.FechaDespacho)}
-            if($d.Hora){$details.Add("hora "+[string]$d.Hora)}
-            if($null -ne $d.Cara){$details.Add("cara "+[string]$d.Cara)}
-            if($null -ne $d.Manguera){$details.Add("manguera "+[string]$d.Manguera)}
-            if($d.CodArt){$details.Add("articulo "+[string]$d.CodArt)}
-            if($null -ne $d.Litros){$details.Add("litros "+[string]$d.Litros)}
-            if($null -ne $d.Pesos){$details.Add("importe "+[string]$d.Pesos)}
-            if($null -ne $d.EstadoVta){$details.Add("estado de venta "+[string]$d.EstadoVta)}
-            $reply+="Ultimo despacho segun fecha y hora de SQL: "+($details -join ", ")+"."
+          # Misma consulta verificada que muestra "Carga" en Capitan V92:
+          # /api/station/circuit ejecuta PA_CapitanRodolfo_CircuitoEstacion
+          # filtrado por el dia real y estacion. Nunca usar TOP historico alternativo.
+          $circuit=Invoke-RestMethod -Uri ($base+"/api/station/circuit") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 55
+          if(-not $circuit.connected -or -not $circuit.verified -or [string]$circuit.source -ne "sp" -or
+             [int]$circuit.station -ne [int]$job.idEstacion -or
+             [string]$circuit.procedure -ne "dbo.PA_CapitanRodolfo_CircuitoEstacion" -or
+             [string]::IsNullOrWhiteSpace([string]$circuit.fecha)){
+            throw "El circuito de Capitan no confirmo origen SP, fecha y estacion"
           }
-          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{idEstacion=[int]$job.idEstacion;source="dbo.Despachos"}} | Out-Null
+          if($null -eq $circuit.dispatches -or $null -eq $circuit.dispatches.rows -or $circuit.dispatches.truncated){
+            throw "El circuito de Capitan no devolvio despachos completos"
+          }
+          $records=@($circuit.dispatches.rows | Where-Object {$null -ne $_})
+          foreach($row in $records){
+            if([int]$row.IdEstacion -ne [int]$job.idEstacion -or
+               -not ([string]$row.FechaDespacho).StartsWith([string]$circuit.fecha)){
+              throw "La respuesta de SQL no coincide con fecha y estacion"
+            }
+          }
+          # El SP de la pantalla ya devuelve despachos ordenados por hora e ID_SALE.
+          $reply="Capitan Rodolfo - estacion $($job.idEstacion), fecha $($circuit.fecha). "
+          if(-not $records.Count){
+            $reply+="No hay despachos en el circuito verificado de esta fecha."
+          } else {
+            $limit=[Math]::Min(5,$records.Count)
+            $reply+="Ultimos $limit de $($records.Count) despachos del mismo circuito que muestra Capitan: "
+            $details=New-Object System.Collections.Generic.List[string]
+            foreach($d in @($records | Select-Object -First 5)){
+              $parts=New-Object System.Collections.Generic.List[string]
+              if($null -ne $d.IdSale){$parts.Add("venta "+[string]$d.IdSale)}
+              if($null -ne $d.IdDespacho){$parts.Add("despacho "+[string]$d.IdDespacho)}
+              if($d.Hora){$parts.Add("hora "+[string]$d.Hora)}
+              if($null -ne $d.Cara){$parts.Add("cara "+[string]$d.Cara)}
+              if($null -ne $d.Litros){$parts.Add("litros "+[string]$d.Litros)}
+              if($null -ne $d.Pesos){$parts.Add("importe "+[string]$d.Pesos)}
+              if($null -ne $d.EstadoVta){$parts.Add("estado "+[string]$d.EstadoVta)}
+              $details.Add(($parts -join ", "))
+            }
+            $reply+=($details -join "; ")+"."
+          }
+          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{idEstacion=[int]$job.idEstacion;fecha=[string]$circuit.fecha;source="dbo.PA_CapitanRodolfo_CircuitoEstacion"}} | Out-Null
           Log ("Ultimo despacho consultado: "+$job.id)
           continue
         }
@@ -133,8 +154,15 @@ try {
         Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=$summary} | Out-Null
         Log ("Consulta completada: "+$job.id)
       } catch {
-        try{Api $token @{action="complete";id=$job.id;ok=$false;reply_text="No se pudo consultar SQL. Revisá la conexión y los permisos del circuito."} | Out-Null}catch{}
-        Log ("Consulta fallida: "+$job.id)
+        # Guardar diagnostico en la PC, sin enviar detalles internos por WhatsApp.
+        $httpStatus=""
+        try {if($null -ne $_.Exception.Response){$httpStatus=[string][int]$_.Exception.Response.StatusCode}}catch{}
+        $errorType=[string]$_.Exception.GetType().Name
+        $safeDetail=([string]$_.Exception.Message -replace '(?i)(password|token|authorization|secret|key)\s*[:=]\s*[^\s,;}]+','$1=[REDACTED]')
+        if($safeDetail.Length -gt 500){$safeDetail=$safeDetail.Substring(0,500)}
+        Log ("Consulta fallida: "+$job.id+"; intent="+$job.intent+"; station="+$job.idEstacion+"; bridge="+$base+"; http="+$httpStatus+"; type="+$errorType+"; detail="+$safeDetail)
+        $reply=if($httpStatus){"La consulta SQL fallo (HTTP "+$httpStatus+"). Revisá Núcleo - Datos."}else{"La consulta SQL fallo. Revisá Núcleo - Datos."}
+        try{Api $token @{action="complete";id=$job.id;ok=$false;reply_text=$reply} | Out-Null}catch{Log ("No se pudo registrar fallo en la cola: "+$job.id)}
       }
     } catch {
       Log "Error de conexión con la cola. Nuevo intento posterior."
