@@ -28,8 +28,7 @@ GO
 ALTER PROCEDURE dbo.PA_CapitanRodolfo_CircuitoEstacion
     @IdEstacion    INT,
     @EstadoVta     BIT = NULL,   -- NULL=todos; 0=pendientes; 1=cobrados
-    @MaxDespachos  INT = 500,
-    @MaxRelaciones INT = 1000
+    @Fecha         DATE = NULL  -- NULL=fecha de hoy del servidor SQL
 WITH EXECUTE AS OWNER
 AS
 BEGIN
@@ -40,12 +39,9 @@ BEGIN
         RAISERROR('Indicá un @IdEstacion válido. No se permite mezclar estaciones.',16,1);
         RETURN;
     END;
-    IF @MaxDespachos IS NULL OR @MaxDespachos NOT BETWEEN 1 AND 10000
-       OR @MaxRelaciones IS NULL OR @MaxRelaciones NOT BETWEEN 1 AND 10000
-    BEGIN
-        RAISERROR('@MaxDespachos y @MaxRelaciones deben estar entre 1 y 10000.',16,1);
-        RETURN;
-    END;
+    -- CORRECCION DESPACHOS POR FECHA - 2026-09-27
+    DECLARE @Dia DATE;
+    SET @Dia = ISNULL(@Fecha, CONVERT(date, GETDATE()));
 
     IF OBJECT_ID(N'dbo.Tanque',N'U') IS NULL
        OR OBJECT_ID(N'dbo.Prod',N'U') IS NULL
@@ -89,7 +85,7 @@ BEGIN
         @Sql NVARCHAR(MAX), @JoinProd NVARCHAR(MAX),
         @JoinSt NVARCHAR(MAX), @JoinTank NVARCHAR(MAX),
         @Controlador NVARCHAR(200), @DManguera NVARCHAR(200),
-        @Fecha NVARCHAR(200), @WhereRel NVARCHAR(MAX),
+        @HoraExpr NVARCHAR(200), @WhereRel NVARCHAR(MAX),
         @ParamEst SYSNAME, @TipoEstCol SYSNAME, @NombreEstCol SYSNAME,
         @DomicilioCol SYSNAME, @TelefonoCol SYSNAME, @LocalidadCol SYSNAME,
         @TipoExpr NVARCHAR(600), @NombreExpr NVARCHAR(600),
@@ -251,6 +247,17 @@ BEGIN
     SELECT TOP(1) @RDate=c.name FROM sys.columns c
       WHERE c.object_id=OBJECT_ID(N'dbo.RelacionCptsDespachos')
         AND REPLACE(LOWER(c.name),'_','')='fecha';
+    -- Fail closed: ULDATE must have a temporal SQL type.
+    IF @DDate IS NULL OR NOT EXISTS (
+        SELECT 1 FROM sys.columns c
+        INNER JOIN sys.types ty ON ty.user_type_id=c.user_type_id
+        WHERE c.object_id=OBJECT_ID(N'dbo.Despachos') AND c.name=@DDate
+          AND ty.name IN ('date','datetime','datetime2','smalldatetime','datetimeoffset')
+    )
+    BEGIN
+        RAISERROR('ULDATE de Despachos no existe o no es fecha SQL; no se muestran historicos.',16,1);
+        RETURN;
+    END;
     IF @DKey IS NULL OR @DDate IS NULL OR @RKey IS NULL OR @RDate IS NULL
     BEGIN
       -- Mantener tanques/carga aunque falte el esquema de comprobantes.
@@ -426,14 +433,14 @@ BEGIN
       SET @JoinProd+=N' AND p.'+QUOTENAME(@PEst)+N'=d.'+QUOTENAME(@DEst);
     SET @DManguera=CASE WHEN COL_LENGTH('dbo.Despachos','MANGUERA') IS NOT NULL
       THEN N'd.MANGUERA' ELSE N'CAST(NULL AS INT)' END;
-    SET @Fecha=CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL
+    SET @HoraExpr=CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL
       THEN N'CONVERT(VARCHAR(8),d.ULTIME,108)' ELSE N'CAST(NULL AS VARCHAR(8))' END;
     SET @DispatchIdExpr=CASE WHEN @DKey IS NOT NULL
       THEN N'd.'+QUOTENAME(@DKey) ELSE N'CAST(NULL AS NVARCHAR(40))' END;
     SET @DispatchDateExpr=CASE WHEN @DDate IS NOT NULL
       THEN N'CONVERT(VARCHAR(23),d.'+QUOTENAME(@DDate)+N',121)' ELSE N'CAST(NULL AS VARCHAR(23))' END;
     SET @Sql=N'
-      SELECT TOP(@MaxDespachos)
+      SELECT
              d.'+QUOTENAME(@DEst)+N' AS IdEstacion,
              d.ID_SALE AS IdSale,
              '+@DispatchIdExpr+N' AS IdDespacho,
@@ -445,15 +452,17 @@ BEGIN
              '+@CostoExpr+N' AS Costo,
              '+@PrecioExpr+N' AS PrecioProducto,
              d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,
-             d.ESTADOVTA AS EstadoVta,'+@Fecha+N' AS Hora
+             d.ESTADOVTA AS EstadoVta,'+@HoraExpr+N' AS Hora
       FROM dbo.Despachos d '+@JoinProd+N'
       WHERE d.'+QUOTENAME(@DEst)+N'=@IdEstacion
         AND (@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)
+        AND d.'+QUOTENAME(@DDate)+N' >= @Fecha
+        AND d.'+QUOTENAME(@DDate)+N' < DATEADD(day,1,@Fecha)
       ORDER BY '+CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL
                        THEN N'd.ULTIME DESC,' ELSE N'' END+N' d.ID_SALE DESC;';
     EXEC sys.sp_executesql @Sql,
-         N'@IdEstacion INT,@EstadoVta BIT,@MaxDespachos INT',
-         @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,@MaxDespachos=@MaxDespachos;
+         N'@IdEstacion INT,@EstadoVta BIT,@Fecha DATE',
+         @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,@Fecha=@Dia;
 
     -- Resultado 4: comprobante del despacho: dos claves obligatorias.
     -- El ID_SALE se obtiene de Despachos DESPUES de enlazar por ID y fecha.
@@ -465,13 +474,15 @@ BEGIN
         ON d.'+QUOTENAME(@DKey)+N'=r.'+QUOTENAME(@RKey)+N'
         AND d.'+QUOTENAME(@DDate)+N'=r.'+QUOTENAME(@RDate)+N'
         AND d.'+QUOTENAME(@DEst)+N'=@IdEstacion';
-      SET @WhereRel=N'(@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)';
+      SET @WhereRel=N'(@EstadoVta IS NULL OR d.ESTADOVTA=@EstadoVta)'
+        +N' AND d.'+QUOTENAME(@DDate)+N' >= @Fecha'
+        +N' AND d.'+QUOTENAME(@DDate)+N' < DATEADD(day,1,@Fecha)';
       IF @REst IS NOT NULL
         SET @WhereRel+=N' AND r.'+QUOTENAME(@REst)+N'=@IdEstacion';
     END;
 
     SET @Sql=N'
-      SELECT TOP(@MaxRelaciones)
+      SELECT
           '+@RelVentaExpr+N' AS Venta,
           '+@RelLetraExpr+N' AS Letra,
           '+@RelSucExpr+N' AS Sucursal,
@@ -482,9 +493,9 @@ BEGIN
       '+@ComprobanteJoin+N'
       WHERE '+@WhereRel+N';';
     EXEC sys.sp_executesql @Sql,
-         N'@IdEstacion INT,@EstadoVta BIT,@MaxRelaciones INT',
+         N'@IdEstacion INT,@EstadoVta BIT,@Fecha DATE',
          @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,
-         @MaxRelaciones=@MaxRelaciones;
+         @Fecha=@Dia;
 
     -- Resultado 5: EMPRESA/ESTACIÓN. Se agrega al final para no alterar el
     -- orden de los cuatro conjuntos consumidos por las versiones previas.
