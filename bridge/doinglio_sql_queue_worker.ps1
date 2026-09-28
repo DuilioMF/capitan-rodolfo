@@ -133,8 +133,15 @@ try {
         Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=$summary} | Out-Null
         Log ("Consulta completada: "+$job.id)
       } catch {
-        try{Api $token @{action="complete";id=$job.id;ok=$false;reply_text="No se pudo consultar SQL. Revisá la conexión y los permisos del circuito."} | Out-Null}catch{}
-        Log ("Consulta fallida: "+$job.id)
+        # Guardar diagnostico en la PC, sin enviar detalles internos por WhatsApp.
+        $httpStatus=""
+        try {if($null -ne $_.Exception.Response){$httpStatus=[string][int]$_.Exception.Response.StatusCode}}catch{}
+        $errorType=[string]$_.Exception.GetType().Name
+        $safeDetail=([string]$_.Exception.Message -replace '(?i)(password|token|authorization|secret|key)\s*[:=]\s*[^\s,;}]+','$1=[REDACTED]')
+        if($safeDetail.Length -gt 500){$safeDetail=$safeDetail.Substring(0,500)}
+        Log ("Consulta fallida: "+$job.id+"; intent="+$job.intent+"; station="+$job.idEstacion+"; bridge="+$base+"; http="+$httpStatus+"; type="+$errorType+"; detail="+$safeDetail)
+        $reply=if($httpStatus){"La consulta SQL fallo (HTTP "+$httpStatus+"). Revisá Núcleo - Datos."}else{"La consulta SQL fallo. Revisá Núcleo - Datos."}
+        try{Api $token @{action="complete";id=$job.id;ok=$false;reply_text=$reply} | Out-Null}catch{Log ("No se pudo registrar fallo en la cola: "+$job.id)}
       }
     } catch {
       Log "Error de conexión con la cola. Nuevo intento posterior."
