@@ -5,6 +5,7 @@ on:
       - fix/doinglio-verificable-despachos-20260927
   pull_request:
     paths:
+      - 'VERSION'
       - 'index.html'
       - 'bridge/capitan_rodolfo_local.ps1'
       - 'verificable/**'
@@ -28,6 +29,17 @@ jobs:
         run: python3 verificable/apply_hotfix.py --check
       - name: Pruebas de validador con Node.js
         run: node --test verificable/verified-circuit.test.cjs
+      - name: Analizar sintaxis del conector PowerShell
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'bridge/capitan_rodolfo_local.ps1').Path, [ref]$tokens, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'Sintaxis PowerShell correcta.'
       - name: Comprobar que ejecutar el parche dos veces no cambia archivos
         shell: bash
         run: |
@@ -36,6 +48,7 @@ jobs:
           python3 verificable/apply_hotfix.py
           cmp -s index.html /tmp/index-before-2nd-pass
           cmp -s bridge/capitan_rodolfo_local.ps1 /tmp/bridge-before-2nd-pass
+          git diff --check
       - name: Guardar corrección en la rama sin alterar main
         if: github.event_name == 'push' && github.ref == 'refs/heads/fix/doinglio-verificable-despachos-20260927'
         shell: bash
