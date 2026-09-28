@@ -1,0 +1,54 @@
+name: Validar diagnostico local de Cobros
+on:
+  push:
+    paths:
+      - 'diagnostico/**'
+      - 'VERIFICAR_COBROS_SISRL.bat'
+      - 'tests/mock-cobros-server.js'
+      - '.github/workflows/diagnostico-cobros.yml'
+  pull_request:
+    paths:
+      - 'diagnostico/**'
+      - 'VERIFICAR_COBROS_SISRL.bat'
+      - 'tests/mock-cobros-server.js'
+      - '.github/workflows/diagnostico-cobros.yml'
+
+jobs:
+  diagnostico:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Analizar sintaxis PS 5.1 y JS
+        shell: powershell
+        run: |
+          $tok=$null;$err=$null
+          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'diagnostico/verificar_cobros_sisrl.ps1'),[ref]$tok,[ref]$err)|Out-Null
+          if($err.Count){$err | ForEach-Object {Write-Host $_.Message};throw 'Sintaxis PowerShell invalida'}
+          node --check tests/mock-cobros-server.js
+          Write-Host 'Sintaxis PowerShell y JS: OK'
+      - name: Caso correcto con servicio local simulado
+        shell: powershell
+        run: |
+          $p=Start-Process node -ArgumentList 'tests/mock-cobros-server.js' -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\fake-stdout.log" -RedirectStandardError "$env:RUNNER_TEMP\fake-stderr.log"
+          try {
+            Start-Sleep -Seconds 3
+            $output=(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'diagnostico/verificar_cobros_sisrl.ps1' -Estacion 1 -Fecha 2026-09-28 2>&1)|Out-String
+            Write-Host $output
+            if($LASTEXITCODE -ne 0){throw "Prueba simulada fallo con codigo $LASTEXITCODE"}
+            if(!$output.Contains('RESULTADO: PRUEBA LOCAL REAL SATISFACTORIA.')){throw 'No completo el contrato'}
+            if(!$output.Contains('mismo') -or !$output.Contains('SP real')){throw 'No verifico conexion y SP'}
+          }finally{Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}
+      - name: Error del SP no debe declararse exitoso
+        shell: powershell
+        run: |
+          $p=Start-Process node -ArgumentList 'tests/mock-cobros-server.js','--fail-payments' -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\fake-fail-stdout.log" -RedirectStandardError "$env:RUNNER_TEMP\fake-fail-stderr.log"
+          try{
+            Start-Sleep -Seconds 3
+            $output=(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'diagnostico/verificar_cobros_sisrl.ps1' -Estacion 1 -Fecha 2026-09-28 2>&1)|Out-String
+            Write-Host $output
+            if($LASTEXITCODE -eq 0){throw 'El script declaro exitoso un SP con error'}
+            if(!$output.Contains('RESULTADO: BLOQUEADO')){throw 'No informo el bloqueo'}
+          }finally{Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}
