@@ -315,7 +315,7 @@ jobs:
           if(!bridge.includes('function Lookup-NamedSqlObject'))throw Error('Falta resolver de objetos SQL');
           if(!bridge.includes('function Get-StationOptions'))throw Error('Falta resolver ParamStock');
           if(!bridge.includes("dbo.ParamStock"))throw Error('Falta consultar ParamStock');
-          if(!bridge.includes('companyAvailable=($sets.Count -ge 5)'))throw Error('Falta quinto resultado en bridge');
+          if(!bridge.includes('if($sets.Count -lt 5)') || !bridge.includes('companyAvailable=$true'))throw Error('El circuito no exige el quinto conjunto de estación');
           for(const marker of ['function Invoke-CircuitAutoInstall','function Get-CircuitDatabasePermission','/api/circuit/install-state','Get-StationReadOnlyCircuit','Save-CircuitInstallStatus']){
             if(!bridge.includes(marker))throw Error('Falta instalación segura automática o lectura de respaldo: '+marker);
           }
