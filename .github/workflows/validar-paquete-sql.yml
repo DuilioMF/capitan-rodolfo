@@ -214,17 +214,20 @@ jobs:
           if(!evidenceFn.includes("ChangeDatabase('Maestros')"))throw Error('Regresion: detalle MP/YPF no usa Maestros');
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
-              'id="paymentsMethods"','cobros.css?v=85','cobros.js?v=85',
+              'id="paymentsMethods"',
               'window.capitanSqlBridge=activeBridge','window.capitanOpenCobros?.()',
               'id="paymentsSaleId"','id="paymentsFindSale"']){
             if(!ui.includes(marker))throw Error('Pantalla Cobros incompleta: '+marker);
+          }
+          if(!/href="cobros\.css\?v=[^"\s]+"/.test(ui) || !/src="cobros\.js\?v=[^"\s]+"/.test(ui)){
+            throw Error('Faltan referencias versionadas de los archivos reales de Cobros');
           }
           const allowlist=JSON.parse(fs.readFileSync('sp_allowlist.json','utf8'));
           if(!allowlist.procedures.includes('dbo.PA_ListarTarjXTurno')||
              !allowlist.procedures.includes('dbo.PA_VentasFormasPago')){
             throw Error('Lista local no permite ambos SP de cobros');
           }
-          console.log('Cobros v85: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
+          console.log('Cobros: CSS/JS, importes, SP, claves, filtros y seguridad estructural OK');
           const doc=fs.readFileSync('documentos.html','utf8');
           const index=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="drop"','id="truckWrap"','id="file"','dragover','drop','/functions/v1/extract-document-json','JSON.stringify(extracted,null,2)','Otro (revisar)']){
@@ -297,7 +300,7 @@ jobs:
              !fallback.includes("'d.ID_DESPACHO=r.'+$rkey+' AND d.ULDATE=r.FECHA '") ||
              !cobros.includes("api('/api/station/payment-sale'"))
              throw Error('La búsqueda por ID_SALE no usa relación compuesta validada');
-          console.log('Cobros v85: comprobante por identificador + fecha; apertura y filtro por factura OK');
+          console.log('Cobros: comprobante por identificador + fecha; apertura y filtro por factura OK');
           console.log('Cierres izquierda y cobros: estados, filtros y navegación OK');
 
           const explorer=fs.readFileSync('conexion-sql.html','utf8');
