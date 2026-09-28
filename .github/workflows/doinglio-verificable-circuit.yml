@@ -1,0 +1,49 @@
+name: DoingLio Verificable - circuito despachos
+on:
+  push:
+    branches:
+      - fix/doinglio-verificable-despachos-20260927
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'bridge/capitan_rodolfo_local.ps1'
+      - 'verificable/**'
+      - '.github/workflows/doinglio-verificable-circuit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Aplicar corrección acotada en rama de prueba
+        run: python3 verificable/apply_hotfix.py
+      - name: Confirmar guardas y rechazar fallback histórico
+        run: python3 verificable/apply_hotfix.py --check
+      - name: Pruebas de validador con Node.js
+        run: node --test verificable/verified-circuit.test.cjs
+      - name: Comprobar que ejecutar el parche dos veces no cambia archivos
+        shell: bash
+        run: |
+          cp index.html /tmp/index-before-2nd-pass
+          cp bridge/capitan_rodolfo_local.ps1 /tmp/bridge-before-2nd-pass
+          python3 verificable/apply_hotfix.py
+          cmp -s index.html /tmp/index-before-2nd-pass
+          cmp -s bridge/capitan_rodolfo_local.ps1 /tmp/bridge-before-2nd-pass
+      - name: Guardar corrección en la rama sin alterar main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix/doinglio-verificable-despachos-20260927'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html bridge/capitan_rodolfo_local.ps1
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: exigir SP de despachos del día y bloquear fallback histórico'
+            git push
+          fi
