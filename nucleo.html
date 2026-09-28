@@ -205,7 +205,7 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
   <label class="core-agree"><input type="checkbox" id="coreConfirm"/> Confirmo que soy administrador y autorizo vincular las estaciones seleccionadas con DoingLio.</label>
   <button type="button" class="core-link-btn" id="coreLink" disabled>Vincular con DoingLio</button>
   <button type="button" class="memory-check" id="coreRefresh">Actualizar estado</button>
-  <p class="core-note">La clave del servicio permanece cifrada en esta PC; no se copia al navegador. Si el conector es anterior a v92, <a href="CAPITAN_RODOLFO.bat?v=92" download="CAPITAN_RODOLFO.bat">actualizalo con este archivo</a>, conservando las credenciales SQL existentes.</p>
+  <p class="core-note">La clave del servicio permanece cifrada en esta PC; no se copia al navegador. Si el conector es anterior a v93, <a href="CAPITAN_RODOLFO.bat?v=92" download="CAPITAN_RODOLFO.bat">actualizalo con este archivo</a>, conservando las credenciales SQL existentes.</p>
 </article>
 </section>
 </main><script>
@@ -295,7 +295,7 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
       }catch(_){return null}
     }));
     const found=probes.filter(Boolean).sort((a,b)=>Number(b.connected)-Number(a.connected)||b.version-a.version);
-    const modern=found.filter(x=>x.version>=92);
+    const modern=found.filter(x=>x.version>=93);
     let lastError='';
     // Priorizar conector actualizado y conectado sin bloquear la página ante errores de estaciones.
     for(const item of modern){
@@ -308,8 +308,8 @@ html[data-theme="light"] .nucleus .nucleus-head p{color:var(--muted)!important}
     }
     choices.textContent='';
     if(!base){
-      if(found.length&&found[0].version<92) message('SQL detectado en v'+found[0].version+'. Actualizá el servicio a v92 con el instalador, sin borrar las credenciales.');
-      else message(lastError||'No encuentro un servicio v92 compatible. Descargá e iniciá el instalador desde Datos.');
+      if(found.length&&found[0].version<93) message('SQL detectado en v'+found[0].version+'. Actualizá el servicio a v93 con el instalador, sin borrar las credenciales.');
+      else message(lastError||'No encuentro un servicio v93 compatible. Descargá e iniciá el instalador desde Datos.');
       return;
     }
     if(!last.sqlConnected){message('Servicio v'+last.version+' encontrado, pero SQL está desconectado. Abrí Datos para restaurar la conexión.');return}
