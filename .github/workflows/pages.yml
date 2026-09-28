@@ -29,6 +29,8 @@ jobs:
           enablement: true
       - name: Regression test — Ver medios from paid dispatch
         run: node --test tests/ver-medios-navigation.test.js
+      - name: Regression test — version visible in every screen
+        run: node --test tests/version-every-window.test.js
       - name: Regression test — verified SQL circuit
         run: node --test verificable/verified-circuit.test.cjs
       - name: Prepare canonical GitHub source
