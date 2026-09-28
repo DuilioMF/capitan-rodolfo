@@ -41,6 +41,6 @@ test('Cobros comparte la sesión SiSRL y no exige otra base',()=>{
 test('La fecha de Cobros es de Argentina y el SP toma el rango elegido',()=>{
  assert.match(js,/America\/Argentina\/Buenos_Aires/);
  assert.match(js,/fechaDesde:a,fechaHasta:b/);
- assert.match(js,/\$('paymentsFrom'\)\.value=date\[1\]/);
- assert.match(js,/\$('paymentsTo'\)\.value=date\[1\]/);
+ assert.ok(js.includes("$('paymentsFrom').value=date[1]"));
+ assert.ok(js.includes("$('paymentsTo').value=date[1]"));
 });
