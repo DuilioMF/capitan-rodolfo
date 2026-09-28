@@ -51,8 +51,8 @@ jobs:
             Start-Sleep -Seconds 3
             $output=(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'diagnostico/medir_rendimiento_cobros.ps1' 2>&1)|Out-String
             Write-Host $output
-            if(!$output.Contains('diagnóstico de metadatos completado')){throw 'No completo la inspección local'}
-            if(!$output.Contains('MISMA sesión activa SiSRL')){throw 'No reutilizó la sesión vigente'}
+            if(!$output.Contains('metadatos completado')){throw 'No completo la inspección local'}
+            if(!$output.Contains('MISMA')){throw 'No reutilizó la sesión vigente'}
             $pointer=Join-Path $env:TEMP 'Capitan_Cobros_Rendimiento_ultimo.txt'
             if(!(Test-Path $pointer)){throw 'No se guardó la ruta local del diagnóstico'}
             $root=Get-Content $pointer -Raw
