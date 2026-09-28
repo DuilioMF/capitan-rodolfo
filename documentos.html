@@ -28,7 +28,7 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
 <div class="ey">CAPITÁN RODOLFO · RECEPCIÓN DIGITAL</div>
 <div class="headline"><h1>Descarga de combustible</h1><span id="docVersion" class="ey">LECTOR · CAPITÁN v94</span><span id="docConnectorVersion" class="ey" style="letter-spacing:0">Conector: comprobando…</span></div>
 <p class="desc">El camión utiliza el lector de Revalsoft SaaS: recibe factura, recibo o transferencia y transforma el documento al mismo contrato JSON.</p>
-<p class="note">La función protegida de Supabase obtiene la clave de OpenAI en el servidor. Nunca se copia ni se muestra en el navegador o SiSRL.</p>
+<p class="note">La función protegida de Supabase obtiene la clave de OpenAI en el servidor. Nunca se copia ni se muestra en el navegador.</p>
 <div class="truck-wrap" id="truckWrap" aria-label="Camión cisterna digital">
 <svg class="truck" viewBox="0 0 550 190" role="img" aria-label="Camión cisterna naranja de Capitán Rodolfo">
  <defs><linearGradient id="tankGrad" x2="0" y2="1"><stop stop-color="#edb175"/><stop offset=".44" stop-color="#d77f3c"/><stop offset="1" stop-color="#783e23"/></linearGradient><linearGradient id="cabGrad"><stop stop-color="#ef9644"/><stop offset="1" stop-color="#af501e"/></linearGradient></defs>
@@ -44,7 +44,7 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
 <div id="drop" class="drop" role="button" tabindex="0" aria-label="Arrastrá un comprobante aquí o elegí un archivo">
  <strong>Arrastrá el comprobante hasta el camión</strong>
  <span>Factura · Recibo · Transferencia</span>
- <small>PDF, JPG, PNG o WEBP. Hasta 15 MB. Primero se extraen los datos; no se registra nada en SQL automáticamente.</small>
+ <small>PDF, JPG, PNG o WEBP. Hasta 15 MB. Primero se extraen los datos; no se registra nada automáticamente.</small>
  <button id="pick" type="button">Elegir archivo</button>
  <input id="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp">
 </div>
@@ -143,7 +143,7 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
    }
    const missing=extracted.faltantes;
    $('reviewNotice').className='status '+(missing.length?'bad':'ok');
-   $('reviewNotice').textContent=missing.length?'Revisar: faltan '+missing.join(', ')+'. No se registró nada en SQL.':'Documento transformado. Confirmá los valores antes de registrar; no se modificó SQL.';
+   $('reviewNotice').textContent=missing.length?'Revisar: faltan '+missing.join(', ')+'. No se registró ningún documento.':'Documento procesado. Confirmá los valores antes de registrar.';
    $('json').textContent=JSON.stringify(extracted,null,2);
  }
  async function analyze(file){
@@ -249,7 +249,7 @@ pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;c
    const current=found[0];
    $('docConnectorVersion').textContent=current?
      'Conector v'+current.version+(current.version!==pageVersion?' · ACTUALIZAR':'')+
-     (current.connected?' · SQL '+(current.database||'conectada'):' · sin conexión'):
+     (current.connected?' · Datos disponibles':' · sin conexión'):
      'Conector no detectado';
  }
  showConnectorVersion();

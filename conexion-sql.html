@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="theme-color" content="#090806">
-<title>Datos SQL · Capitán Rodolfo</title>
+<title>Configuración de datos · Capitán Rodolfo</title>
 <style>
 :root{--bg:#090806;--panel:#12100d;--line:#6e584a55;--ink:#f1eadc;--muted:#9d9486;--orange:#dc8623;--green:#5ee6a8;--bad:#ff7d7d}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0,#2a180d,transparent 35%),#090806;color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif}
@@ -27,7 +27,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
 <body data-capitan-build="94">
 <main class="wrap">
   <div class="top">
-    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v94</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
+    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v94</div><h1>Conexión de datos</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
     <a href="nucleo.html">← Volver a Núcleo</a>
   </div>
 
@@ -79,7 +79,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
   </section>
 
   <section class="card hidden" id="circuitCard">
-    <h2>Circuito de estación · SiSRL</h2>
+    <h2>Herramientas avanzadas del circuito</h2>
     <p class="muted">Desde esta página podés instalar o actualizar el SP del circuito con tu conexión SQL actual, si el usuario tiene permiso. También podés ejecutarlo para ver tanques, surtidores y despachos.</p>
     <div class="actions">
       <button id="installCircuit" type="button">Instalar / actualizar SP desde aquí</button>
@@ -140,7 +140,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  logDiag('Página v94 · '+location.href);
  logDiag('Origen: '+location.origin);
  const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=[...(desktop?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
- let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SISRL';
+ let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; 
 
  const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:((url.endsWith('/api/circuit/install')||url.endsWith('/api/circuit/admin-install'))?120000:25000));try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
  async function get(path){const r=await localFetch(bridge+path);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
@@ -245,7 +245,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
    $('databaseCard').classList.remove('hidden');const sel=$('database');sel.innerHTML='<option value="">Elegir base…</option>';
    list.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;if(name===selected)o.selected=true;sel.appendChild(o)});
    if(selected){currentDb=selected;setStatus($('databaseStatus'),'Base '+selected+' guardada y activa.','ok');activateExplorer()}
-   else if(list.includes(preferredDb)){ sel.value=preferredDb; chooseDatabase(preferredDb); }
+   
    else setStatus($('databaseStatus'),'Elegí una base una sola vez.');
  }
 
