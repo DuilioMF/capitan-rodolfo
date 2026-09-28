@@ -101,3 +101,15 @@ Tarjeta: https://trello.com/c/ZzeiPPPy. El conector residente expone GET `/api/d
 - La actualización requiere **ejecutar una vez** `CAPITAN_RODOLFO.bat` en la PC de la estación: descarga el módulo nuevo y arranca la versión 88 sin borrar las credenciales de Datos.
 - Tras instalarlo: Capitán → Núcleo → Conexión de núcleos → Comprobar estado → elegir estaciones → ingresar WhatsApp → confirmar → Vincular con DoingLio. Estado final debe decir `Núcleo vinculado`.
 - **Pendiente de prueba real:** instalación de v88 en la PC, registro con el teléfono autorizado, consulta de tanques por WhatsApp y validación de resultado SQL. La versión v88 incorpora el registro de una instalación administrativa; el enrutamiento universal entre múltiples instalaciones de distintos clientes todavía no está habilitado.
+
+## v89 — Recuperación de SQL y Conexión de núcleos (27/09/2026)
+
+Incidente: Núcleo en v88 apuntaba a una conexión SQL web v86, mientras que `dist/` aún guardaba componentes de v76. La comparación estricta de versión descartaba conectores SQL válidos, y la búsqueda secuencial de puertos podía demorar la interfaz.
+
+- **Datos SQL:** `conexion-sql.html` admite conector compatible desde v86, revisa puertos en paralelo y prioriza los que ya tengan sesión SQL; no modifica el perfil existente. Incluye temas compartidos y enlaces de descarga corregidos.
+- **Conexión de núcleos:** `nucleo.html` exige servicio local v89, descubre puertos en paralelo y muestra por separado si falla SQL, la credencial del trabajador o el descubrimiento de estaciones desde `ParamStock`. No da de alta estaciones automáticamente: el administrador selecciona las autorizadas.
+- **Servicio local:** la ruta `/api/doinglio/status` informa SQL conectado aunque falle descubrir estaciones; el descubrimiento SQL tiene dos consultas de 7 s máximo. El instalador primero descarga todos los componentes, después cierra solamente sus procesos obsoletos conocidos y reinicia bridge y worker. Los downloads utilizan parámetro anti-caché.
+- **Distribución:** HTML, temas, instalador y VERSION sincronizados con la raíz en v89. `dist/` referencia los recursos compartidos de la raíz para evitar duplicar pantallas antiguas.
+- **Sin cambios** en `C:\Sistemas\DoingLio\data\capitan` ni en contraseñas SQL, autorizaciones históricas o claves de OpenAI.
+
+**Validación pendiente en la PC:** ejecutar la descarga v89 desde Núcleo → Datos (una sola vez), esperar conector local v89 y base conectada, abrir Núcleo → Conexión de núcleos, seleccionar estaciones descubiertas y confirmar la vinculación con la cuenta de administrador. Solo entonces probar WhatsApp → consulta SQL → respuesta real. Los controles automáticos de sintaxis web y estructura no sustituyen esta prueba. Ver tarjeta https://trello.com/c/P9P2rXjv.
