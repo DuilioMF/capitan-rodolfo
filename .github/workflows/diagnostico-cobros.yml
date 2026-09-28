@@ -43,6 +43,25 @@ jobs:
             if(!$output.Contains('RESULTADO: PRUEBA LOCAL REAL SATISFACTORIA.')){throw 'No completo el contrato'}
             if(!$output.Contains('misma conexion') -or !$output.Contains('SP real')){throw 'No verifico conexion y SP'}
           }finally{Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}
+      - name: Diagnostico de rendimiento con servidor SQL simulado
+        shell: powershell
+        run: |
+          $p=Start-Process node -ArgumentList 'tests/mock-cobros-server.js' -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\perf-stdout.log" -RedirectStandardError "$env:RUNNER_TEMP\perf-stderr.log"
+          try {
+            Start-Sleep -Seconds 3
+            $output=(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'diagnostico/medir_rendimiento_cobros.ps1' 2>&1)|Out-String
+            Write-Host $output
+            if(!$output.Contains('diagnóstico de metadatos completado')){throw 'No completo la inspección local'}
+            if(!$output.Contains('MISMA sesión activa SiSRL')){throw 'No reutilizó la sesión vigente'}
+            $pointer=Join-Path $env:TEMP 'Capitan_Cobros_Rendimiento_ultimo.txt'
+            if(!(Test-Path $pointer)){throw 'No se guardó la ruta local del diagnóstico'}
+            $root=Get-Content $pointer -Raw
+            $root=$root.Trim()
+            if(!(Test-Path (Join-Path $root '03_PROCEDIMIENTO_PRIVADO.sql'))){throw 'No se extrajo el código local'}
+            $summary=Get-Content (Join-Path $root 'RESUMEN.txt') -Raw
+            if($summary.Contains('CREATE PROCEDURE')){throw 'El resumen filtró código SQL privado'}
+            Write-Host 'Diagnóstico de rendimiento solo lectura: simulación aprobada.'
+          }finally{Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}
       - name: Error del SP no debe declararse exitoso
         shell: powershell
         run: |
