@@ -24,7 +24,7 @@ test('Comparación arranca con la versión de prueba y deja el SP lento comentad
  assert.match(compare,/SET STATISTICS TIME ON/);
  assert.match(compare,/EXEC dbo\.PA_VentasFormasPago_OPT_PRUEBA/);
  const begin=compare.indexOf('/* Descomentar');
- const original=compare.indexOf('EXEC dbo.PA_VentasFormasPago\n',begin);
+ const original=compare.indexOf('EXEC dbo.PA_VentasFormasPago',begin);
  const end=compare.indexOf('*/',begin);
  assert.ok(begin>=0&&original>begin&&end>original,'El SP productivo no debe lanzarse automáticamente');
 });
