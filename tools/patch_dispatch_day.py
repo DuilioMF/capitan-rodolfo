@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Patch both SQL sources, failing closed if upstream SQL differs.
+"""Patch both SQL deployment sources, failing closed if upstream SQL differs.
 
 Run with: python3 tools/patch_dispatch_day.py
-This edits SQL definitions only; it never connects to SQL Server.
+Edits SQL definitions in Git only. Does not connect to the user's SQL Server.
 """
 from pathlib import Path
 
@@ -24,6 +24,22 @@ def patch(src, file):
     if 'CORRECCION DESPACHOS POR FECHA - 2026-09-27' in src:
         raise ValueError(f'{file}: already patched')
 
+    # The existing SP uses @Fecha as a local NVARCHAR expression for ULTime.
+    # Rename the legacy expression FIRST: the new @Fecha DATE parameter must
+    # not collide with that variable, otherwise ALTER PROCEDURE cannot compile.
+    src = exactly_once(src,
+        '        @Fecha NVARCHAR(200), @WhereRel NVARCHAR(MAX),',
+        '        @HoraExpr NVARCHAR(200), @WhereRel NVARCHAR(MAX),',
+        str(file)+' legacy @Fecha declaration')
+    src = exactly_once(src,
+        "    SET @Fecha=CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL",
+        "    SET @HoraExpr=CASE WHEN COL_LENGTH('dbo.Despachos','ULTIME') IS NOT NULL",
+        str(file)+' legacy time expression')
+    src = exactly_once(src,
+        "+@Fecha+N' AS Hora",
+        "+@HoraExpr+N' AS Hora",
+        str(file)+' legacy time projection')
+
     src = exactly_once(src,
         '    @EstadoVta     BIT = NULL,   -- NULL=todos; 0=pendientes; 1=cobrados\n'
         '    @MaxDespachos  INT = 500,\n'
@@ -33,11 +49,11 @@ def patch(src, file):
         str(file)+' parameters')
 
     guard_start = '    IF @MaxDespachos IS NULL OR @MaxDespachos NOT BETWEEN 1 AND 10000\n'
-    guard_end = '    IF OBJECT_ID(N\'dbo.Tanque\',N\'U\') IS NULL'
+    guard_end = "    IF OBJECT_ID(N'dbo.Tanque',N'U') IS NULL"
     if src.count(guard_start) != 1 or src.count(guard_end) != 1:
         raise ValueError(f'{file}: legacy limits guard not found unambiguously')
     a, b = src.index(guard_start), src.index(guard_end)
-    if b <= a or 'RAISERROR(\'@MaxDespachos y @MaxRelaciones deben estar entre 1 y 10000.\'' not in src[a:b]:
+    if b <= a or "RAISERROR('@MaxDespachos y @MaxRelaciones deben estar entre 1 y 10000.'" not in src[a:b]:
         raise ValueError(f'{file}: unexpected guard block')
     src = src[:a] + (
         '    -- CORRECCION DESPACHOS POR FECHA - 2026-09-27\n'
@@ -47,8 +63,7 @@ def patch(src, file):
 
     marker = '    IF @DKey IS NULL OR @DDate IS NULL OR @RKey IS NULL OR @RDate IS NULL\n'
     src = exactly_once(src, marker, (
-        "    -- Es obligatorio que ULDATE sea una fecha real: no devolver historicos\n"
-        "    -- ni arriesgar un filtro de texto o una conversion implicita.\n"
+        "    -- Fail closed: ULDATE must have a temporal SQL type.\n"
         "    IF @DDate IS NULL OR NOT EXISTS (\n"
         "        SELECT 1 FROM sys.columns c\n"
         "        INNER JOIN sys.types ty ON ty.user_type_id=c.user_type_id\n"
@@ -92,19 +107,26 @@ def patch(src, file):
         "         @IdEstacion=@IdEstacion,@EstadoVta=@EstadoVta,\n"
         "         @Fecha=@Dia;",
         str(file)+' relation exec params')
-    if any(token in src for token in ('TOP(@MaxDespachos)', 'TOP(@MaxRelaciones)', '    @MaxDespachos  INT = 500', '    @MaxRelaciones INT = 1000')):
-        raise ValueError(f'{file}: legacy limit survived')
-    if src.count("AND d.'+QUOTENAME(@DDate)+N' >= @Fecha") != 1:
-        raise ValueError(f'{file}: dispatch date filter missing')
+
+    if any(token in src for token in ('TOP(@MaxDespachos)', 'TOP(@MaxRelaciones)',
+                                      '    @MaxDespachos  INT = 500',
+                                      '    @MaxRelaciones INT = 1000',
+                                      '@Fecha NVARCHAR(200)',
+                                      'SET @Fecha=CASE')):
+        raise ValueError(f'{file}: legacy limit or colliding @Fecha survived')
+    if src.count("AND d.'+QUOTENAME(@DDate)+N' >= @Fecha") != 2:
+        raise ValueError(f'{file}: expected exactly two day filters (dispatches and relations)')
+    if src.count('@HoraExpr') != 3:
+        raise ValueError(f'{file}: time expression not safely renamed')
     return src
 
 
 def main():
-    # Compute every replacement before writing either file: partial patch not permitted.
+    # Compute both results BEFORE writing any file: partial patch forbidden.
     changed = {file: patch(file.read_text(encoding='utf-8'), file) for file in FILES}
     for file, content in changed.items():
         file.write_text(content, encoding='utf-8', newline='\n')
-    print('PASS: 2 SQL sources patched; today's ULDATE range; no TOP maxima; station and state retained')
+    print('PASS: both SQL sources patched; ULDATE day range; no artificial limits; no @Fecha collision')
 
 
 if __name__ == '__main__':
