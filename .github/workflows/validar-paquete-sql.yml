@@ -108,7 +108,7 @@ jobs:
           $bat=Get-Content CAPITAN_RODOLFO.bat -Raw
           $nucleo=Get-Content nucleo.html -Raw
           $datos=Get-Content conexion-sql.html -Raw
-          if($bat -notmatch ('EXPECTED_VERSION='+[regex]::Escape($version))){throw "BAT desfasado"}
+          if($bat -notmatch 'set "EXPECTED_VERSION="' -or $bat -notmatch 'do if not defined EXPECTED_VERSION set "EXPECTED_VERSION=%%V"'){throw "BAT no obtiene VERSION canónica"}
           if($nucleo -notmatch ('v'+[regex]::Escape($version))){throw "Nucleo desfasado"}
           if($datos -notmatch ('v'+[regex]::Escape($version))){throw "Datos desfasado"}
           $cfg=Get-Content sp_allowlist.json -Raw|ConvertFrom-Json
