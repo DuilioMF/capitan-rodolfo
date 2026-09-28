@@ -350,7 +350,7 @@ h1 em{font-weight:500;color:#d9ae65}
  const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
  const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
  const desktop=['127.0.0.1','localhost'].includes(location.hostname);
- const bridges=desktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+ const bridges=[...(desktop?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
  const localFetch=(url,opts={})=>fetch(url,{cache:'no-store',...opts,...(desktop?{}:{targetAddressSpace:'local'})});
  const stationSelect=document.getElementById('stationId');
  const stationPicker=document.getElementById('stationPicker');
@@ -690,12 +690,27 @@ h1 em{font-weight:500;color:#d9ae65}
  async function refreshStation(){
    if(loading)return;
    let found=null,lastError='';
-   for(const base of bridges){
-     try{found={base,data:await read(base,'/api/station/ids')};break}
-     catch(e){lastError=e.message;if(desktop)break}
-   }
+   // Evitar bloqueos y conexiones de versiones anteriores: leer salud en paralelo.
+   const healths=await Promise.all(bridges.map(async base=>{
+     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),1600);
+     try{
+       const r=await localFetch(base+'/health',{signal:ctrl.signal});
+       if(!r.ok)return null;
+       const h=await r.json();
+       if(!h.ok||!h.connected)return null;
+       return {base,version:Number.parseInt(String(h.version),10)||0};
+     }catch(_){return null}finally{clearTimeout(timer)}
+   }));
+   const candidates=healths.filter(Boolean).sort((a,b)=>b.version-a.version);
+   if(candidates.length){
+     const preferred=candidates[0];
+     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),18500);
+     try{found={base:preferred.base,data:await read(preferred.base,'/api/station/ids',{signal:ctrl.signal})}}
+     catch(e){lastError='El SQL del conector v'+preferred.version+' no devolvió estaciones: '+e.message}
+     finally{clearTimeout(timer)}
+   }else lastError='No hay un conector con SQL conectado; abrí Núcleo → Datos.';
    if(!found){
-     activeBridge=desktop?bridges[0]:null;
+     activeBridge=null;
      window.capitanSqlBridge=null;
      await refreshInstallState(null);
      clearCircuit();
@@ -740,11 +755,11 @@ h1 em{font-weight:500;color:#d9ae65}
 
 (function(){
  const button=document.getElementById('voiceMic'),status=document.getElementById('voiceStatus'),transcript=document.getElementById('voiceTranscript');
- const BRIDGES=(['127.0.0.1','localhost'].includes(location.hostname))?[location.origin+'/_doinglio_sql']:['http://127.0.0.1:8787','http://localhost:8787','http://127.0.0.1:8797','http://localhost:8797','http://127.0.0.1:18787','http://localhost:18787','http://127.0.0.1:27877','http://localhost:27877','http://127.0.0.1:37877','http://localhost:37877','http://127.0.0.1:48787','http://localhost:48787','http://127.0.0.1:57877','http://localhost:57877'];
+ const BRIDGES=[...(['127.0.0.1','localhost'].includes(location.hostname)?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
  let pc=null,dc=null,stream=null,bridge=null,active=false,assistantLine=null;
  const addLine=(who,text)=>{const p=document.createElement('p');p.className='voice-line';const b=document.createElement('b');b.textContent=who+': ';p.append(b,document.createTextNode(text));transcript.appendChild(p);transcript.scrollTop=transcript.scrollHeight;return p};
  const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,...(['127.0.0.1','localhost'].includes(location.hostname)?{}:{targetAddressSpace:'local'})});
- async function findBridge(){for(const base of BRIDGES){try{const r=await localFetch(base+'/health');if(r.ok)return base}catch(_){}}throw new Error('Abrí el conector local desde Núcleo → Datos.')}
+ async function findBridge(){const found=await Promise.all(BRIDGES.map(async base=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),1600);try{const r=await localFetch(base+'/health',{signal:c.signal});if(!r.ok)return null;const h=await r.json();return h.ok?{base,connected:!!h.connected,version:Number.parseInt(String(h.version),10)||0}:null}catch(_){return null}finally{clearTimeout(t)}}));const ready=found.filter(Boolean).sort((a,b)=>Number(b.connected)-Number(a.connected)||b.version-a.version);if(ready.length)return ready[0].base;throw new Error('Conector local no encontrado. Abrí Núcleo → Datos.')}
  async function callSql(args){
    const stateResponse=await localFetch(bridge+'/api/state'),state=await stateResponse.json();
    const sessionId=state.sessionId,database=state.database;
