@@ -34,7 +34,7 @@ test('Cobros comparte la sesión SiSRL y no exige otra base',()=>{
  assert.match(evidence,/ChangeDatabase\('SiSRL'\)/);
  const payments=bridge.slice(bridge.indexOf("'/api/station/payments'"),bridge.indexOf("'/api/station/today-dispatches'"));
  assert.match(payments,/-Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago'/);
- assert.match(payments,/-notcontains 'SiSRL'/);
+ assert.doesNotMatch(payments,/state\.databases\) -notcontains/);
  assert.doesNotMatch(payments,/Maestros/);
  assert.doesNotMatch(evidence,/Maestros/);
 });
