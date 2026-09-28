@@ -98,48 +98,37 @@ try {
           continue
         }
         if([string]$job.intent -eq "latest_dispatch"){
-          # Misma consulta verificada que muestra "Carga" en Capitan V92:
-          # /api/station/circuit ejecuta PA_CapitanRodolfo_CircuitoEstacion
-          # filtrado por el dia real y estacion. Nunca usar TOP historico alternativo.
-          $circuit=Invoke-RestMethod -Uri ($base+"/api/station/circuit") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 55
-          if(-not $circuit.connected -or -not $circuit.verified -or [string]$circuit.source -ne "sp" -or
-             [int]$circuit.station -ne [int]$job.idEstacion -or
-             [string]$circuit.procedure -ne "dbo.PA_CapitanRodolfo_CircuitoEstacion" -or
-             [string]::IsNullOrWhiteSpace([string]$circuit.fecha)){
-            throw "El circuito de Capitan no confirmo origen SP, fecha y estacion"
+          # Consultar el ultimo despacho desde la conexion guardada de ESTA PC.
+          # No exigir un nombre de base ni depender del SP de circuito completo.
+          # El bridge verifica la estacion y utiliza SELECT parametrizado de solo lectura.
+          $last=Invoke-RestMethod -Uri ($base+"/api/station/latest-dispatch") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 55
+          if(-not $last.connected -or [int]$last.station -ne [int]$job.idEstacion -or
+             [string]$last.source -ne "dbo.Despachos" -or [string]::IsNullOrWhiteSpace([string]$last.database)){
+            throw "La consulta no confirmo estacion, origen y conexion"
           }
-          if($null -eq $circuit.dispatches -or $null -eq $circuit.dispatches.rows -or $circuit.dispatches.truncated){
-            throw "El circuito de Capitan no devolvio despachos completos"
-          }
-          $records=@($circuit.dispatches.rows | Where-Object {$null -ne $_})
-          foreach($row in $records){
-            if([int]$row.IdEstacion -ne [int]$job.idEstacion -or
-               -not ([string]$row.FechaDespacho).StartsWith([string]$circuit.fecha)){
-              throw "La respuesta de SQL no coincide con fecha y estacion"
-            }
-          }
-          # El SP de la pantalla ya devuelve despachos ordenados por hora e ID_SALE.
-          $reply="Capitan Rodolfo - estacion $($job.idEstacion), fecha $($circuit.fecha). "
-          if(-not $records.Count){
-            $reply+="No hay despachos en el circuito verificado de esta fecha."
+          $d=$last.dispatch
+          $reply="Capitan Rodolfo - estacion $($job.idEstacion). "
+          $meta=@{idEstacion=[int]$job.idEstacion;source="dbo.Despachos";query="latest_dispatch"}
+          if($null -eq $d){
+            $reply+="No se encontraron despachos para esta estacion."
           } else {
-            $limit=[Math]::Min(5,$records.Count)
-            $reply+="Ultimos $limit de $($records.Count) despachos del mismo circuito que muestra Capitan: "
-            $details=New-Object System.Collections.Generic.List[string]
-            foreach($d in @($records | Select-Object -First 5)){
-              $parts=New-Object System.Collections.Generic.List[string]
-              if($null -ne $d.IdSale){$parts.Add("venta "+[string]$d.IdSale)}
-              if($null -ne $d.IdDespacho){$parts.Add("despacho "+[string]$d.IdDespacho)}
-              if($d.Hora){$parts.Add("hora "+[string]$d.Hora)}
-              if($null -ne $d.Cara){$parts.Add("cara "+[string]$d.Cara)}
-              if($null -ne $d.Litros){$parts.Add("litros "+[string]$d.Litros)}
-              if($null -ne $d.Pesos){$parts.Add("importe "+[string]$d.Pesos)}
-              if($null -ne $d.EstadoVta){$parts.Add("estado "+[string]$d.EstadoVta)}
-              $details.Add(($parts -join ", "))
+            if([string]::IsNullOrWhiteSpace([string]$d.FechaDespacho) -or $null -eq $d.IdSale){
+              throw "El ultimo despacho carece de fecha o identificador verificable"
             }
-            $reply+=($details -join "; ")+"."
+            $parts=New-Object System.Collections.Generic.List[string]
+            $parts.Add("fecha "+[string]$d.FechaDespacho)
+            if($d.Hora){$parts.Add("hora "+[string]$d.Hora)}
+            $parts.Add("venta "+[string]$d.IdSale)
+            if($null -ne $d.IdDespacho){$parts.Add("despacho "+[string]$d.IdDespacho)}
+            if($null -ne $d.Cara){$parts.Add("cara "+[string]$d.Cara)}
+            if($null -ne $d.Litros){$parts.Add("litros "+[string]$d.Litros)}
+            if($null -ne $d.Pesos){$parts.Add("importe "+[string]$d.Pesos)}
+            if($null -ne $d.EstadoVta){$parts.Add("estado "+[string]$d.EstadoVta)}
+            $reply+="Ultimo despacho: "+($parts -join ", ")+"."
+            $meta["fecha"]=[string]$d.FechaDespacho
+            $meta["idSale"]=[string]$d.IdSale
           }
-          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{idEstacion=[int]$job.idEstacion;fecha=[string]$circuit.fecha;source="dbo.PA_CapitanRodolfo_CircuitoEstacion"}} | Out-Null
+          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=$meta} | Out-Null
           Log ("Ultimo despacho consultado: "+$job.id)
           continue
         }
