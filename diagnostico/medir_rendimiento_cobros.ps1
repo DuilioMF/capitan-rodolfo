@@ -83,5 +83,6 @@ try {
   Say ('Archivos locales: '+$root)
   Say 'Compartí únicamente RESUMEN.txt; si querés que reescriba el SP, compartí también 03_PROCEDIMIENTO_PRIVADO.sql y, si hace falta, los JSON de índices.'
   [IO.File]::WriteAllLines($log,$lines,[Text.Encoding]::UTF8)
+  [IO.File]::WriteAllText((Join-Path $env:TEMP 'Capitan_Cobros_Rendimiento_ultimo.txt'),$root,[Text.Encoding]::UTF8)
   Write-Host 'El diagnóstico y el código SQL permanecen en esta PC.'
 }
