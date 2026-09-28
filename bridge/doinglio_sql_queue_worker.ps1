@@ -59,7 +59,7 @@ try {
       $response=Api $token @{action="claim"}
       $job=$response.job
       if($null -eq $job){Start-Sleep -Seconds 8;continue}
-      if([string]$job.intent -notin @("station_circuit","latest_dispatch") -or [int]$job.idEstacion -le 0){
+      if([string]$job.intent -notin @("station_circuit","latest_dispatch","today_dispatches") -or [int]$job.idEstacion -le 0){
         Api $token @{action="complete";id=$job.id;ok=$false;reply_text="Operación no permitida."} | Out-Null
         continue
       }
@@ -70,6 +70,80 @@ try {
       }
       try {
         $payload=@{idEstacion=[int]$job.idEstacion} | ConvertTo-Json -Compress
+        if([string]$job.intent -eq "today_dispatches"){
+          $date=[string]$job.fecha
+          if($date -notmatch '^\d{4}-\d{2}-\d{2}
+          $latest=Invoke-RestMethod -Uri ($base+"/api/station/latest-dispatch") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 45
+          if(-not $latest.connected){throw "SQL no confirmo la conexion"}
+          $d=$latest.dispatch
+          $reply="Capitan Rodolfo - estacion $($job.idEstacion). "
+          if($null -eq $d){
+            $reply+="No hay despachos registrados para esta estacion en la base consultada."
+          }else{
+            $details=New-Object System.Collections.Generic.List[string]
+            if($null -ne $d.IdSale){$details.Add("venta "+[string]$d.IdSale)}
+            if($null -ne $d.IdDespacho){$details.Add("despacho "+[string]$d.IdDespacho)}
+            if($d.FechaDespacho){$details.Add("fecha "+[string]$d.FechaDespacho)}
+            if($d.Hora){$details.Add("hora "+[string]$d.Hora)}
+            if($null -ne $d.Cara){$details.Add("cara "+[string]$d.Cara)}
+            if($null -ne $d.Manguera){$details.Add("manguera "+[string]$d.Manguera)}
+            if($d.CodArt){$details.Add("articulo "+[string]$d.CodArt)}
+            if($null -ne $d.Litros){$details.Add("litros "+[string]$d.Litros)}
+            if($null -ne $d.Pesos){$details.Add("importe "+[string]$d.Pesos)}
+            if($null -ne $d.EstadoVta){$details.Add("estado de venta "+[string]$d.EstadoVta)}
+            $reply+="Ultimo despacho segun fecha y hora de SQL: "+($details -join ", ")+"."
+          }
+          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{idEstacion=[int]$job.idEstacion;source="dbo.Despachos"}} | Out-Null
+          Log ("Ultimo despacho consultado: "+$job.id)
+          continue
+        }
+        $result=Invoke-RestMethod -Uri ($base+"/api/station/circuit") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 50
+        if(-not $result.connected){throw "SQL no confirmó conexión"}
+        $tc=Set-Count $result.tanks
+        $hc=Set-Count $result.hoses
+        $dc=Set-Count $result.dispatches
+        $rc=Set-Count $result.receipts
+        $summary=@{idEstacion=[int]$job.idEstacion;tanks=$tc;hoses=$hc;dispatches=$dc;receipts=$rc;source=[string]$result.source}
+        $reply="Capitán Rodolfo - estación $($job.idEstacion): tanques $tc, mangueras $hc, despachos $dc, comprobantes $rc. Datos obtenidos de SQL Server."
+        Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=$summary} | Out-Null
+        Log ("Consulta completada: "+$job.id)
+      } catch {
+        try{Api $token @{action="complete";id=$job.id;ok=$false;reply_text="No se pudo consultar SQL. Revisá la conexión y los permisos del circuito."} | Out-Null}catch{}
+        Log ("Consulta fallida: "+$job.id)
+      }
+    } catch {
+      Log "Error de conexión con la cola. Nuevo intento posterior."
+      Start-Sleep -Seconds 20
+    }
+  }
+} finally {if($locked){$mutex.ReleaseMutex()};$mutex.Dispose()}
+){throw "La consulta no incluye una fecha validada."}
+          $body=@{idEstacion=[int]$job.idEstacion;fecha=$date}|ConvertTo-Json -Compress
+          $daily=Invoke-RestMethod -Uri ($base+"/api/station/today-dispatches") -Method POST -Body $body -ContentType "application/json" -TimeoutSec 55
+          if(-not $daily.connected -or [string]$daily.fecha -ne $date){throw "SQL no confirmó fecha y conexión"}
+          $count=[long]$daily.total
+          $reply="Capitán Rodolfo. Estación $($job.idEstacion), fecha $date: $count despachos registrados en SQL Server."
+          if($count -gt 0){
+            $examples=@($daily.lastFive)
+            if($examples.Count){
+              $rows=New-Object System.Collections.Generic.List[string]
+              foreach($d in $examples){
+                $parts=New-Object System.Collections.Generic.List[string]
+                if($null -ne $d.IdSale){$parts.Add("venta "+[string]$d.IdSale)}
+                if($null -ne $d.ID_DESPACHO){$parts.Add("despacho "+[string]$d.ID_DESPACHO)}
+                if($null -ne $d.ULTIME){$parts.Add("hora "+[string]$d.ULTIME)}
+                if($null -ne $d.LITROS){$parts.Add("litros "+[string]$d.LITROS)}
+                if($null -ne $d.PESOS){$parts.Add("importe "+[string]$d.PESOS)}
+                $rows.Add(($parts -join ', '))
+              }
+              $reply+=" Últimos registros: "+($rows -join '; ')+"."
+            }
+          }
+          $meta=@{idEstacion=[int]$job.idEstacion;dispatches=$count;source="dbo.Despachos"}
+          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=$meta}|Out-Null
+          Log ("Despachos diarios consultados: "+$job.id)
+          continue
+        }
         if([string]$job.intent -eq "latest_dispatch"){
           $latest=Invoke-RestMethod -Uri ($base+"/api/station/latest-dispatch") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 45
           if(-not $latest.connected){throw "SQL no confirmo la conexion"}
