@@ -1993,6 +1993,65 @@ try {
           Send-Json $stream 500 @{error=('Error al consultar Cobros: '+$_.Exception.Message)}
         }
       }
+      elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/today-dispatches'){
+        # Conteo y muestra del día real: SQL parametrizado, estación verificada.
+        try {
+          $st=Ensure-ActiveSession
+          if($null -eq $st){Send-Json $stream 409 @{error='SQL desconectado.'};continue}
+          $d=$req.Body|ConvertFrom-Json;$id=0;$day=[datetime]::MinValue
+          if(-not [int]::TryParse([string]$d.idEstacion,[ref]$id) -or $id -lt 1 -or
+            -not [datetime]::TryParseExact([string]$d.fecha,'yyyy-MM-dd',
+              [Globalization.CultureInfo]::InvariantCulture,
+              [Globalization.DateTimeStyles]::None,[ref]$day)){
+            Send-Json $stream 400 @{error='Necesito estación y fecha válidas.'};continue
+          }
+          $cn=$Sessions[$st.sessionId].connection;$db=[string]$st.database
+          if(@(Get-StationOptions -Connection $cn -Database $db) -notcontains $id){
+            Send-Json $stream 403 @{error='Estación no autorizada en esta base.'};continue
+          }
+          $cn.ChangeDatabase($db)
+          $col=Find-StationColumn -Connection $cn -ObjectName 'dbo.Despachos'
+          if(-not $col -or -not (Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ULDATE') -or
+             -not (Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name 'ID_SALE')){
+            Send-Json $stream 422 @{error='Faltan columnas verificables en dbo.Despachos.'};continue
+          }
+          $fields=@('d.ID_SALE AS IdSale','d.ULDATE AS Fecha')
+          foreach($x in @('ID_DESPACHO','ULTIME','SURTIDOR','LITROS','PESOS','ESTADOVTA')){
+            if(Get-SqlColumnExists -Connection $cn -Table 'dbo.Despachos' -Name $x){
+              $fields+=('d.['+$x+'] AS ['+$x+']')
+            }
+          }
+          $filter=' FROM dbo.Despachos d WHERE d.'+$col+'=@Station AND d.ULDATE>=@Day AND d.ULDATE<@NextDay'
+          $sort=' ORDER BY d.ULDATE DESC'
+          if($fields -contains 'd.[ULTIME] AS [ULTIME]'){$sort+=',d.ULTIME DESC'}
+          $sql='SELECT COUNT_BIG(*) AS Total'+$filter+'; SELECT TOP(5) '+($fields -join ',')+$filter+$sort+',d.ID_SALE DESC;'
+          $cmd=$cn.CreateCommand();$cmd.CommandText=$sql;$cmd.CommandTimeout=25
+          $null=$cmd.Parameters.Add('@Station',[System.Data.SqlDbType]::Int)
+          $cmd.Parameters['@Station'].Value=$id
+          $null=$cmd.Parameters.Add('@Day',[System.Data.SqlDbType]::DateTime)
+          $cmd.Parameters['@Day'].Value=$day.Date
+          $null=$cmd.Parameters.Add('@NextDay',[System.Data.SqlDbType]::DateTime)
+          $cmd.Parameters['@NextDay'].Value=$day.Date.AddDays(1)
+          $reader=$null;$count=0;$records=@()
+          try {
+            $reader=$cmd.ExecuteReader()
+            if($reader.Read()){$count=[long]$reader.GetValue(0)}
+            if($reader.NextResult()){
+              while($reader.Read()){
+                $item=[ordered]@{}
+                for($k=0;$k -lt $reader.FieldCount;$k++){
+                  $v=$reader.GetValue($k)
+                  if($v -is [DBNull]){$v=$null}
+                  elseif($v -is [datetime]){$v=$v.ToString('yyyy-MM-dd HH:mm:ss')}
+                  $item[$reader.GetName($k)]=$v
+                }
+                $records+=([pscustomobject]$item)
+              }
+            }
+          }finally{if($reader){$reader.Close()};$cmd.Dispose()}
+          Send-Json $stream 200 @{connected=$true;station=$id;fecha=$day.ToString('yyyy-MM-dd');total=$count;lastFive=@($records);source='dbo.Despachos';version=$Version}
+        }catch{Send-Json $stream 500 @{error='Falló la consulta SQL de cargas de la fecha solicitada.'}}
+      }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/latest-dispatch'){
         # Operacion de solo lectura. SQL parametrizado y estacion verificada.
         try {
