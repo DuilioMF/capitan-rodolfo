@@ -1844,9 +1844,6 @@ try {
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
              Send-Json $stream 400 @{error='Estación inválida.'};continue
           }
-          if(@($state.databases) -notcontains 'SiSRL'){
-            Send-Json $stream 403 @{error='Falta acceso SQL a SiSRL para verificar el pago.'};continue
-          }
           $cn=$Sessions[$state.sessionId].connection
           if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
              Send-Json $stream 403 @{error='Estación no autorizada.'};continue
@@ -1932,9 +1929,6 @@ try {
           $station=0
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
             Send-Json $stream 400 @{error='Elegí una estación válida.'};continue
-          }
-          if(@($state.databases) -notcontains 'SiSRL'){
-            Send-Json $stream 403 @{error='Falta acceso SQL a SiSRL para PA_VentasFormasPago.'};continue
           }
           $cn=$Sessions[$state.sessionId].connection
           $ids=@(Get-StationOptions -Connection $cn -Database ([string]$state.database))
