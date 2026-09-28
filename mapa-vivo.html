@@ -15,10 +15,10 @@
 
 .build-version{position:fixed;right:14px;bottom:12px;z-index:9999;background:#17171d;border:1px solid #4b4141;color:#ff9b6a;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;box-shadow:0 8px 24px #0007}
 
-</style><link rel="stylesheet" href="theme.css?v=46">
-<script src="theme.js?v=46" defer></script>
+</style><link rel="stylesheet" href="theme.css?v=94">
+<script src="theme.js?v=94" defer></script>
 </head>
-<body>
+<body data-capitan-build="94">
 <div id="gate" class="gate"><div class="gatebox"><h2>Validando conexión SQL…</h2><p id="gateText">El Mapa Vivo solo se abre con una sesión SQL válida.</p><a id="returnSql" href="conexion-sql.html" style="display:none">Volver a Conexión SQL</a></div></div>
 <div id="app" class="app">
   <header class="top"><div class="left"><a class="back" href="conexion-sql.html">← SQL</a><span class="badge ok">● SQL conectado</span><span id="dbBadge" class="badge"></span></div><span class="ver" data-version-prefix="v">v…</span></header>
@@ -38,7 +38,7 @@ async function validate(){
  for(const base of list){
   try{
    const r=await localFetch(base+'/api/tables',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,database:db})});
-   if(r.ok){document.getElementById('dbBadge').textContent='Base: '+db;gate.style.display='none';app.style.display='block';return}
+   if(r.ok){window.capitanSqlBridge=base;window.dispatchEvent(new Event('capitan:bridge-changed'));document.getElementById('dbBadge').textContent='Base: '+db;gate.style.display='none';app.style.display='block';return}
   }catch(_){}
  }
  sessionStorage.removeItem('rodolfo.sql.sessionId');
@@ -50,13 +50,20 @@ validate();
 <script>
 (async function(){
   try{
-    const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
-    if(!r.ok) throw new Error('VERSION '+r.status);
-    const v=(await r.text()).trim();
+    const v=document.body.dataset.capitanBuild;
     window.CAPITAN_VERSION=v;
     document.querySelectorAll('[data-version-prefix]').forEach(el=>{
       el.textContent=(el.dataset.versionPrefix||'')+v;
     });
+    const r=await fetch('VERSION?ts='+Date.now(),{cache:'no-store'});
+    if(r.ok){
+      const published=(await r.text()).trim();
+      if(published&&published!==v){
+        document.querySelectorAll('[data-version-prefix]').forEach(el=>{
+          el.textContent=(el.dataset.versionPrefix||'')+v+' · Publicada v'+published;
+        });
+      }
+    }
   }catch(e){
     console.warn('No se pudo leer VERSION',e);
   }
