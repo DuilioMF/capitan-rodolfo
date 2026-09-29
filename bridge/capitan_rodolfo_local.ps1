@@ -2150,6 +2150,36 @@ try {
           finally {$dayCmd.Dispose()}
           $day=[datetime]::ParseExact($sqlDay,'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture)
           $params=[pscustomobject]@{IdEstacion=$station;Fecha=$day}
+          # Compartir la MISMA fuente entre la página y WhatsApp.
+          # Si el SP no está disponible, sólo se leen tablas de la base activa,
+          # filtrando por estación y fecha. No se ejecuta otro SP ni se instala nada.
+          $canExecute=$true
+          try {
+            $rights=Get-CircuitDatabasePermission -Connection $cn
+            if($rights.exists -ne 1 -or $rights.execute -ne 1){$canExecute=$false}
+          }catch{} # Si la inspección de permisos falla, intentar SP y comunicar su error.
+          if(-not $canExecute){
+            try {
+              $fallback=Get-StationReadOnlyCircuit -Connection $cn -Database $dbName -Station $station -Failure 'El procedimiento no está disponible' -Day $day
+              if(@($fallback.dispatches.columns) -notcontains 'FechaDespacho' -or
+                 @($fallback.dispatches.columns) -notcontains 'IdEstacion'){
+                throw 'No se pudo verificar la lectura de despachos por estación y fecha.'
+              }
+              foreach($row in @($fallback.dispatches.rows)){
+                if([int]$row.IdEstacion -ne $station -or
+                   -not ([string]$row.FechaDespacho).StartsWith($sqlDay)){
+                  throw 'Se rechazaron despachos que no coinciden con la estación y fecha.'
+                }
+              }
+              $fallback['verified']=$true
+              $fallback['connected']=$true
+              $fallback['fecha']=$sqlDay
+              Send-Json $stream 200 $fallback
+            }catch{
+              Send-Json $stream 422 @{verified=$false;error=('No se pudieron leer los despachos autorizados: '+$_.Exception.Message)}
+            }
+            continue
+          }
           try {
             $result=Invoke-AllowedStoredProcedure -Connection $cn -Database $dbName -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params -MaxRows 500
             $sets=@($result.resultSets)
