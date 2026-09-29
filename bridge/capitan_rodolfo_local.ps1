@@ -609,12 +609,18 @@ ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
 }
 
 function Read-StationReadOnlyQuery {
-    param($Connection,[string]$Sql,[int]$Station)
+    param($Connection,[string]$Sql,[int]$Station,[datetime]$Day=[datetime]::MinValue)
     $cmd=$Connection.CreateCommand()
     $cmd.CommandTimeout=20
     $cmd.CommandText=$Sql
     $param=$cmd.Parameters.Add('@Station',[System.Data.SqlDbType]::Int)
     $param.Value=$Station
+    if($Day -ne [datetime]::MinValue){
+        $null=$cmd.Parameters.Add('@Day',[System.Data.SqlDbType]::DateTime)
+        $cmd.Parameters['@Day'].Value=$Day.Date
+        $null=$cmd.Parameters.Add('@NextDay',[System.Data.SqlDbType]::DateTime)
+        $cmd.Parameters['@NextDay'].Value=$Day.Date.AddDays(1)
+    }
     $reader=$cmd.ExecuteReader()
     $columns=@()
     $rows=New-Object System.Collections.Generic.List[object]
@@ -664,7 +670,7 @@ function Get-SqlColumnExists {
 }
 
 function Get-StationReadOnlyCircuit {
-    param($Connection,[string]$Database,[int]$Station,[string]$Failure)
+    param($Connection,[string]$Database,[int]$Station,[string]$Failure,[datetime]$Day=[datetime]::MinValue)
     $Connection.ChangeDatabase($Database)
     $warnings=New-Object System.Collections.Generic.List[string]
     $blank=@{columns=@();rows=@();rowCount=0}
@@ -788,6 +794,9 @@ function Get-StationReadOnlyCircuit {
     $receiptSet=$blank
     $dispatchStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Despachos'
     if($dispatchStation){
+        if($Day -ne [datetime]::MinValue -and -not (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE')){
+            throw 'No se puede verificar la fecha de los despachos en esta instalación.'
+        }
         $manguera=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'MANGUERA'){'d.MANGUERA'}else{'CAST(NULL AS INT)'}
         $hora=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULTIME'){'CONVERT(VARCHAR(8),d.ULTIME,108)'}else{'CAST(NULL AS VARCHAR(8))'}
         $joinProd=if($prodOk){$prodJoin.Replace('{SOURCE}','d')}else{''}
@@ -795,15 +804,17 @@ function Get-StationReadOnlyCircuit {
             else{'CAST(NULL AS NVARCHAR(120)) AS Producto,CAST(NULL AS DECIMAL(18,2)) AS Costo,CAST(NULL AS DECIMAL(18,2)) AS PrecioProducto,'}
         $dispatchId=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ID_DESPACHO'){'d.ID_DESPACHO'}else{'CAST(NULL AS INT)'}
         $dispatchDate=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE'){"CONVERT(VARCHAR(23),d.ULDATE,121)"}else{'CAST(NULL AS VARCHAR(23))'}
-        $dispatchSql='SELECT TOP (200) d.ID_SALE AS IdSale,'+$dispatchId+' AS IdDespacho,'+
+        $dispatchSql='SELECT TOP (200) d.'+$dispatchStation+' AS IdEstacion,d.ID_SALE AS IdSale,'+$dispatchId+' AS IdDespacho,'+
              $dispatchDate+' AS FechaDespacho,d.SURTIDOR AS Cara,'+
              $manguera+' AS Manguera,d.CODART AS CodArt,'+
              $prodFields+'d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,'+
              'd.ESTADOVTA AS EstadoVta,'+$hora+' AS Hora '+
              'FROM dbo.Despachos d '+$joinProd+' WHERE d.'+$dispatchStation+
-             '=@Station ORDER BY d.ID_SALE DESC;'
+             '=@Station'
+        if($Day -ne [datetime]::MinValue){$dispatchSql+=' AND d.ULDATE>=@Day AND d.ULDATE<@NextDay'}
+        $dispatchSql+=' ORDER BY '+$(if($Day -ne [datetime]::MinValue){'d.ULDATE DESC,'}else{''})+$(if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULTIME'){'d.ULTIME DESC,'}else{''})+'d.ID_SALE DESC;'
         try {
-            $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station
+            $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station -Day $Day
         } catch {$warnings.Add('Carga no disponible en modo lectura: '+$_.Exception.Message)}
         $receiptStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.RelacionCptsDespachos'
         $receiptKey=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'ID_DESPACHO'){'r.ID_DESPACHO'}elseif(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO'){'r.DI_DESPACHO'}else{''}
@@ -826,8 +837,10 @@ function Get-StationReadOnlyCircuit {
                'd.ID_DESPACHO='+$receiptKey+' AND d.ULDATE=r.FECHA AND d.'+$dispatchStation+'=@Station '+
                $(if($receiptStation){'WHERE r.'+$receiptStation+'=@Station '}else{''})+
                'ORDER BY d.ID_SALE DESC;'
-            try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
-            catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
+            if($Day -eq [datetime]::MinValue){
+                try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
+                catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
+            }else{$warnings.Add('No se muestran comprobantes en modo lectura: requieren vinculación de fecha verificada.')}
         } else {
             $warnings.Add('Comprobantes no enlazados: faltan ID_DESPACHO y/o ULDATE/FECHA verificados en las tablas.')
         }
