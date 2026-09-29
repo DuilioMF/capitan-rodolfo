@@ -17,6 +17,9 @@ permissions:
 
 jobs:
   verificar:
+    # El aplicador del hotfix histórico sólo entiende su rama original.
+    # Las correcciones nuevas se comprueban en validar-paquete-sql.yml.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.ref == 'fix/doinglio-verificable-despachos-20260927'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
