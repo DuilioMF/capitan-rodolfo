@@ -1558,7 +1558,12 @@ try {
           $selected=@($d.station_ids | ForEach-Object {[int]$_})
           $response=Set-DoingLioCoreLink -Root $DataRoot -Phone ([string]$d.phone) -Selected $selected -Available $available -Database ([string]$st.database) -Confirmed ($d.confirmed -eq $true)
           Send-Json $stream 200 $response
-        }catch{Send-Json $stream 400 @{ok=$false;error='No se pudo vincular. Verifica telefono administrador, estaciones y servicio local.'}}
+        }catch{
+          $reason=[string]$_.Exception.Message
+          $safe=@('Este administrador ya tiene otra PC vinculada. La conexión múltiple aún no está habilitada; no se modificó esta PC.','El teléfono no está habilitado como administrador de Capitán Rodolfo.','DoingLio no pudo guardar los permisos de estación. Revisá la vinculación antes de consultar por WhatsApp.','La credencial local de DoingLio no es válida. Revisá la configuración privada del servicio.','DoingLio no confirmó el vínculo. Comprobá Internet y volvé a intentar.','Primero conecta SQL desde Nucleo > Datos.','Este nucleo ya esta vinculado a otro administrador. No se permite cambiarlo sin desvinculacion.')
+          if($safe -notcontains $reason){$reason='No se pudo vincular. Verificá el teléfono, las estaciones detectadas y el servicio local.'}
+          Send-Json $stream 400 @{ok=$false;error=$reason}
+        }
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/profile-status'){
         $p = Load-SqlProfile
