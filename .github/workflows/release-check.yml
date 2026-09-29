@@ -1,0 +1,26 @@
+name: Verificar release antes del merge
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verificar páginas y siete ventanas del código
+        run: node --test tests/version-every-window.test.js
+      - name: Construir exactamente el paquete Pages
+        run: |
+          mkdir -p dist
+          cp *.html *.svg *.bat VERSION theme.css theme.js cobros.css cobros.js dist/
+          cp -R assets bridge connector-node sql dist/
+          mkdir -p dist/verificable
+          cp verificable/verified-circuit.js dist/verificable/
+      - name: Verificar versión y contenido de cinco pantallas y conector
+        run: node --test tests/paquete-publicado.test.js
