@@ -1,0 +1,50 @@
+name: Capitan - despacho diario a MD
+on:
+  schedule:
+    # 08:00 Argentina (UTC-3)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: capitan-daily-dispatch
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enviar solicitud al orquestador sin exponer credenciales
+        env:
+          MD_DISPATCH_URL: ${{ secrets.MD_CAPITAN_DISPATCH_URL }}
+          MD_DISPATCH_TOKEN: ${{ secrets.MD_CAPITAN_DISPATCH_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$MD_DISPATCH_URL" || -z "$MD_DISPATCH_TOKEN" ]]; then
+            echo "::error::Configurar MD_CAPITAN_DISPATCH_URL y MD_CAPITAN_DISPATCH_TOKEN en Actions secrets."
+            exit 1
+          fi
+          # URL administrada por el dueño; no enviar secretos ni datos SQL.
+          python3 - <<'PY' > payload.json
+          import json, os
+          print(json.dumps({
+            "source": "github-actions",
+            "project_key": "capitan-rodolfo",
+            "operation": "daily_task_dispatch",
+            "repository": os.environ["REPO"],
+            "commit": os.environ["SHA"],
+            "run_id": os.environ["RUN_ID"],
+            "mode": "review-and-propose",
+            "requires": ["trello_claim", "idempotency", "branch_and_pr", "tests", "evidence", "no_auto_merge"]
+          }))
+          PY
+          curl --fail-with-body --silent --show-error --retry 2 --max-time 30 \
+            -X POST "$MD_DISPATCH_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $MD_DISPATCH_TOKEN" \
+            --data-binary @payload.json
+          rm -f payload.json
