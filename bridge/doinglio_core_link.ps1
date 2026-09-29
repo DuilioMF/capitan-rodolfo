@@ -20,12 +20,13 @@ function Get-DoingLioCoreStatus {
     $digits=([string]$saved.phone -replace '[^0-9]','')
     if($digits.Length -ge 3){$masked='***'+$digits.Substring($digits.Length-3)}
   }
+  $linked=($null -ne $saved -and $saved.linked -eq $true -and [string]$saved.database -eq $Database -and @($saved.stations | Where-Object { $Stations -notcontains [int]$_ }).Count -eq 0)
   return @{
     ok=$true;sqlConnected=$SqlConnected;database=$Database;stations=@($Stations);
     workerTokenInstalled=(Test-Path (Join-Path $Root 'sql_queue_token.dat'));
-    linked=($null -ne $saved -and $saved.linked -eq $true);
+    linked=$linked;
     linkedPhone=$masked;
-    linkedStations=$(if($null -ne $saved -and $saved.linked -eq $true){@($saved.stations)}else{@()})
+    linkedStations=$(if($linked){@($saved.stations)}else{@()})
   }
 }
 function Set-DoingLioCoreLink {
@@ -43,13 +44,31 @@ function Set-DoingLioCoreLink {
     throw 'Este nucleo ya esta vinculado a otro administrador. No se permite cambiarlo sin desvinculacion.'
   }
   $id=if($null -ne $saved -and [string]$saved.installation_id){[string]$saved.installation_id}else{[guid]::NewGuid().ToString()}
-  $local=@{installation_id=$id;phone=$phone;stations=$stations;database=$Database;linked=($null -ne $saved -and $saved.linked -eq $true)}
-  # Persistir ID antes de la llamada para evitar duplicados por reintentos.
-  [IO.File]::WriteAllText($path,($local|ConvertTo-Json -Compress),[Text.Encoding]::UTF8)
+  $local=@{installation_id=$id;phone=$phone;stations=$stations;database=$Database;linked=$false}
+  # Conservar el vínculo anterior mientras se verifica el cambio remoto.
+  # Solo persistir un ID nuevo para que un timeout pueda reintentarse sin duplicarlo.
+  if($null -eq $saved){[IO.File]::WriteAllText($path,($local|ConvertTo-Json -Compress),[Text.Encoding]::UTF8)}
   $token=Get-DoingLioCoreWorkerToken -Root $Root
   try {
     $body=@{action='link_installation';installation_id=$id;phone=$phone;station_ids=$stations;database_name=$Database;confirmed=$true}|ConvertTo-Json -Depth 4 -Compress
-    $response=Invoke-RestMethod -Uri 'https://pddsehshgfynpmibjqhj.supabase.co/functions/v1/doinglio-sql-queue' -Method POST -Headers @{'x-doinglio-token'=$token} -ContentType 'application/json' -Body $body -TimeoutSec 20
+    try {
+      $response=Invoke-RestMethod -Uri 'https://pddsehshgfynpmibjqhj.supabase.co/functions/v1/doinglio-sql-queue' -Method POST -Headers @{'x-doinglio-token'=$token} -ContentType 'application/json' -Body $body -TimeoutSec 20
+    } catch {
+      $remoteCode=''
+      if($null -ne $_.Exception.Response){
+        try {
+          $reader=New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())
+          $remoteCode=[string](($reader.ReadToEnd()|ConvertFrom-Json).error)
+        } catch {}
+      }
+      switch($remoteCode){
+        'OTHER_INSTALLATION_ALREADY_LINKED' {throw 'Este administrador ya tiene otra PC vinculada. La conexión múltiple aún no está habilitada; no se modificó esta PC.'}
+        'ADMIN_NOT_AUTHORIZED' {throw 'El teléfono no está habilitado como administrador de Capitán Rodolfo.'}
+        'STATION_PERMISSION_UPDATE_FAILED' {throw 'DoingLio no pudo guardar los permisos de estación. Revisá la vinculación antes de consultar por WhatsApp.'}
+        'UNAUTHORIZED' {throw 'La credencial local de DoingLio no es válida. Revisá la configuración privada del servicio.'}
+        default {throw 'DoingLio no confirmó el vínculo. Comprobá Internet y volvé a intentar.'}
+      }
+    }
     if($response.ok -ne $true -or $response.linked -ne $true){throw 'DoingLio no confirmo el vinculo.'}
     $local.linked=$true
     [IO.File]::WriteAllText($path,($local|ConvertTo-Json -Compress),[Text.Encoding]::UTF8)
