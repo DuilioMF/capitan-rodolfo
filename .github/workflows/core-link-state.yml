@@ -1,0 +1,23 @@
+name: Core link state
+on:
+  pull_request:
+    paths:
+      - 'bridge/doinglio_core_link.ps1'
+      - 'bridge/capitan_rodolfo_local.ps1'
+      - 'tests/core-link-state.ps1'
+      - '.github/workflows/core-link-state.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse scripts and test preserved connection
+        shell: powershell
+        run: |
+          foreach($file in @('bridge/doinglio_core_link.ps1','bridge/capitan_rodolfo_local.ps1','tests/core-link-state.ps1')) {
+            $tokens=$null; $errors=$null
+            $null=[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tokens,[ref]$errors)
+            if($errors.Count){throw ($errors | Out-String)}
+          }
+          ./tests/core-link-state.ps1
