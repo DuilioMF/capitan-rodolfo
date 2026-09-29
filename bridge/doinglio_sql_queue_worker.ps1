@@ -98,49 +98,48 @@ try {
           continue
         }
         if([string]$job.intent -eq "latest_dispatch"){
-          # Misma consulta verificada que muestra "Carga" en Capitan V92:
-          # /api/station/circuit ejecuta PA_CapitanRodolfo_CircuitoEstacion
-          # filtrado por el dia real y estacion. Nunca usar TOP historico alternativo.
+          # Misma respuesta del circuito que consume la ventana Carga.
+          # La ruta local autoriza la estación y verifica fecha y base guardada.
           $circuit=Invoke-RestMethod -Uri ($base+"/api/station/circuit") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 55
-          if(-not $circuit.connected -or -not $circuit.verified -or [string]$circuit.source -ne "sp" -or
+          if(-not $circuit.connected -or -not $circuit.verified -or
              [int]$circuit.station -ne [int]$job.idEstacion -or
-             [string]$circuit.procedure -ne "dbo.PA_CapitanRodolfo_CircuitoEstacion" -or
-             [string]::IsNullOrWhiteSpace([string]$circuit.fecha)){
-            throw "El circuito de Capitan no confirmo origen SP, fecha y estacion"
+             [string]::IsNullOrWhiteSpace([string]$circuit.fecha) -or
+             [string]$circuit.source -notin @("sp","lectura_tablas")){
+            throw "El circuito de la pagina no verifico estacion, fecha y origen."
           }
           if($null -eq $circuit.dispatches -or $null -eq $circuit.dispatches.rows -or $circuit.dispatches.truncated){
-            throw "El circuito de Capitan no devolvio despachos completos"
+            throw "El circuito de la pagina no devolvio despachos verificables completos."
           }
           $records=@($circuit.dispatches.rows | Where-Object {$null -ne $_})
           foreach($row in $records){
             if([int]$row.IdEstacion -ne [int]$job.idEstacion -or
                -not ([string]$row.FechaDespacho).StartsWith([string]$circuit.fecha)){
-              throw "La respuesta de SQL no coincide con fecha y estacion"
+              throw "La carga no coincide con fecha y estacion."
             }
           }
-          # El SP de la pantalla ya devuelve despachos ordenados por hora e ID_SALE.
           $reply="Capitan Rodolfo - estacion $($job.idEstacion), fecha $($circuit.fecha). "
-          if(-not $records.Count){
-            $reply+="No hay despachos en el circuito verificado de esta fecha."
+          if($records.Count -eq 0){
+            $reply+="No hay despachos registrados en la fecha que muestra Capitan."
           } else {
-            $limit=[Math]::Min(5,$records.Count)
-            $reply+="Ultimos $limit de $($records.Count) despachos del mismo circuito que muestra Capitan: "
-            $details=New-Object System.Collections.Generic.List[string]
-            foreach($d in @($records | Select-Object -First 5)){
-              $parts=New-Object System.Collections.Generic.List[string]
-              if($null -ne $d.IdSale){$parts.Add("venta "+[string]$d.IdSale)}
-              if($null -ne $d.IdDespacho){$parts.Add("despacho "+[string]$d.IdDespacho)}
-              if($d.Hora){$parts.Add("hora "+[string]$d.Hora)}
-              if($null -ne $d.Cara){$parts.Add("cara "+[string]$d.Cara)}
-              if($null -ne $d.Litros){$parts.Add("litros "+[string]$d.Litros)}
-              if($null -ne $d.Pesos){$parts.Add("importe "+[string]$d.Pesos)}
-              if($null -ne $d.EstadoVta){$parts.Add("estado "+[string]$d.EstadoVta)}
-              $details.Add(($parts -join ", "))
-            }
-            $reply+=($details -join "; ")+"."
+            # Ordenar los registros efectivamente mostrados en Carga, sin segunda consulta.
+            $last=@($records | Sort-Object -Property @{Expression={([string]$_.FechaDespacho)};Descending=$true},
+              @{Expression={([string]$_.Hora)};Descending=$true},
+              @{Expression={try{[long]$_.IdSale}catch{0}};Descending=$true} | Select-Object -First 1)[0]
+            $parts=New-Object System.Collections.Generic.List[string]
+            $parts.Add("fecha "+[string]$last.FechaDespacho)
+            if($last.Hora){$parts.Add("hora "+[string]$last.Hora)}
+            if($null -ne $last.IdSale){$parts.Add("venta "+[string]$last.IdSale)}
+            if($null -ne $last.IdDespacho){$parts.Add("despacho "+[string]$last.IdDespacho)}
+            if($null -ne $last.Cara){$parts.Add("cara "+[string]$last.Cara)}
+            if($null -ne $last.Litros){$parts.Add("litros "+[string]$last.Litros)}
+            if($null -ne $last.Pesos){$parts.Add("importe "+[string]$last.Pesos)}
+            if($null -ne $last.EstadoVta){$parts.Add("estado "+[string]$last.EstadoVta)}
+            $reply+="Ultimo despacho de los "+$records.Count+" cargados en la pagina: "+($parts -join ", ")+"."
           }
-          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{idEstacion=[int]$job.idEstacion;fecha=[string]$circuit.fecha;source="dbo.PA_CapitanRodolfo_CircuitoEstacion"}} | Out-Null
-          Log ("Ultimo despacho consultado: "+$job.id)
+          Api $token @{action="complete";id=$job.id;ok=$true;reply_text=$reply;summary=@{
+            idEstacion=[int]$job.idEstacion;fecha=[string]$circuit.fecha;source=[string]$circuit.source
+          }} | Out-Null
+          Log ("Ultimo despacho del circuito compartido: "+$job.id)
           continue
         }
         $result=Invoke-RestMethod -Uri ($base+"/api/station/circuit") -Method POST -Body $payload -ContentType "application/json" -TimeoutSec 50

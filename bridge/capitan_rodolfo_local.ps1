@@ -609,12 +609,18 @@ ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
 }
 
 function Read-StationReadOnlyQuery {
-    param($Connection,[string]$Sql,[int]$Station)
+    param($Connection,[string]$Sql,[int]$Station,[datetime]$Day=[datetime]::MinValue)
     $cmd=$Connection.CreateCommand()
     $cmd.CommandTimeout=20
     $cmd.CommandText=$Sql
     $param=$cmd.Parameters.Add('@Station',[System.Data.SqlDbType]::Int)
     $param.Value=$Station
+    if($Day -ne [datetime]::MinValue){
+        $null=$cmd.Parameters.Add('@Day',[System.Data.SqlDbType]::DateTime)
+        $cmd.Parameters['@Day'].Value=$Day.Date
+        $null=$cmd.Parameters.Add('@NextDay',[System.Data.SqlDbType]::DateTime)
+        $cmd.Parameters['@NextDay'].Value=$Day.Date.AddDays(1)
+    }
     $reader=$cmd.ExecuteReader()
     $columns=@()
     $rows=New-Object System.Collections.Generic.List[object]
@@ -664,7 +670,7 @@ function Get-SqlColumnExists {
 }
 
 function Get-StationReadOnlyCircuit {
-    param($Connection,[string]$Database,[int]$Station,[string]$Failure)
+    param($Connection,[string]$Database,[int]$Station,[string]$Failure,[datetime]$Day=[datetime]::MinValue)
     $Connection.ChangeDatabase($Database)
     $warnings=New-Object System.Collections.Generic.List[string]
     $blank=@{columns=@();rows=@();rowCount=0}
@@ -788,6 +794,9 @@ function Get-StationReadOnlyCircuit {
     $receiptSet=$blank
     $dispatchStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.Despachos'
     if($dispatchStation){
+        if($Day -ne [datetime]::MinValue -and -not (Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE')){
+            throw 'No se puede verificar la fecha de los despachos en esta instalación.'
+        }
         $manguera=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'MANGUERA'){'d.MANGUERA'}else{'CAST(NULL AS INT)'}
         $hora=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULTIME'){'CONVERT(VARCHAR(8),d.ULTIME,108)'}else{'CAST(NULL AS VARCHAR(8))'}
         $joinProd=if($prodOk){$prodJoin.Replace('{SOURCE}','d')}else{''}
@@ -795,15 +804,17 @@ function Get-StationReadOnlyCircuit {
             else{'CAST(NULL AS NVARCHAR(120)) AS Producto,CAST(NULL AS DECIMAL(18,2)) AS Costo,CAST(NULL AS DECIMAL(18,2)) AS PrecioProducto,'}
         $dispatchId=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ID_DESPACHO'){'d.ID_DESPACHO'}else{'CAST(NULL AS INT)'}
         $dispatchDate=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULDATE'){"CONVERT(VARCHAR(23),d.ULDATE,121)"}else{'CAST(NULL AS VARCHAR(23))'}
-        $dispatchSql='SELECT TOP (200) d.ID_SALE AS IdSale,'+$dispatchId+' AS IdDespacho,'+
+        $dispatchSql='SELECT TOP (200) d.'+$dispatchStation+' AS IdEstacion,d.ID_SALE AS IdSale,'+$dispatchId+' AS IdDespacho,'+
              $dispatchDate+' AS FechaDespacho,d.SURTIDOR AS Cara,'+
              $manguera+' AS Manguera,d.CODART AS CodArt,'+
              $prodFields+'d.LITROS AS Litros,d.PPU AS PPU,d.PESOS AS Pesos,'+
              'd.ESTADOVTA AS EstadoVta,'+$hora+' AS Hora '+
              'FROM dbo.Despachos d '+$joinProd+' WHERE d.'+$dispatchStation+
-             '=@Station ORDER BY d.ID_SALE DESC;'
+             '=@Station'
+        if($Day -ne [datetime]::MinValue){$dispatchSql+=' AND d.ULDATE>=@Day AND d.ULDATE<@NextDay'}
+        $dispatchSql+=' ORDER BY '+$(if($Day -ne [datetime]::MinValue){'d.ULDATE DESC,'}else{''})+$(if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.Despachos' -Name 'ULTIME'){'d.ULTIME DESC,'}else{''})+'d.ID_SALE DESC;'
         try {
-            $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station
+            $dispatchSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $dispatchSql -Station $Station -Day $Day
         } catch {$warnings.Add('Carga no disponible en modo lectura: '+$_.Exception.Message)}
         $receiptStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.RelacionCptsDespachos'
         $receiptKey=if(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'ID_DESPACHO'){'r.ID_DESPACHO'}elseif(Get-SqlColumnExists -Connection $Connection -Table 'dbo.RelacionCptsDespachos' -Name 'DI_DESPACHO'){'r.DI_DESPACHO'}else{''}
@@ -826,8 +837,10 @@ function Get-StationReadOnlyCircuit {
                'd.ID_DESPACHO='+$receiptKey+' AND d.ULDATE=r.FECHA AND d.'+$dispatchStation+'=@Station '+
                $(if($receiptStation){'WHERE r.'+$receiptStation+'=@Station '}else{''})+
                'ORDER BY d.ID_SALE DESC;'
-            try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
-            catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
+            if($Day -eq [datetime]::MinValue){
+                try{$receiptSet=Read-StationReadOnlyQuery -Connection $Connection -Sql $receiptSql -Station $Station}
+                catch{$warnings.Add('Comprobantes no disponibles en lectura: '+$_.Exception.Message)}
+            }else{$warnings.Add('No se muestran comprobantes en modo lectura: requieren vinculación de fecha verificada.')}
         } else {
             $warnings.Add('Comprobantes no enlazados: faltan ID_DESPACHO y/o ULDATE/FECHA verificados en las tablas.')
         }
@@ -2112,8 +2125,8 @@ try {
         # DOINGLIO_VERIFICABLE_V1: si falla el PA, error; nunca tablas historicas.
         try {
           $state=Ensure-ActiveSession
-          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
-            Send-Json $stream 409 @{error='Conectá SiSRL desde Núcleo → Datos. No se muestran datos anteriores.'}
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Conectá los datos desde Núcleo. No se muestran datos anteriores.'}
             continue
           }
           $data=$req.Body | ConvertFrom-Json
@@ -2122,22 +2135,53 @@ try {
             Send-Json $stream 400 @{error='Elegí una estación válida.'}
             continue
           }
+          $dbName=[string]$state.database
           $cn=$Sessions[$state.sessionId].connection
-          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+          if(@(Get-StationOptions -Connection $cn -Database $dbName) -notcontains $station){
             Send-Json $stream 403 @{error='La estación no está autorizada.'}
             continue
           }
           # Obtener la fecha del propio SQL Server y enviarla explicitamente al PA.
           # Un dia verificado es una fecha y estacion concretas, no TOP N historico.
-          $cn.ChangeDatabase('SiSRL')
+          $cn.ChangeDatabase($dbName)
           $dayCmd=$cn.CreateCommand()
           $dayCmd.CommandText='SELECT CONVERT(VARCHAR(10),GETDATE(),23)'
           try {$sqlDay=[string]$dayCmd.ExecuteScalar()}
           finally {$dayCmd.Dispose()}
           $day=[datetime]::ParseExact($sqlDay,'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture)
           $params=[pscustomobject]@{IdEstacion=$station;Fecha=$day}
+          # Compartir la MISMA fuente entre la página y WhatsApp.
+          # Si el SP no está disponible, sólo se leen tablas de la base activa,
+          # filtrando por estación y fecha. No se ejecuta otro SP ni se instala nada.
+          $canExecute=$true
           try {
-            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params -MaxRows 500
+            $rights=Get-CircuitDatabasePermission -Connection $cn
+            if($rights.exists -ne 1 -or $rights.execute -ne 1){$canExecute=$false}
+          }catch{} # Si la inspección de permisos falla, intentar SP y comunicar su error.
+          if(-not $canExecute){
+            try {
+              $fallback=Get-StationReadOnlyCircuit -Connection $cn -Database $dbName -Station $station -Failure 'El procedimiento no está disponible' -Day $day
+              if(@($fallback.dispatches.columns) -notcontains 'FechaDespacho' -or
+                 @($fallback.dispatches.columns) -notcontains 'IdEstacion'){
+                throw 'No se pudo verificar la lectura de despachos por estación y fecha.'
+              }
+              foreach($row in @($fallback.dispatches.rows)){
+                if([int]$row.IdEstacion -ne $station -or
+                   -not ([string]$row.FechaDespacho).StartsWith($sqlDay)){
+                  throw 'Se rechazaron despachos que no coinciden con la estación y fecha.'
+                }
+              }
+              $fallback['verified']=$true
+              $fallback['connected']=$true
+              $fallback['fecha']=$sqlDay
+              Send-Json $stream 200 $fallback
+            }catch{
+              Send-Json $stream 422 @{verified=$false;error=('No se pudieron leer los despachos autorizados: '+$_.Exception.Message)}
+            }
+            continue
+          }
+          try {
+            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database $dbName -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params -MaxRows 500
             $sets=@($result.resultSets)
             if($sets.Count -lt 5){throw 'El PA no devolvió los cinco conjuntos requeridos por la interfaz.'}
             if(@($sets | Where-Object {$_.truncated}).Count -gt 0){throw 'El resultado supera el límite de lectura y está incompleto.'}
@@ -2153,7 +2197,7 @@ try {
             }
             Send-Json $stream 200 @{
               connected=$true;source='sp';verified=$true;fecha=$sqlDay
-              database='SiSRL';station=$station
+              database=$dbName;station=$station
               procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
               tanks=$sets[0];hoses=$sets[1];dispatches=$sets[2]
               receipts=$sets[3];company=$sets[4];companyAvailable=$true
@@ -2162,7 +2206,7 @@ try {
           }catch{
             Send-Json $stream 422 @{
               connected=$true;source='sp';verified=$false;fecha=$sqlDay
-              station=$station;database='SiSRL'
+              station=$station;database=$dbName
               error=('No se pudo verificar el circuito SQL: '+$_.Exception.Message+'. No se muestran datos anteriores.')
             }
           }

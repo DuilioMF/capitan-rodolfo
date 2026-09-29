@@ -5,6 +5,8 @@ on:
       - "sql/**"
       - "sp_allowlist.json"
       - "bridge/capitan_rodolfo_local.ps1"
+      - "bridge/doinglio_sql_queue_worker.ps1"
+      - "tests/circuito-compartido.test.js"
       - "VERSION"
       - "nucleo.html"
       - "conexion-sql.html"
@@ -34,6 +36,17 @@ jobs:
             throw "Conector no compila"
           }
           Write-Host "Conector PowerShell: sintaxis OK"
+      - name: Verificar trabajador PowerShell y circuito compartido
+        shell: powershell
+        run: |
+          $file="bridge/doinglio_sql_queue_worker.ps1"
+          $t=$null;$errors=$null
+          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$t,[ref]$errors)|Out-Null
+          if($errors.Count){
+            $errors|Select-Object -First 8|ForEach-Object{Write-Host ("L"+$_.Extent.StartLineNumber+": "+$_.Message)}
+            throw "El trabajador no compila"
+          }
+          node --test tests/circuito-compartido.test.js
       - name: Arrancar conector real y verificar ruta Explorador SQL sin base privada
         shell: powershell
         run: |
