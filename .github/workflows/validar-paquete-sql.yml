@@ -16,6 +16,7 @@ on:
       - "cobros.js"
       - "cobros.css"
       - "tests/ver-medios-navigation.test.js"
+      - "tests/cobros-indexes.test.js"
       - ".github/workflows/pages.yml"
       - ".github/workflows/validar-paquete-sql.yml"
   workflow_dispatch:
@@ -118,6 +119,9 @@ jobs:
       - name: Regresión Ver medios y conexión SiSRL
         shell: powershell
         run: node --test tests/ver-medios-navigation.test.js
+      - name: Verificar scripts de índices de cobros por fases
+        shell: powershell
+        run: node --test tests/cobros-indexes.test.js
       - name: Verificar versiones en todas las ventanas
         shell: powershell
         run: node --test tests/version-every-window.test.js
