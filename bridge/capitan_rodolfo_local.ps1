@@ -2112,8 +2112,8 @@ try {
         # DOINGLIO_VERIFICABLE_V1: si falla el PA, error; nunca tablas historicas.
         try {
           $state=Ensure-ActiveSession
-          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
-            Send-Json $stream 409 @{error='Conectá SiSRL desde Núcleo → Datos. No se muestran datos anteriores.'}
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Conectá los datos desde Núcleo. No se muestran datos anteriores.'}
             continue
           }
           $data=$req.Body | ConvertFrom-Json
@@ -2122,14 +2122,15 @@ try {
             Send-Json $stream 400 @{error='Elegí una estación válida.'}
             continue
           }
+          $dbName=[string]$state.database
           $cn=$Sessions[$state.sessionId].connection
-          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+          if(@(Get-StationOptions -Connection $cn -Database $dbName) -notcontains $station){
             Send-Json $stream 403 @{error='La estación no está autorizada.'}
             continue
           }
           # Obtener la fecha del propio SQL Server y enviarla explicitamente al PA.
           # Un dia verificado es una fecha y estacion concretas, no TOP N historico.
-          $cn.ChangeDatabase('SiSRL')
+          $cn.ChangeDatabase($dbName)
           $dayCmd=$cn.CreateCommand()
           $dayCmd.CommandText='SELECT CONVERT(VARCHAR(10),GETDATE(),23)'
           try {$sqlDay=[string]$dayCmd.ExecuteScalar()}
@@ -2137,7 +2138,7 @@ try {
           $day=[datetime]::ParseExact($sqlDay,'yyyy-MM-dd',[Globalization.CultureInfo]::InvariantCulture)
           $params=[pscustomobject]@{IdEstacion=$station;Fecha=$day}
           try {
-            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params -MaxRows 500
+            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database $dbName -Procedure 'dbo.PA_CapitanRodolfo_CircuitoEstacion' -Parameters $params -MaxRows 500
             $sets=@($result.resultSets)
             if($sets.Count -lt 5){throw 'El PA no devolvió los cinco conjuntos requeridos por la interfaz.'}
             if(@($sets | Where-Object {$_.truncated}).Count -gt 0){throw 'El resultado supera el límite de lectura y está incompleto.'}
@@ -2153,7 +2154,7 @@ try {
             }
             Send-Json $stream 200 @{
               connected=$true;source='sp';verified=$true;fecha=$sqlDay
-              database='SiSRL';station=$station
+              database=$dbName;station=$station
               procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
               tanks=$sets[0];hoses=$sets[1];dispatches=$sets[2]
               receipts=$sets[3];company=$sets[4];companyAvailable=$true
@@ -2162,7 +2163,7 @@ try {
           }catch{
             Send-Json $stream 422 @{
               connected=$true;source='sp';verified=$false;fecha=$sqlDay
-              station=$station;database='SiSRL'
+              station=$station;database=$dbName
               error=('No se pudo verificar el circuito SQL: '+$_.Exception.Message+'. No se muestran datos anteriores.')
             }
           }
