@@ -57,7 +57,7 @@ function portRank(base){
 }
 async function resolve(options={}){
   const requireConnected=options.requireConnected!==false;
-  const requiredDatabase=options.requiredDatabase===undefined?'SiSRL':options.requiredDatabase;
+  const requiredDatabase=options.requiredDatabase===undefined?null:options.requiredDatabase;
   const expected=expectedVersion();
   const all=await probeAll();
   const exact=all.filter(item=>item.version===expected);
