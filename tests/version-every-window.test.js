@@ -1,4 +1,4 @@
-// Contrato v94: cada ventana muestra la versión exacta del HTML y el bridge.
+// Contrato de versión canónica: cada ventana muestra la versión exacta del HTML y el bridge.
 // Pruebas estáticas: no reemplazan la comprobación con SiSRL real.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
@@ -58,4 +58,27 @@ test('Todas las páginas comparten JS nuevo; el lector y mapa no dependen de VER
    assert.ok(file(page).includes('document.body.dataset.capitanBuild'),page+' usa una versión remota como versión propia');
  }
  assert.ok(file('documentos.html').includes('docConnectorVersion'),'Lector no muestra versión SQL');
+});
+
+test('C95: Núcleo no vincula una estación con un conector de otra versión',()=>{
+ const page=file('nucleo.html');
+ assert.ok(page.includes('found.filter(x=>x.version===Number(document.body.dataset.capitanBuild))'));
+ assert.ok(page.includes('no coinciden. Actualizá la pantalla o el conector'));
+});
+test('El paquete tiene compuerta HTTP y n8n espera el despliegue real',()=>{
+ const pages=file('.github/workflows/pages.yml');
+ const sync=file('.github/workflows/sync-version.yml');
+ assert.ok(pages.includes('Verificar VERSION publicado después de Pages'));
+ assert.ok(pages.includes('PUBLIC_VERSION_URL: https://duiliomf.github.io/capitan-rodolfo/VERSION'));
+ assert.ok(sync.includes('workflow_run:'),'La sincronización no puede suceder antes del deploy');
+ assert.ok(sync.includes('publication_verified'), 'Exigir evidencia de publicación');
+});
+test('Ninguna de las cinco pantallas mantiene referencias de versión del release anterior',()=>{
+ const previous=String(Number(v)-1);
+ for(const name of ['index.html','nucleo.html','conexion-sql.html','mapa-vivo.html','documentos.html']){
+  const page=file(name);
+  assert.ok(!page.includes('data-capitan-build="'+previous+'"'),name+' conserva build anterior');
+  assert.ok(!page.includes('theme.js?v='+previous),name+' conserva JS anterior');
+  assert.ok(!page.includes('theme.css?v='+previous),name+' conserva CSS anterior');
+ }
 });
