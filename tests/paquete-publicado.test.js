@@ -6,7 +6,7 @@ const path=require('node:path');
 const read=p=>fs.readFileSync(path.resolve(__dirname,'..',p),'utf8');
 const v=read('VERSION').trim();
 const pages=['index.html','nucleo.html','conexion-sql.html','mapa-vivo.html','documentos.html'];
-const copied=[...pages,'VERSION','theme.css','theme.js','cobros.css','cobros.js',
+const copied=[...pages,'VERSION','theme.css','theme.js','connection-manager.js','cobros.css','cobros.js',
   'CAPITAN_RODOLFO.bat','bridge/capitan_rodolfo_local.ps1','bridge/doinglio_sql_queue_worker.ps1'];
 test('Paquete emitido idéntico a las fuentes canónicas del mismo commit',()=>{
  assert.match(v,/^\d+$/);
