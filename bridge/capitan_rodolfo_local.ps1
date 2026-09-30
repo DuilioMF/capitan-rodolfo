@@ -1563,13 +1563,17 @@ try {
           $stationError=''
           if($null -ne $st){
             $database=[string]$st.database
-            try{
-              $stations=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database $database)
-            }catch{
-              $stationError='SQL está conectado, pero no pude identificar las estaciones desde ParamStock. Revisá los permisos y el esquema en Datos.'
+            if($database -ine 'SiSRL'){
+              $stationError='Capitán Rodolfo requiere SiSRL para vincular estaciones con DoingLio.'
+            }else{
+              try{
+                $stations=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database 'SiSRL')
+              }catch{
+                $stationError='SQL está conectado, pero no pude identificar las estaciones desde ParamStock. Revisá los permisos y el esquema en Datos.'
+              }
             }
           }
-          $response=Get-DoingLioCoreStatus -Root $DataRoot -SqlConnected ($null -ne $st) -Database $database -Stations $stations
+          $response=Get-DoingLioCoreStatus -Root $DataRoot -SqlConnected (($null -ne $st) -and ($database -ieq 'SiSRL')) -Database $database -Stations $stations
           $response['sqlError']=$stationError
           Send-Json $stream 200 $response
         }catch{Send-Json $stream 400 @{ok=$false;error='Actualiza el conector o verifica el descubrimiento SQL.'}}
@@ -1583,6 +1587,7 @@ try {
         try{
           $st=Ensure-ActiveSession
           if($null -eq $st){throw 'Conecta primero SQL desde Nucleo > Datos.'}
+          if([string]$st.database -ine 'SiSRL'){throw 'Capitán Rodolfo requiere SiSRL para vincular estaciones con DoingLio.'}
           $d=$req.Body | ConvertFrom-Json
           $available=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database ([string]$st.database))
           $selected=@($d.station_ids | ForEach-Object {[int]$_})
@@ -2039,6 +2044,7 @@ try {
         try {
           $st=Ensure-ActiveSession
           if($null -eq $st){Send-Json $stream 409 @{error='SQL desconectado.'};continue}
+          if([string]$st.database -ine 'SiSRL'){Send-Json $stream 409 @{error='Capitán Rodolfo requiere SiSRL para consultar cargas.'};continue}
           $d=$req.Body|ConvertFrom-Json;$id=0;$day=[datetime]::MinValue
           if(-not [int]::TryParse([string]$d.idEstacion,[ref]$id) -or $id -lt 1 -or
             -not [datetime]::TryParseExact([string]$d.fecha,'yyyy-MM-dd',
@@ -2099,6 +2105,10 @@ try {
           $state=Ensure-ActiveSession
           if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
             Send-Json $stream 409 @{error='Falta conectar SQL desde Nucleo > Datos.'}
+            continue
+          }
+          if([string]$state.database -ine 'SiSRL'){
+            Send-Json $stream 409 @{error='Capitán Rodolfo requiere SiSRL para consultar despachos.'}
             continue
           }
           $requestData=$req.Body | ConvertFrom-Json
