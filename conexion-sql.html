@@ -253,7 +253,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
    $('executeSp').classList.add('hidden');$('objectParams').replaceChildren();$('results').replaceChildren();
    inspected=null;
    status('Base '+currentDb+' lista. Escribí tabla, vista o SP y presioná Buscar y mostrar.');
-   const circuitAvailable=currentDb.toLowerCase()==='sisrl';
+   const circuitAvailable=!!currentDb;
    $('circuitCard').classList.toggle('hidden',!circuitAvailable);
    if(circuitAvailable){refreshCircuitState();loadCircuitStations()}
    else $('circuitResults').replaceChildren();
@@ -340,7 +340,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  }
 
  async function refreshCircuitState(){
-   if(!bridge||currentDb.toLowerCase()!=='sisrl')return;
+   if(!bridge||!currentDb)return;
    try {
      const state=await get('/api/circuit/install-state');
      const code=state.state||'pending';
@@ -353,7 +353,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  async function loadCircuitStations(){
    const sel=$('circuitStation');sel.replaceChildren();
    const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Elegí una estación';sel.appendChild(placeholder);
-   if(!bridge||currentDb.toLowerCase()!=='sisrl')return;
+   if(!bridge||!currentDb)return;
    try{
      const d=await get('/api/station/ids');
      const ids=Array.isArray(d.stations)?d.stations:[];
@@ -364,7 +364,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
    }catch(e){setStatus($('runCircuitStatus'),'No pude listar las estaciones: '+e.message,'bad')}
  }
  $('installCircuit').addEventListener('click',async()=>{
-   if(!bridge||!sessionId||currentDb.toLowerCase()!=='sisrl')return;
+   if(!bridge||!sessionId||!currentDb)return;
    if(!window.confirm('¿Instalar o actualizar dbo.PA_CapitanRodolfo_CircuitoEstacion en '+currentDb+' con tu usuario SQL actual? Esta acción modifica la definición del procedimiento, NO los datos comerciales.'))return;
    $('installCircuit').disabled=true;
    setStatus($('circuitStatus'),'Instalando SP desde el archivo verificado de Capitán…');
@@ -382,7 +382,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  });
  $('refreshCircuit').addEventListener('click',refreshCircuitState);
  $('adminInstallCircuit').addEventListener('click',async()=>{
-   if(!bridge||!sessionId||currentDb.toLowerCase()!=='sisrl')return;
+   if(!bridge||!sessionId||!currentDb)return;
    const user=$('circuitAdminUser').value.trim();
    const pass=$('circuitAdminPass').value;
    if(!user||!pass){setStatus($('adminCircuitStatus'),'Ingresá usuario y contraseña de un administrador SQL.','bad');return}
