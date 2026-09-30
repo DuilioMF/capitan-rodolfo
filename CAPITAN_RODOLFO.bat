@@ -34,6 +34,9 @@ echo.
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1?v=%CACHEBUST%' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/doinglio_sql_queue_worker.ps1?v=%CACHEBUST%' -OutFile '%SQL_WORKER%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/doinglio_core_link.ps1?v=%CACHEBUST%' -OutFile '%CORE_LINK%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/stop_stale_capitan.ps1?v=%CACHEBUST%' -OutFile '%STOPPER%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION?v=%CACHEBUST%' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json?v=%CACHEBUST%' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
+echo [%date% %time%] Descargando interfaz local de Capitan >>"%LOG%"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $files=@('index.html','nucleo.html','conexion-sql.html','mapa-vivo.html','documentos.html','theme.css','theme.js','connection-manager.js','cobros.css','cobros.js','brain-davinci.svg','CAPITAN_RODOLFO.bat','assets/capitan-rodolfo-mapa-vivo.svg','verificable/verified-circuit.js','sql/PA_CapitanRodolfo_CircuitoEstacion.sql','sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql'); foreach($f in $files){$target=Join-Path '%APPROOT%' ($f -replace '/','\');$dir=Split-Path -Parent $target;if($dir -and -not (Test-Path $dir)){New-Item -ItemType Directory -Path $dir -Force|Out-Null};Invoke-WebRequest -UseBasicParsing ('%RAW%/'+$f+'?v=%CACHEBUST%') -OutFile $target}" >>"%LOG%" 2>&1
+if errorlevel 1 goto :error
 echo [%date% %time%] Verificando sintaxis PowerShell antes de reiniciar servicios >>"%LOG%"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; foreach($f in @('%BRIDGE%','%SQL_WORKER%','%CORE_LINK%','%STOPPER%')){$tok=$null;$errs=$null;$null=[System.Management.Automation.Language.Parser]::ParseFile($f,[ref]$tok,[ref]$errs);if($errs.Count -gt 0){foreach($e in $errs){Write-Output ($f+': '+$e.Message)};exit 1}}" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
@@ -65,7 +68,8 @@ for /L %%I in (1,1,30) do (
 if defined ACTIVE_PORT (
   echo [%date% %time%] Conector listo puerto !ACTIVE_PORT! >>"%LOG%"
   echo Conector SQL v%EXPECTED_VERSION% listo en puerto !ACTIVE_PORT!.
-  start "" "http://127.0.0.1:!ACTIVE_PORT!/"
+  echo Abriendo Capitan Rodolfo local...
+  start "" "http://127.0.0.1:!ACTIVE_PORT!/app/"
   timeout /t 2 >nul
   exit /b 0
 )
