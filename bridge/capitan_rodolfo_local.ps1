@@ -37,7 +37,7 @@ $SpAllowlistPath = Join-Path $DataRoot "sp_allowlist.json"
 $DefaultSpAllowlistPath = Join-Path $AppDir "sp_allowlist.json"
 $CircuitSqlPath = Join-Path $AppDir "sql\PA_CapitanRodolfo_CircuitoEstacion.sql"
 $CircuitInstallStatePath = Join-Path $DataRoot "circuito_instalacion.json"
-$script:CircuitInstallStatus = @{state='pending';database='';message='Esperando conexión a SiSRL';version=$Version}
+$script:CircuitInstallStatus = @{state='pending';database='';message='Esperando conexión y base operativa';version=$Version}
 
 $TaskName = "CapitanRodolfoLocal"
 $script:LastRestoreError = ""
@@ -883,14 +883,14 @@ function Find-VerifiedPaymentColumn {
 }
 
 function Get-VerifiedPaymentEvidence {
-    param($Connection,[int]$Station,[string]$Method,
+    param($Connection,[string]$Database,[int]$Station,[string]$Method,
           [string]$Letra,[string]$Sucursal,[string]$Numero)
     if($Method -notin @('MercadoPago','AppYPF')){throw 'Este método todavía no tiene detalle de pasarela verificado.'}
     if($Letra.Length -gt 10 -or $Sucursal.Length -gt 20 -or
        $Numero.Length -gt 40 -or -not $Letra -or -not $Sucursal -or -not $Numero){
        throw 'El comprobante necesita letra, sucursal y número para enlazar el pago.'
     }
-    $Connection.ChangeDatabase('SiSRL')
+    $Connection.ChangeDatabase($Database)
     $mfStation=Find-StationColumn -Connection $Connection -ObjectName 'dbo.MaeFac'
     $mfLetter=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('LETRA')
     $mfBranch=Find-VerifiedPaymentColumn $Connection 'dbo.MaeFac' @('SUCURSAL')
@@ -1064,7 +1064,7 @@ SELECT
 }
 function Invoke-CircuitAutoInstall {
     param($Connection,[string]$Database)
-    if([string]::IsNullOrWhiteSpace($Database) -or $Database -ine 'SiSRL'){return}
+    if([string]::IsNullOrWhiteSpace($Database)){return}
     if(-not (Test-Path $CircuitSqlPath)){
         Save-CircuitInstallStatus -State 'missing_file' -Database $Database -Message 'Falta el archivo SQL descargado con Capitán; reabrí desde el cerebro.'
         return
@@ -1532,8 +1532,8 @@ try {
             ok=$true
             version=$Version
             connected=$connected
-            operational=($connected -and $db -ieq 'SiSRL')
-            requiredDatabase='SiSRL'
+            operational=($connected -and -not [string]::IsNullOrWhiteSpace($db))
+            requiredDatabase=$db
             database=$db
             server=$server
             user=$user
@@ -1563,17 +1563,17 @@ try {
           $stationError=''
           if($null -ne $st){
             $database=[string]$st.database
-            if($database -ine 'SiSRL'){
-              $stationError='Capitán Rodolfo requiere SiSRL para vincular estaciones con DoingLio.'
+            if([string]::IsNullOrWhiteSpace($database)){
+              $stationError='SQL está conectado, pero falta seleccionar la base operativa en Núcleo → Datos.'
             }else{
               try{
-                $stations=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database 'SiSRL')
+                $stations=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database $database)
               }catch{
-                $stationError='SQL está conectado, pero no pude identificar las estaciones desde ParamStock. Revisá los permisos y el esquema en Datos.'
+                $stationError='SQL está conectado, pero no pude identificar las estaciones desde ParamStock en la base activa. Revisá los permisos y el esquema en Datos.'
               }
             }
           }
-          $response=Get-DoingLioCoreStatus -Root $DataRoot -SqlConnected (($null -ne $st) -and ($database -ieq 'SiSRL')) -Database $database -Stations $stations
+          $response=Get-DoingLioCoreStatus -Root $DataRoot -SqlConnected (($null -ne $st) -and -not [string]::IsNullOrWhiteSpace($database)) -Database $database -Stations $stations
           $response['sqlError']=$stationError
           Send-Json $stream 200 $response
         }catch{Send-Json $stream 400 @{ok=$false;error='Actualiza el conector o verifica el descubrimiento SQL.'}}
@@ -1587,7 +1587,7 @@ try {
         try{
           $st=Ensure-ActiveSession
           if($null -eq $st){throw 'Conecta primero SQL desde Nucleo > Datos.'}
-          if([string]$st.database -ine 'SiSRL'){throw 'Capitán Rodolfo requiere SiSRL para vincular estaciones con DoingLio.'}
+          if([string]::IsNullOrWhiteSpace([string]$st.database)){throw 'Seleccioná la base operativa desde Núcleo → Datos antes de vincular estaciones.'}
           $d=$req.Body | ConvertFrom-Json
           $available=@(Get-StationOptions -Connection $Sessions[$st.sessionId].connection -Database ([string]$st.database))
           $selected=@($d.station_ids | ForEach-Object {[int]$_})
@@ -1693,9 +1693,9 @@ try {
           }
           $session=$Sessions[$sid]
           $db=[string]$session.database
-          if([string]$data.database -ine 'SiSRL' -or $db -ine 'SiSRL' -or
+          if([string]::IsNullOrWhiteSpace($db) -or [string]$data.database -ine $db -or
              $session.databases -notcontains $db){
-            Send-Json $stream 403 @{error='Solo se puede instalar el circuito en la base SiSRL seleccionada y autorizada.'}
+            Send-Json $stream 403 @{error='El circuito solo se instala en la base operativa seleccionada y autorizada en esta sesión.'}
             continue
           }
           if([string]$data.confirm -cne 'INSTALAR SP'){
@@ -1728,14 +1728,14 @@ try {
           $requestData=$req.Body | ConvertFrom-Json
           $sid=[string]$requestData.sessionId
           if(-not $Sessions.ContainsKey($sid)){
-            Send-Json $stream 401 @{error='Conectá primero con el usuario habitual a SiSRL.'}
+            Send-Json $stream 401 @{error='Conectá primero con el usuario habitual y seleccioná la base operativa.'}
             continue
           }
           $session=$Sessions[$sid]
-          if([string]$session.database -ine 'SiSRL' -or
-              [string]$requestData.database -ine 'SiSRL' -or
-              $session.databases -notcontains 'SiSRL'){
-            Send-Json $stream 403 @{error='La instalación está limitada a la base SiSRL ya seleccionada.'}
+          if([string]::IsNullOrWhiteSpace([string]$session.database) -or
+              [string]$requestData.database -ine [string]$session.database -or
+              $session.databases -notcontains [string]$session.database){
+            Send-Json $stream 403 @{error='La instalación está limitada a la base operativa ya seleccionada en la conexión.'}
             continue
           }
           if([string]$requestData.confirm -cne 'INSTALAR Y HABILITAR SP'){
@@ -1751,7 +1751,8 @@ try {
             continue
           }
           $cnUser=$session.connection
-          $cnUser.ChangeDatabase('SiSRL')
+          $activeDb=[string]$session.database
+          $cnUser.ChangeDatabase($activeDb)
           $identityCommand=$cnUser.CreateCommand()
           $identityCommand.CommandText='SELECT USER_NAME()'
           try{$principal=[string]$identityCommand.ExecuteScalar()}
@@ -1762,8 +1763,8 @@ try {
           }
           $cnAdmin=New-SqlConnection -Server ([string]$session.server) -Auth 'sql' -User $adminUser -Password $adminPassword
           $cnAdmin.Open()
-          $cnAdmin.ChangeDatabase('SiSRL')
-          Invoke-CircuitAutoInstall -Connection $cnAdmin -Database 'SiSRL'
+          $cnAdmin.ChangeDatabase($activeDb)
+          Invoke-CircuitAutoInstall -Connection $cnAdmin -Database $activeDb
           $status=$script:CircuitInstallStatus
           if($status.state -ne 'installed'){
             Send-Json $stream 200 @{state=[string]$status.state;success=$false;message=[string]$status.message}
@@ -1776,9 +1777,9 @@ try {
           try{$null=$grant.ExecuteNonQuery()}finally{$grant.Dispose()}
           $check=Get-CircuitDatabasePermission -Connection $cnUser
           if($check.execute -ne 1){
-            Save-CircuitInstallStatus -State 'pending_permission' -Database 'SiSRL' -Message 'El SP está instalado, pero el usuario habitual todavía no puede ejecutarlo. Revisá su mapeo SQL.'
+            Save-CircuitInstallStatus -State 'pending_permission' -Database $activeDb -Message 'El SP está instalado, pero el usuario habitual todavía no puede ejecutarlo. Revisá su mapeo SQL.'
           }else{
-            Save-CircuitInstallStatus -State 'installed' -Database 'SiSRL' -Message ('SP instalado y usuario '+$principal+' autorizado exclusivamente para ejecutar este circuito.')
+            Save-CircuitInstallStatus -State 'installed' -Database $activeDb -Message ('SP instalado y usuario '+$principal+' autorizado exclusivamente para ejecutar este circuito.')
           }
           Send-Json $stream 200 @{
             state=[string]$script:CircuitInstallStatus.state
@@ -1786,7 +1787,7 @@ try {
             message=[string]$script:CircuitInstallStatus.message
           }
         } catch {
-          Save-CircuitInstallStatus -State 'deployment_error' -Database 'SiSRL' -Message ('Falló la instalación temporal: '+$_.Exception.Message)
+          Save-CircuitInstallStatus -State 'deployment_error' -Database $(if($activeDb){$activeDb}else{[string]$session.database}) -Message ('Falló la instalación temporal: '+$_.Exception.Message)
           Send-Json $stream 200 @{state='deployment_error';success=$false;message=[string]$script:CircuitInstallStatus.message}
         } finally {
           $adminPassword=''
@@ -1803,15 +1804,16 @@ try {
             Send-Json $stream 409 @{error='Falta conexión SQL y base seleccionada. Abrí Núcleo → Datos.'}
             continue
           }
-          if([string]$state.database -ine 'SiSRL'){
-            Send-Json $stream 409 @{error=('Capitán Rodolfo opera únicamente sobre SiSRL. Base activa: '+[string]$state.database+'.')}
+          if([string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Falta seleccionar la base operativa desde Núcleo → Datos.'}
             continue
           }
+          $db=[string]$state.database
           $cn=$Sessions[$state.sessionId].connection
-          $ids=@(Get-StationOptions -Connection $cn -Database 'SiSRL')
+          $ids=@(Get-StationOptions -Connection $cn -Database $db)
           Send-Json $stream 200 @{
             connected=$true
-            database='SiSRL'
+            database=$db
             stations=$ids
             procedure='dbo.PA_CapitanRodolfo_CircuitoEstacion'
             version=$Version
@@ -1826,9 +1828,10 @@ try {
         # La factura solo se devuelve si coinciden ID_DESPACHO y ULDATE/FECHA.
         try {
           $state=Ensure-ActiveSession
-          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
-             Send-Json $stream 409 @{error='Conectá SiSRL para consultar el despacho.'};continue
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+             Send-Json $stream 409 @{error='Conectá SQL y seleccioná la base operativa para consultar el despacho.'};continue
           }
+          $db=[string]$state.database
           $inputData=$req.Body | ConvertFrom-Json
           $station=0;$sale=0
           if(-not [int]::TryParse([string]$inputData.idEstacion,[ref]$station) -or $station -le 0 -or
@@ -1836,10 +1839,10 @@ try {
              Send-Json $stream 400 @{error='Indicá estación e ID_SALE numéricos positivos.'};continue
           }
           $cn=$Sessions[$state.sessionId].connection
-          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+          if(@(Get-StationOptions -Connection $cn -Database $db) -notcontains $station){
              Send-Json $stream 403 @{error='No se autorizó la estación.'};continue
           }
-          $cn.ChangeDatabase('SiSRL')
+          $cn.ChangeDatabase($db)
           $dstation=Find-StationColumn -Connection $cn -ObjectName 'dbo.Despachos'
           $rstation=Find-StationColumn -Connection $cn -ObjectName 'dbo.RelacionCptsDespachos'
           $rkey=if(Get-SqlColumnExists -Connection $cn -Table 'dbo.RelacionCptsDespachos' -Name 'ID_DESPACHO'){'[ID_DESPACHO]'}
@@ -1888,9 +1891,10 @@ try {
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/payment-evidence'){
         try{
           $state=Ensure-ActiveSession
-          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
-             Send-Json $stream 409 @{error='Conectá SiSRL para consultar el comprobante.'};continue
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+             Send-Json $stream 409 @{error='Conectá SQL y seleccioná la base operativa para consultar el comprobante.'};continue
           }
+          $db=[string]$state.database
           $data=$req.Body | ConvertFrom-Json
           $station=0
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
@@ -1901,7 +1905,7 @@ try {
              Send-Json $stream 403 @{error='Estación no autorizada.'};continue
           }
           try{
-             $evidence=Get-VerifiedPaymentEvidence -Connection $cn -Station $station -Method ([string]$data.method) -Letra ([string]$data.letra) -Sucursal ([string]$data.sucursal) -Numero ([string]$data.numero)
+             $evidence=Get-VerifiedPaymentEvidence -Connection $cn -Database $db -Station $station -Method ([string]$data.method) -Letra ([string]$data.letra) -Sucursal ([string]$data.sucursal) -Numero ([string]$data.numero)
              Send-Json $stream 200 $evidence
           }catch{
              Send-Json $stream 422 @{error=('No se pudo confirmar la relación del pago: '+$_.Exception.Message)}
@@ -1915,9 +1919,10 @@ try {
         # card transaction to an invoice unless the returned keys match.
         try {
           $state=Ensure-ActiveSession
-          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
-             Send-Json $stream 409 @{error='Primero conectá SiSRL.'};continue
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+             Send-Json $stream 409 @{error='Primero conectá SQL y seleccioná la base operativa.'};continue
           }
+          $db=[string]$state.database
           $d=$req.Body | ConvertFrom-Json
           $station=0;$td=0;$tt=99999
           if(-not [int]::TryParse([string]$d.idEstacion,[ref]$station) -or $station -le 0){
@@ -1959,7 +1964,7 @@ try {
             idPosDevice=0
           }
           try {
-            $report=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_ListarTarjXTurno' -Parameters $parameters -MaxRows 5000
+            $report=Invoke-AllowedStoredProcedure -Connection $cn -Database $db -Procedure 'dbo.PA_ListarTarjXTurno' -Parameters $parameters -MaxRows 5000
             Send-Json $stream 200 @{source='dbo.PA_ListarTarjXTurno';station=$station;resultSets=@($report.resultSets);version=$Version}
           }catch{
             Send-Json $stream 422 @{error=('No pude consultar Tarjetas. Verificá el procedimiento, sus parámetros y el permiso EXECUTE: '+$_.Exception.Message)}
@@ -1973,10 +1978,11 @@ try {
         # PA_VentasFormasPago. No fabricated sums or injected SQL.
         try {
           $state=Ensure-ActiveSession
-          if($null -eq $state -or [string]$state.database -ine 'SiSRL'){
-            Send-Json $stream 409 @{error='Conectá primero la base SiSRL desde Núcleo → Datos.'}
+          if($null -eq $state -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Conectá SQL y seleccioná la base operativa desde Núcleo → Datos.'}
             continue
           }
+          $db=[string]$state.database
           $data=$req.Body | ConvertFrom-Json
           $station=0
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
@@ -2021,11 +2027,11 @@ try {
           try {
             # 5.000 rows per set; if any set reaches that limit the browser
             # shows an incomplete-data warning, not a fictitious daily total.
-            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
+            $result=Invoke-AllowedStoredProcedure -Connection $cn -Database $db -Procedure 'dbo.PA_VentasFormasPago' -Parameters $params -MaxRows 5000
             $sets=@($result.resultSets)
             if($sets.Count -eq 0){throw 'PA_VentasFormasPago no devolvió un conjunto de resultados.'}
             Send-Json $stream 200 @{
-              source='dbo.PA_VentasFormasPago';database='SiSRL';station=$station
+              source='dbo.PA_VentasFormasPago';database=$db;station=$station
               fechaDesde=$from.ToString('yyyy-MM-dd');fechaHasta=$until.ToString('yyyy-MM-dd')
               turnoDesde=$turnoDesde;turnoHasta=$turnoHasta
               resultSets=$sets
@@ -2044,7 +2050,7 @@ try {
         try {
           $st=Ensure-ActiveSession
           if($null -eq $st){Send-Json $stream 409 @{error='SQL desconectado.'};continue}
-          if([string]$st.database -ine 'SiSRL'){Send-Json $stream 409 @{error='Capitán Rodolfo requiere SiSRL para consultar cargas.'};continue}
+          if([string]::IsNullOrWhiteSpace([string]$st.database)){Send-Json $stream 409 @{error='Seleccioná la base operativa para consultar cargas.'};continue}
           $d=$req.Body|ConvertFrom-Json;$id=0;$day=[datetime]::MinValue
           if(-not [int]::TryParse([string]$d.idEstacion,[ref]$id) -or $id -lt 1 -or
             -not [datetime]::TryParseExact([string]$d.fecha,'yyyy-MM-dd',
@@ -2107,8 +2113,8 @@ try {
             Send-Json $stream 409 @{error='Falta conectar SQL desde Nucleo > Datos.'}
             continue
           }
-          if([string]$state.database -ine 'SiSRL'){
-            Send-Json $stream 409 @{error='Capitán Rodolfo requiere SiSRL para consultar despachos.'}
+          if([string]::IsNullOrWhiteSpace([string]$state.database)){
+            Send-Json $stream 409 @{error='Seleccioná la base operativa para consultar despachos.'}
             continue
           }
           $requestData=$req.Body | ConvertFrom-Json
@@ -2173,17 +2179,14 @@ try {
             Send-Json $stream 409 @{error='Conectá los datos desde Núcleo. No se muestran datos anteriores.'}
             continue
           }
-          if([string]$state.database -ine 'SiSRL'){
-            Send-Json $stream 409 @{error=('Capitán Rodolfo requiere SiSRL para Tanques, Surtidores, Cargas y Cobros. Base activa: '+[string]$state.database+'.')}
-            continue
-          }
+          
           $data=$req.Body | ConvertFrom-Json
           $station=0
           if(-not [int]::TryParse([string]$data.idEstacion,[ref]$station) -or $station -le 0){
             Send-Json $stream 400 @{error='Elegí una estación válida.'}
             continue
           }
-          $dbName='SiSRL'
+          $dbName=[string]$state.database
           $cn=$Sessions[$state.sessionId].connection
           if(@(Get-StationOptions -Connection $cn -Database $dbName) -notcontains $station){
             Send-Json $stream 403 @{error='La estación no está autorizada.'}
@@ -3134,7 +3137,7 @@ ORDER BY CASE WHEN LOWER(REPLACE(c.name,'_',''))='iddespacho' THEN 0
             }
           }
           Save-SqlProfile -Server $server -Auth $auth -User $user -Password $password -Database $selectedDb
-          if($selectedDb -eq 'SiSRL'){
+          if(-not [string]::IsNullOrWhiteSpace($selectedDb)){
             try{Invoke-CircuitAutoInstall -Connection $Sessions[$state.sessionId].connection -Database $selectedDb}
             catch{Save-CircuitInstallStatus -State 'deployment_error' -Database $selectedDb -Message $_.Exception.Message}
           }
@@ -3169,7 +3172,7 @@ ORDER BY s.name,t.name;
           $reader.Close()
           $sess["database"] = $database
           Save-SqlProfile -Server ([string]$sess.server) -Auth ([string]$sess.auth) -User ([string]$sess.user) -Password "" -Database $database
-          if($database -eq 'SiSRL'){
+          if(-not [string]::IsNullOrWhiteSpace($database)){
             try{Invoke-CircuitAutoInstall -Connection $cn -Database $database}
             catch{Save-CircuitInstallStatus -State 'deployment_error' -Database $database -Message $_.Exception.Message}
           }
