@@ -52,3 +52,26 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+
+      - name: Verificar VERSION publicado después de Pages
+        shell: bash
+        env:
+          PUBLIC_VERSION_URL: https://duiliomf.github.io/capitan-rodolfo/VERSION
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '\r\n ' < VERSION)"
+          [[ "$expected" =~ ^[0-9]+$ ]]
+          matched=0
+          for attempt in {1..12}; do
+            observed="$(curl --location --silent --show-error --fail --max-time 12 --header 'Cache-Control: no-cache' "$PUBLIC_VERSION_URL?sha=${GITHUB_SHA}&attempt=$attempt" 2>/dev/null | tr -d '\r\n ' || true)"
+            if [[ "$observed" == "$expected" ]]; then
+              matched=1
+              break
+            fi
+            sleep 5
+          done
+          if [[ "$matched" != 1 ]]; then
+            echo "::error::VERSION público no coincide con GitHub (C$expected)"
+            exit 1
+          fi
+          echo "VERSION público C$expected comprobado para $GITHUB_SHA"
