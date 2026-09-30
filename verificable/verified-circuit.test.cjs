@@ -5,7 +5,7 @@ const {verifyCircuit} = require('./verified-circuit.js');
 const emptySet = () => ({rows: [], columns: [], rowCount: 0, truncated: false});
 function validCircuit() {
   return {
-    source: 'sp', verified: true, connected: true, database: 'SiSRL',
+    source: 'sp', verified: true, connected: true, database: 'BaseOperativa',
     station: 1, fecha: '2026-09-27',
     tanks: emptySet(), hoses: emptySet(), receipts: emptySet(), company: emptySet(),
     dispatches: {rows: [
@@ -65,3 +65,5 @@ test('rechaza falta de estación, fecha o quinto conjunto', () => {
   delete payload.company;
   assert.throws(() => verifyCircuit(payload, 1), /company incompleto/i);
 });
+
+test('rechaza circuito sin nombre de base activa',()=>{ const p=validCircuit(); p.database=''; assert.throws(()=>verifyCircuit(p,1),/base/i); });
