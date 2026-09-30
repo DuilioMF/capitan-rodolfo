@@ -70,3 +70,12 @@ test('C98 descubre estaciones sin depender exclusivamente de ParamStock',()=>{
     assert.ok(bridge.includes(source),source+' no participa del descubrimiento');
   }
 });
+
+
+test('C99 Núcleo detecta el servicio servido desde el mismo origen local',()=>{
+  const nucleo=read('nucleo.html');
+  assert.match(nucleo,/desktop\?\[location\.origin,location\.origin\+'\/_doinglio_sql'\]/);
+  assert.match(nucleo,/\?\[location\.origin,location\.origin\+'\/_doinglio_sql'\]:\[\]/);
+  assert.match(nucleo,/modern\.length/);
+  assert.match(nucleo,/API de Conexión de núcleos no respondió/);
+});
