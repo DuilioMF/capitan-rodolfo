@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual del código: **98** — conexión SQL única; todos los módulos reutilizan el perfil y la base activa guardados.
+- Versión actual del código: **99** — conexión SQL única; todos los módulos reutilizan el perfil y la base activa guardados.
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -41,6 +41,13 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 - `assets/`: recursos visuales.
 - `bridge/`: conector local.
 
+
+## C99 — Núcleo usa el mismo servicio local (30/09/2026)
+
+- Corrige la contradicción visible: la barra podía mostrar `Conector v98 · SQL Maestros` mientras **Conexión de núcleos** decía que no encontraba el servicio.
+- La causa era que Núcleo buscaba `/_doinglio_sql/health` incluso cuando C98 ya servía Capitán directamente desde el mismo origen local.
+- Inteligencia y Conexión de núcleos ahora prueban primero `location.origin`, igual que el indicador general y el resolvedor compartido.
+- Si el conector existe pero `/api/doinglio/status` falla, Núcleo muestra ese error real en vez de informar falsamente una incompatibilidad de versión.
 
 ## C98 — Interfaz local unificada y conexión resistente (29/09/2026)
 
