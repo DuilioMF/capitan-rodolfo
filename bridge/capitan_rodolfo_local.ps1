@@ -1901,7 +1901,7 @@ try {
              Send-Json $stream 400 @{error='Estación inválida.'};continue
           }
           $cn=$Sessions[$state.sessionId].connection
-          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+          if(@(Get-StationOptions -Connection $cn -Database $db) -notcontains $station){
              Send-Json $stream 403 @{error='Estación no autorizada.'};continue
           }
           try{
@@ -1929,7 +1929,7 @@ try {
              Send-Json $stream 400 @{error='Estación inválida.'};continue
           }
           $cn=$Sessions[$state.sessionId].connection
-          if(@(Get-StationOptions -Connection $cn -Database 'SiSRL') -notcontains $station){
+          if(@(Get-StationOptions -Connection $cn -Database $db) -notcontains $station){
              Send-Json $stream 403 @{error='Estación no autorizada.'};continue
           }
           $culture=[Globalization.CultureInfo]::InvariantCulture
