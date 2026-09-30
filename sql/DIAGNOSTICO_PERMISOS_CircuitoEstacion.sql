@@ -1,7 +1,7 @@
 /* Capitán Rodolfo v74 - Diagnóstico de permisos (lectura, sin cambiar nada).
    EJECUTAR conectado como el mismo usuario SQL que usa Núcleo -> Datos.
 */
-USE [SiSRL];
+-- Ejecutar sobre la misma base operativa seleccionada en Capitán.
 GO
 SELECT DB_NAME() AS BaseDatos,
        USER_NAME() AS UsuarioBase,
