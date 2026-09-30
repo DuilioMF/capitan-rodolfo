@@ -60,7 +60,7 @@ test('Todas las páginas comparten JS nuevo; el lector y mapa no dependen de VER
  assert.ok(file('documentos.html').includes('docConnectorVersion'),'Lector no muestra versión SQL');
 });
 
-test('C95: Núcleo no vincula una estación con un conector de otra versión',()=>{
+test('Núcleo no vincula una estación con un conector de otra versión',()=>{
  const page=file('nucleo.html');
  assert.ok(page.includes('found.filter(x=>x.version===Number(document.body.dataset.capitanBuild))'));
  assert.ok(page.includes('no coinciden. Actualizá la pantalla o el conector'));

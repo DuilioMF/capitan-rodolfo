@@ -13,9 +13,11 @@ on:
       - "index.html"
       - "documentos.html"
       - "theme.js"
+      - "connection-manager.js"
       - "cobros.js"
       - "cobros.css"
       - "tests/ver-medios-navigation.test.js"
+      - "tests/conexion-unificada.test.js"
       - ".github/workflows/pages.yml"
       - ".github/workflows/validar-paquete-sql.yml"
   workflow_dispatch:
@@ -47,6 +49,7 @@ jobs:
             throw "El trabajador no compila"
           }
           node --test tests/circuito-compartido.test.js
+          node --test tests/conexion-unificada.test.js
       - name: Arrancar conector real y verificar ruta Explorador SQL sin base privada
         shell: powershell
         run: |

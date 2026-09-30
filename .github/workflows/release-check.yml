@@ -15,10 +15,12 @@ jobs:
           node-version: "22"
       - name: Verificar páginas y siete ventanas del código
         run: node --test tests/version-every-window.test.js
+      - name: Verificar conexión SQL única
+        run: node --test tests/conexion-unificada.test.js
       - name: Construir exactamente el paquete Pages
         run: |
           mkdir -p dist
-          cp *.html *.svg *.bat VERSION theme.css theme.js cobros.css cobros.js dist/
+          cp *.html *.svg *.bat VERSION theme.css theme.js connection-manager.js cobros.css cobros.js dist/
           cp -R assets bridge connector-node sql dist/
           mkdir -p dist/verificable
           cp verificable/verified-circuit.js dist/verificable/

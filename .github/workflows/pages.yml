@@ -33,10 +33,12 @@ jobs:
         run: node --test tests/version-every-window.test.js
       - name: Regression test — verified SQL circuit
         run: node --test verificable/verified-circuit.test.cjs
+      - name: Regression test — conexión SQL única
+        run: node --test tests/conexion-unificada.test.js
       - name: Prepare canonical GitHub source
         run: |
           mkdir -p dist
-          cp *.html *.svg *.bat VERSION theme.css theme.js cobros.css cobros.js dist/
+          cp *.html *.svg *.bat VERSION theme.css theme.js connection-manager.js cobros.css cobros.js dist/
           cp -R assets bridge connector-node sql dist/
           mkdir -p dist/verificable
           cp verificable/verified-circuit.js dist/verificable/
