@@ -137,11 +137,11 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 #truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
-<link rel="stylesheet" href="cobros.css?v=97">
-<link rel="stylesheet" href="theme.css?v=97">
-<script src="theme.js?v=97" defer></script>
+<link rel="stylesheet" href="cobros.css?v=98">
+<link rel="stylesheet" href="theme.css?v=98">
+<script src="theme.js?v=98" defer></script>
 </head>
-<body data-capitan-build="97">
+<body data-capitan-build="98">
 <div class="wrap">
 <header>
   <div class="brand">
@@ -151,7 +151,7 @@ h1 em{font-weight:500;color:#d9ae65}
   <nav class="nav">
     <a class="doinglio-home" href="https://duiliomf.github.io/doinglio/" target="_self" aria-label="Volver a DoingLio">← DoingLio</a>
     
-    <a class="primary" href="nucleo.html?v=93">◉ Núcleo</a>
+    <a class="primary" href="nucleo.html?v=98">◉ Núcleo</a>
   </nav>
 </header>
 
@@ -319,10 +319,10 @@ h1 em{font-weight:500;color:#d9ae65}
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build" aria-label="Código interno">R·97</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build" aria-label="Código interno">R·98</span></div>
 </div>
 <script src="verificable/verified-circuit.js"></script>
-<script src="connection-manager.js?v=97"></script>
+<script src="connection-manager.js?v=98"></script>
 <script>
 (async()=>{
  try{
@@ -694,31 +694,38 @@ h1 em{font-weight:500;color:#d9ae65}
  }
  async function refreshStation(){
    if(loading)return;
-   let found=null,lastError='';
+   let selected=null,lastError='';
    try{
-     const selected=await connectionManager.resolve({requireConnected:true,requiredDatabase:null});
-     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),18500);
-     try{
-       const data=await read(selected.base,'/api/station/ids',{signal:ctrl.signal});
-       
-       if(Number.parseInt(String(data.version),10)!==connectionManager.expectedVersion())throw new Error('La versión del conector cambió durante la consulta.');
-       found={base:selected.base,data};
-     }finally{clearTimeout(timer)}
+     selected=await connectionManager.resolve({requireConnected:true,requiredDatabase:null});
    }catch(e){lastError=e.message}
-   if(!found){
+   if(!selected){
      activeBridge=null;
      window.capitanSqlBridge=null;
      window.dispatchEvent(new Event('capitan:bridge-changed'));
      await refreshInstallState(null);
      clearCircuit();
-     warn(lastError||'No hay conexión SQL C97 activa. Abrí Núcleo → Datos.');
+     warn(lastError||'No hay conexión SQL C98 activa. Abrí Núcleo → Datos.');
      return;
    }
-   activeBridge=found.base;
+   activeBridge=selected.base;
    window.capitanSqlBridge=activeBridge;
    window.dispatchEvent(new Event('capitan:bridge-changed'));
    await refreshInstallState(activeBridge);
-   const data=found.data;
+   let data=null;
+   try{
+     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),18500);
+     try{
+       data=await read(selected.base,'/api/station/ids',{signal:ctrl.signal});
+       if(Number.parseInt(String(data.version),10)!==connectionManager.expectedVersion())throw new Error('La versión del conector cambió durante la consulta.');
+     }finally{clearTimeout(timer)}
+   }catch(e){
+     activeDatabase=selected.database||activeDatabase||'';
+     clearCircuit();
+     stationPicker.hidden=true;
+     connection.innerHTML='<span class="dot" style="background:#5ee6a8"></span> SQL conectado a <strong>'+esc(activeDatabase||'base activa')+'</strong>';
+     stationError.textContent='Conexión SQL correcta. No pude leer las estaciones: '+(e.message||'error de esquema/permisos.');
+     return;
+   }
    if(activeDatabase!==data.database){
      activeDatabase=data.database||'';
      circuit=null;stationConnected=false;
@@ -734,7 +741,12 @@ h1 em{font-weight:500;color:#d9ae65}
      const proposed=stations.includes(Number(old))?old:(stations.includes(Number(saved))?saved:(stations.length===1?String(stations[0]):''));
      stationSelect.value=proposed||'';
    }
-   if(!stations.length){clearCircuit();warn('La base activa no tiene estaciones reconocidas para esta conexión.');return}
+   if(!stations.length){
+     clearCircuit();
+     connection.innerHTML='<span class="dot" style="background:#5ee6a8"></span> SQL conectado a <strong>'+esc(activeDatabase||'base activa')+'</strong>';
+     stationError.textContent='La base activa no devolvió estaciones reconocibles.';
+     return;
+   }
    if(!stationSelect.value){
      clearCircuit();warn('SQL conectado a la base activa · elegí la estación para no mezclar datos.');
      return;
@@ -791,7 +803,7 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 </script>
 
-<script src="cobros.js?v=97"></script>
+<script src="cobros.js?v=98"></script>
 
 </body>
 </html>

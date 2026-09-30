@@ -21,7 +21,7 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual del código: **97** — conexión SQL única; todos los módulos reutilizan el perfil y la base activa guardados.
+- Versión actual del código: **98** — conexión SQL única; todos los módulos reutilizan el perfil y la base activa guardados.
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
@@ -41,6 +41,14 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 - `assets/`: recursos visuales.
 - `bridge/`: conector local.
 
+
+## C98 — Interfaz local unificada y conexión resistente (29/09/2026)
+
+- El instalador descarga la interfaz de Capitán junto con el conector y abre `http://127.0.0.1:<puerto>/app/`; la vieja pantalla técnica de conexión ya no se abre automáticamente y queda sólo en `/diagnostico`.
+- La pantalla principal y el conector comparten el mismo origen local, evitando bloqueos del navegador entre GitHub Pages y `127.0.0.1`.
+- La base activa continúa saliendo únicamente de `C:\\Sistemas\\DoingLio\\data\\capitan\\conexion.json`; Cargas, Cobros y Circuito no fijan un nombre de base.
+- La detección de estaciones intenta `ParamStock` y, si no está disponible, usa `Tanque`, `Despachos` o `Surpla` de la misma base activa.
+- Si falla la enumeración de estaciones, la UI ya no lo presenta como “SQL desconectado”: conserva la conexión y muestra el error de esquema/permisos por separado.
 
 ## C97 — Conexión SQL realmente única (29/09/2026)
 

@@ -11,7 +11,7 @@ const expectedVersion=()=>{
   return value;
 };
 const candidates=()=>[
-  ...(isLocalHost()?[location.origin+'/_doinglio_sql']:[]),
+  ...(isLocalHost()?[location.origin,location.origin+'/_doinglio_sql']:[]),
   ...PORTS.map(port=>'http://127.0.0.1:'+port)
 ];
 async function localFetch(url,options={}){

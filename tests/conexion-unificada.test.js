@@ -52,3 +52,21 @@ test('El paquete publicado incluye el resolvedor compartido',()=>{
     assert.match(read(workflow),/connection-manager\.js/);
   }
 });
+
+
+test('C98 abre Capitán local y conserva el diagnóstico técnico aparte',()=>{
+  const bat=read('CAPITAN_RODOLFO.bat');
+  const bridge=read('bridge/capitan_rodolfo_local.ps1');
+  const manager=read('connection-manager.js');
+  assert.match(bat,/\/app\//);
+  assert.match(bridge,/\/diagnostico/);
+  assert.match(bridge,/function Send-AppAsset/);
+  assert.match(manager,/location\.origin,location\.origin\+'\/_doinglio_sql'/);
+});
+
+test('C98 descubre estaciones sin depender exclusivamente de ParamStock',()=>{
+  const bridge=read('bridge/capitan_rodolfo_local.ps1');
+  for(const source of ['dbo.ParamStock','dbo.Tanque','dbo.Despachos','dbo.Surpla']){
+    assert.ok(bridge.includes(source),source+' no participa del descubrimiento');
+  }
+});

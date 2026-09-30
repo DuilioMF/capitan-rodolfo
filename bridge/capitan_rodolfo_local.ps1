@@ -168,7 +168,7 @@ function Send-Response {
     }
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
     $nl = [Environment]::NewLine
-    $allowedOrigins = @("https://duiliomf.github.io","https://doinglio.revalsoftia.com.ar","https://capitan.revalsoftia.com.ar","http://127.0.0.1:8790","http://localhost:8790")
+    $allowedOrigins = @("https://duiliomf.github.io","https://doinglio.revalsoftia.com.ar","https://capitan.revalsoftia.com.ar","https://doinglio.revalsoftia.chatgpt.site","https://capitan-rodolfo.revalsoftia.chatgpt.site","http://127.0.0.1:8790","http://localhost:8790")
     $corsOrigin = "https://duiliomf.github.io"
     if(-not [string]::IsNullOrWhiteSpace([string]$script:CurrentOrigin) -and $allowedOrigins -contains [string]$script:CurrentOrigin){
         $corsOrigin = [string]$script:CurrentOrigin
@@ -186,6 +186,38 @@ function Send-Response {
     $Stream.Write($headerBytes,0,$headerBytes.Length)
     if($bytes.Length -gt 0){ $Stream.Write($bytes,0,$bytes.Length) }
     $Stream.Flush()
+}
+
+
+function Send-AppAsset {
+    param([System.Net.Sockets.NetworkStream]$Stream,[string]$PathOnly)
+    $relative = if($PathOnly -eq '/app' -or $PathOnly -eq '/app/'){ 'index.html' } else { $PathOnly.Substring(5) }
+    $relative = $relative.Replace('\\','/')
+    if([string]::IsNullOrWhiteSpace($relative) -or $relative.Contains('..')){ return $false }
+    $allowed = @(
+      'index.html','nucleo.html','conexion-sql.html','mapa-vivo.html','documentos.html',
+      'theme.css','theme.js','connection-manager.js','cobros.css','cobros.js',
+      'brain-davinci.svg','VERSION','CAPITAN_RODOLFO.bat',
+      'assets/capitan-rodolfo-mapa-vivo.svg','verificable/verified-circuit.js',
+      'sql/PA_CapitanRodolfo_CircuitoEstacion.sql','sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql'
+    )
+    if($allowed -notcontains $relative){ return $false }
+    $full = Join-Path $AppDir ($relative.Replace('/','\'))
+    if(-not (Test-Path $full -PathType Leaf)){ return $false }
+    $ext=[IO.Path]::GetExtension($full).ToLowerInvariant()
+    $contentType=switch($ext){
+      '.html' {'text/html; charset=utf-8'}
+      '.js' {'application/javascript; charset=utf-8'}
+      '.css' {'text/css; charset=utf-8'}
+      '.svg' {'image/svg+xml; charset=utf-8'}
+      '.json' {'application/json; charset=utf-8'}
+      '.sql' {'text/plain; charset=utf-8'}
+      '.bat' {'text/plain; charset=utf-8'}
+      default {'text/plain; charset=utf-8'}
+    }
+    $body=[IO.File]::ReadAllText($full)
+    Send-Response -Stream $Stream -StatusCode 200 -ContentType $contentType -Body $body
+    return $true
 }
 
 function Save-OpenAIKey {
@@ -573,41 +605,43 @@ ORDER BY s.name,p.name;
 function Get-StationOptions {
     param($Connection,[string]$Database)
     $Connection.ChangeDatabase($Database)
-    if(-not (Test-Path $SpAllowlistPath)){throw 'Falta configuración local del conector.'}
-    $nameCmd=$Connection.CreateCommand()
-    $nameCmd.CommandTimeout=7
-    $nameCmd.CommandText=@"
+    $sources=@('dbo.ParamStock','dbo.Tanque','dbo.Despachos','dbo.Surpla')
+    foreach($objectName in $sources){
+        try {
+            $nameCmd=$Connection.CreateCommand()
+            $nameCmd.CommandTimeout=7
+            $nameCmd.CommandText=@"
 SELECT TOP(1) c.name FROM sys.columns c
-WHERE c.object_id=OBJECT_ID(N'dbo.ParamStock','U')
+WHERE c.object_id=OBJECT_ID(@ObjectName,'U')
 AND REPLACE(LOWER(c.name),'_','') IN ('idestacion','idestaicion')
 ORDER BY CASE WHEN REPLACE(LOWER(c.name),'_','')='idestacion' THEN 0 ELSE 1 END;
 "@
-    $col=$nameCmd.ExecuteScalar()
-    if($null -eq $col -or $col -is [DBNull]){
-       throw 'ParamStock no tiene una columna ID_ESTACION identificable. Revisá el esquema real.'
+            $null=$nameCmd.Parameters.Add('@ObjectName',[System.Data.SqlDbType]::NVarChar,257)
+            $nameCmd.Parameters['@ObjectName'].Value=$objectName
+            $col=$nameCmd.ExecuteScalar()
+            $nameCmd.Dispose()
+            if($null -eq $col -or $col -is [DBNull]){continue}
+            $parts=$objectName.Split('.',2)
+            $safeObject='['+$parts[0].Replace(']',']]')+'].['+$parts[1].Replace(']',']]')+']'
+            $safeColumn='['+([string]$col).Replace(']',']]')+']'
+            $cmd=$Connection.CreateCommand()
+            $cmd.CommandTimeout=7
+            $cmd.CommandText='SELECT DISTINCT '+$safeColumn+' AS IdEstacion FROM '+$safeObject+' WHERE '+$safeColumn+' IS NOT NULL ORDER BY '+$safeColumn+';'
+            $reader=$cmd.ExecuteReader()
+            $rows=New-Object 'System.Collections.Generic.List[int]'
+            try {
+                while($reader.Read()){
+                    if($reader.IsDBNull(0)){continue}
+                    $id=0
+                    $raw=([string]$reader.GetValue(0)).Trim()
+                    if([int]::TryParse($raw,[ref]$id) -and $id -gt 0 -and -not $rows.Contains($id)){$rows.Add($id)}
+                }
+            } finally {$reader.Close();$cmd.Dispose()}
+            if($rows.Count -gt 0){return @($rows.ToArray() | Sort-Object)}
+        } catch {}
     }
-    $name='['+([string]$col).Replace(']',']]')+']'
-    $cmd=$Connection.CreateCommand()
-    $cmd.CommandTimeout=7
-    # Compatibilidad SQL Server antiguo / bases con compatibilidad anterior a 110.
-    # No convertir la columna en SQL: convertir los IDs en memoria y rechazar
-    # cualquier valor que no sea un entero de estación válido.
-    $cmd.CommandText='SELECT DISTINCT '+$name+' AS IdEstacion FROM dbo.ParamStock WHERE '+$name+' IS NOT NULL ORDER BY '+$name+';'
-    $reader=$cmd.ExecuteReader()
-    $rows=New-Object 'System.Collections.Generic.List[int]'
-    try {
-        while($reader.Read()){
-            if($reader.IsDBNull(0)){continue}
-            $id=0
-            $raw=([string]$reader.GetValue(0)).Trim()
-            if([int]::TryParse($raw,[ref]$id) -and $id -gt 0 -and -not $rows.Contains($id)){
-                $rows.Add($id)
-            }
-        }
-    } finally {$reader.Close()}
-    return @($rows.ToArray() | Sort-Object)
+    throw 'No pude identificar estaciones en ParamStock, Tanque, Despachos ni Surpla de la base activa.'
 }
-
 function Read-StationReadOnlyQuery {
     param($Connection,[string]$Sql,[int]$Station,[datetime]$Day=[datetime]::MinValue)
     $cmd=$Connection.CreateCommand()
@@ -1579,7 +1613,7 @@ try {
         }catch{Send-Json $stream 400 @{ok=$false;error='Actualiza el conector o verifica el descubrimiento SQL.'}}
       }
       elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/doinglio/link'){
-        $allowed=@('https://duiliomf.github.io','https://capitan.revalsoftia.com.ar')
+        $allowed=@('https://duiliomf.github.io','https://capitan.revalsoftia.com.ar','https://doinglio.revalsoftia.com.ar','https://doinglio.revalsoftia.chatgpt.site','https://capitan-rodolfo.revalsoftia.chatgpt.site')
         $local=([string]$script:CurrentOrigin -match '^http://(127\.0\.0\.1|localhost):(8787|8797|18787|27877|37877|48787|57877|8790)$')
         if($script:CurrentOrigin -and -not $local -and $allowed -notcontains [string]$script:CurrentOrigin){
           Send-Json $stream 403 @{ok=$false;error='Origen no autorizado.'};continue
@@ -2373,8 +2407,16 @@ try {
           Send-Json $stream 200 @{connected=$true;sessionId=$state.sessionId;server=$state.server;auth=$state.auth;user=$state.user;databases=$state.databases;database=$state.database}
         }
       }
-      elseif($req.Method -eq 'GET' -and ($pathOnly -eq '/' -or $pathOnly -eq '/index.html')){
+      elseif($req.Method -eq 'GET' -and $pathOnly -eq '/diagnostico'){
         Send-Response $stream 200 "text/html; charset=utf-8" (Get-HomeHtml)
+      }
+      elseif($req.Method -eq 'GET' -and ($pathOnly -eq '/' -or $pathOnly -eq '/index.html' -or $pathOnly -eq '/app')){
+        Send-Redirect $stream '/app/'
+      }
+      elseif($req.Method -eq 'GET' -and ($pathOnly -eq '/app/' -or $pathOnly.StartsWith('/app/'))){
+        if(-not (Send-AppAsset -Stream $stream -PathOnly $pathOnly)){
+          Send-Response $stream 404 'text/plain; charset=utf-8' 'Archivo local no encontrado.'
+        }
       }
       elseif($req.Method -eq 'GET' -and $pathOnly -eq '/mapa-vivo'){
         try {
