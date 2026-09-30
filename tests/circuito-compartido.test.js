@@ -5,12 +5,12 @@ const bridge=fs.readFileSync('bridge/capitan_rodolfo_local.ps1','utf8');
 const worker=fs.readFileSync('bridge/doinglio_sql_queue_worker.ps1','utf8');
 const route=bridge.split("elseif($req.Method -eq 'POST' -and $pathOnly -eq '/api/station/circuit'){")[1]?.split("elseif($req.Method -eq 'GET' -and $pathOnly -eq '/api/station-summary'){")[0];
 const latest=worker.split('if([string]$job.intent -eq "latest_dispatch"){')[1]?.split('$result=Invoke-RestMethod -Uri ($base+"/api/station/circuit")')[0];
-test('Circuito de página y WhatsApp comparten ruta y usan la base guardada',()=>{
+test('Circuito de página y WhatsApp comparten ruta y fijan la base operativa SiSRL',()=>{
   assert.ok(route&&latest,'Se localizaron los dos bloques');
-  assert.match(route,/\$dbName=\[string\]\$state\.database/);
+  assert.match(route,/state\.database -ine 'SiSRL'/);
+  assert.match(route,/\$dbName='SiSRL'/);
   assert.match(route,/Get-StationOptions -Connection \$cn -Database \$dbName/);
   assert.match(route,/Invoke-AllowedStoredProcedure -Connection \$cn -Database \$dbName/);
-  assert.doesNotMatch(route,/SiSRL/i);
   assert.match(latest,/\$base\+"\/api\/station\/circuit"/);
   assert.doesNotMatch(latest,/latest-dispatch/);
 });
