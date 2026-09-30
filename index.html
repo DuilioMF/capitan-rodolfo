@@ -708,6 +708,7 @@ h1 em{font-weight:500;color:#d9ae65}
    if(!found){
      activeBridge=null;
      window.capitanSqlBridge=null;
+     window.dispatchEvent(new Event('capitan:bridge-changed'));
      await refreshInstallState(null);
      clearCircuit();
      warn(lastError||'No hay conexión SQL C96 sobre SiSRL. Abrí Núcleo → Datos.');
@@ -715,6 +716,7 @@ h1 em{font-weight:500;color:#d9ae65}
    }
    activeBridge=found.base;
    window.capitanSqlBridge=activeBridge;
+   window.dispatchEvent(new Event('capitan:bridge-changed'));
    await refreshInstallState(activeBridge);
    const data=found.data;
    if(activeDatabase!==data.database){
