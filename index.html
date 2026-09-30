@@ -137,11 +137,11 @@ h1 em{font-weight:500;color:#d9ae65}
 .step[role="button"]{cursor:pointer}.step[role="button"]:focus-visible{outline:2px solid #d9823b;outline-offset:3px}
 #truckModal{z-index:5100}#truckModal .tank-dialog{border-radius:17px}#truckModal .tank-head{background:#1d170f}
 </style>
-<link rel="stylesheet" href="cobros.css?v=95">
-<link rel="stylesheet" href="theme.css?v=95">
-<script src="theme.js?v=95" defer></script>
+<link rel="stylesheet" href="cobros.css?v=96">
+<link rel="stylesheet" href="theme.css?v=96">
+<script src="theme.js?v=96" defer></script>
 </head>
-<body data-capitan-build="95">
+<body data-capitan-build="96">
 <div class="wrap">
 <header>
   <div class="brand">
@@ -319,9 +319,10 @@ h1 em{font-weight:500;color:#d9ae65}
 </section>
 
 <div class="scribble">stazione · flusso · controllo · memoria</div>
-<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build" aria-label="Código interno">R·95</span></div>
+<div class="footer"><span>DOINGLIO · CAPITÁN RODOLFO</span><span class="build" id="build" aria-label="Código interno">R·96</span></div>
 </div>
 <script src="verificable/verified-circuit.js"></script>
+<script src="connection-manager.js?v=96"></script>
 <script>
 (async()=>{
  try{
@@ -350,9 +351,8 @@ h1 em{font-weight:500;color:#d9ae65}
  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
  const nf=new Intl.NumberFormat('es-AR',{maximumFractionDigits:2});
  const money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
- const desktop=['127.0.0.1','localhost'].includes(location.hostname);
- const bridges=[...(desktop?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
- const localFetch=(url,opts={})=>fetch(url,{cache:'no-store',...opts,...(desktop?{}:{targetAddressSpace:'local'})});
+ const connectionManager=window.CapitanConnectionManager;
+ const localFetch=(url,opts={})=>connectionManager.localFetch(url,opts);
  const stationSelect=document.getElementById('stationId');
  const stationPicker=document.getElementById('stationPicker');
  const stationError=document.getElementById('stationError');
@@ -695,37 +695,26 @@ h1 em{font-weight:500;color:#d9ae65}
  async function refreshStation(){
    if(loading)return;
    let found=null,lastError='';
-   // Evitar bloqueos y conexiones de versiones anteriores: leer salud en paralelo.
-   const healths=await Promise.all(bridges.map(async base=>{
-     const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),1600);
-     try{
-       const r=await localFetch(base+'/health',{signal:ctrl.signal});
-       if(!r.ok)return null;
-       const h=await r.json();
-       if(!h.ok||!h.connected)return null;
-       return {base,version:Number.parseInt(String(h.version),10)||0};
-     }catch(_){return null}finally{clearTimeout(timer)}
-   }));
-   const candidates=healths.filter(Boolean).sort((a,b)=>b.version-a.version);
-   if(candidates.length){
-     const preferred=candidates[0];
+   try{
+     const selected=await connectionManager.resolve({requireConnected:true,requiredDatabase:'SiSRL'});
      const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),18500);
-     try{found={base:preferred.base,data:await read(preferred.base,'/api/station/ids',{signal:ctrl.signal})}}
-     catch(e){lastError='El SQL del conector v'+preferred.version+' no devolvió estaciones: '+e.message}
-     finally{clearTimeout(timer)}
-   }else lastError='No hay un conector con SQL conectado; abrí Núcleo → Datos.';
+     try{
+       const data=await read(selected.base,'/api/station/ids',{signal:ctrl.signal});
+       if(String(data.database||'').toLowerCase()!=='sisrl')throw new Error('La conexión operativa debe usar SiSRL.');
+       if(Number.parseInt(String(data.version),10)!==connectionManager.expectedVersion())throw new Error('La versión del conector cambió durante la consulta.');
+       found={base:selected.base,data};
+     }finally{clearTimeout(timer)}
+   }catch(e){lastError=e.message}
    if(!found){
      activeBridge=null;
      window.capitanSqlBridge=null;
-     window.dispatchEvent(new Event('capitan:bridge-changed'));
      await refreshInstallState(null);
      clearCircuit();
-     warn(lastError||'No hay conexión SQL. Abrí Núcleo → Datos.');
+     warn(lastError||'No hay conexión SQL C96 sobre SiSRL. Abrí Núcleo → Datos.');
      return;
    }
    activeBridge=found.base;
    window.capitanSqlBridge=activeBridge;
-   window.dispatchEvent(new Event('capitan:bridge-changed'));
    await refreshInstallState(activeBridge);
    const data=found.data;
    if(activeDatabase!==data.database){
@@ -743,9 +732,9 @@ h1 em{font-weight:500;color:#d9ae65}
      const proposed=stations.includes(Number(old))?old:(stations.includes(Number(saved))?saved:(stations.length===1?String(stations[0]):''));
      stationSelect.value=proposed||'';
    }
-   if(!stations.length){clearCircuit();warn('La base '+activeDatabase+' no tiene tanques con ID de estación reconocido.');return}
+   if(!stations.length){clearCircuit();warn('SiSRL no tiene estaciones reconocidas para esta conexión.');return}
    if(!stationSelect.value){
-     clearCircuit();warn('SQL conectado a '+activeDatabase+' · elegí la estación para no mezclar datos.');
+     clearCircuit();warn('SQL conectado a SiSRL · elegí la estación para no mezclar datos.');
      return;
    }
    await loadCircuit();
@@ -766,7 +755,7 @@ h1 em{font-weight:500;color:#d9ae65}
  let pc=null,dc=null,stream=null,bridge=null,active=false,assistantLine=null;
  const addLine=(who,text)=>{const p=document.createElement('p');p.className='voice-line';const b=document.createElement('b');b.textContent=who+': ';p.append(b,document.createTextNode(text));transcript.appendChild(p);transcript.scrollTop=transcript.scrollHeight;return p};
  const localFetch=(url,options={})=>fetch(url,{cache:'no-store',...options,...(['127.0.0.1','localhost'].includes(location.hostname)?{}:{targetAddressSpace:'local'})});
- async function findBridge(){const found=await Promise.all(BRIDGES.map(async base=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),1600);try{const r=await localFetch(base+'/health',{signal:c.signal});if(!r.ok)return null;const h=await r.json();return h.ok?{base,connected:!!h.connected,version:Number.parseInt(String(h.version),10)||0}:null}catch(_){return null}finally{clearTimeout(t)}}));const ready=found.filter(Boolean).sort((a,b)=>Number(b.connected)-Number(a.connected)||b.version-a.version);if(ready.length)return ready[0].base;throw new Error('Conector local no encontrado. Abrí Núcleo → Datos.')}
+ async function findBridge(){const selected=await window.CapitanConnectionManager.resolve({requireConnected:true,requiredDatabase:'SiSRL'});return selected.base}
  async function callSql(args){
    const stateResponse=await localFetch(bridge+'/api/state'),state=await stateResponse.json();
    const sessionId=state.sessionId,database=state.database;
@@ -800,7 +789,7 @@ h1 em{font-weight:500;color:#d9ae65}
 })();
 </script>
 
-<script src="cobros.js?v=95"></script>
+<script src="cobros.js?v=96"></script>
 
 </body>
 </html>
