@@ -141,7 +141,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  logDiag('Página v96 · '+location.href);
  logDiag('Origen: '+location.origin);
  const connectionManager=window.CapitanConnectionManager;const desktop=['127.0.0.1','localhost'].includes(location.hostname);
- let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SISRL';
+ let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SiSRL';
 
  const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:((url.endsWith('/api/circuit/install')||url.endsWith('/api/circuit/admin-install'))?120000:25000));try{return await connectionManager.localFetch(url,{...options,signal:ac.signal})}finally{clearTimeout(timer)}};
  async function get(path){const r=await localFetch(bridge+path);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
