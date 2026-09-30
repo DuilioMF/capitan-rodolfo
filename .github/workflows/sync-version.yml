@@ -1,18 +1,58 @@
 name: Sync project version
 
+# Actualizar Trello/Supabase sólo después del deploy exitoso y VERSION público verificado.
 on:
-  push:
+  workflow_run:
+    workflows: ["Deploy Capitán Rodolfo"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   notify-version-sync:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Memoria Duilio
+      - name: Verificar SHA y VERSION de main
+        id: release
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl --fail --show-error --silent --retry 3 \
-            -X POST \
-            -H 'Content-Type: application/json' \
-            -d '{"repository":"DuilioMF/capitan-rodolfo","sha":"${{ github.sha }}","ref":"${{ github.ref }}"}' \
+          set -euo pipefail
+          current="$(curl -fsSL --header "Authorization: Bearer $GH_TOKEN" --header 'Accept: application/vnd.github+json' "https://api.github.com/repos/DuilioMF/capitan-rodolfo/commits/main" | python3 -c 'import json,sys;print(json.load(sys.stdin)["sha"])')"
+          [[ "$current" == "$RELEASE_SHA" ]] || { echo "::error::El deploy no corresponde a main actual"; exit 1; }
+          expected="$(curl -fsSL "https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/$RELEASE_SHA/VERSION" | tr -d '\r\n ')"
+          [[ "$expected" =~ ^[0-9]+$ ]] || { echo "::error::VERSION inválido"; exit 1; }
+          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "version=C$expected" >> "$GITHUB_OUTPUT"
+          echo "number=$expected" >> "$GITHUB_OUTPUT"
+      - name: Revalidar la versión realmente publicada
+        shell: bash
+        env:
+          EXPECTED: ${{ steps.release.outputs.number }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+          published="$(curl --location -fsSL --max-time 20 --header 'Cache-Control: no-cache' "https://duiliomf.github.io/capitan-rodolfo/VERSION?sha=$RELEASE_SHA" | tr -d '\r\n ')"
+          [[ "$published" == "$EXPECTED" ]] || { echo "::error::Pages C$published != main C$EXPECTED"; exit 1; }
+      - name: Notificar n8n con evidencia de publicación
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 -c 'import json,os;print(json.dumps({"repository":"DuilioMF/capitan-rodolfo","sha":os.environ["RELEASE_SHA"],"ref":"refs/heads/main","version":os.environ["RELEASE_VERSION"],"publication_verified":True}))' > /tmp/release.json
+          curl --fail --show-error --silent --retry 3 --retry-all-errors \
+            -X POST -H 'Content-Type: application/json' \
+            --data-binary @/tmp/release.json \
             'https://n8n.srv1251563.hstgr.cloud/webhook/memoria-version-sync-github-v1'
