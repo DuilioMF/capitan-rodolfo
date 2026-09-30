@@ -21,15 +21,15 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 
 - Repositorio: `DuilioMF/capitan-rodolfo`
 - Rama principal: `main`
-- Versión actual del código: **94** (visibilidad de versión; la validación de Cobros con SiSRL real sigue pendiente)
+- Versión actual del código: **97** — conexión SQL única; todos los módulos reutilizan el perfil y la base activa guardados.
 - Web activa: `https://duiliomf.github.io/capitan-rodolfo/`
 - Tarjeta operativa: `https://trello.com/c/Ju1hmWW9`
 
 ## Conexión
 
 - Motor: **SQL Server**
-- Conector local: `127.0.0.1:8787`
-- Carpeta local objetivo: `C:\Sistemas\CapitanRodolfo`
+- Conector local: puerto resuelto automáticamente entre los puertos permitidos; no se fija un puerto en las pantallas ni utilitarios.
+- Perfil SQL persistente: `C:\Sistemas\DoingLio\data\capitan\conexion.json` y contraseña protegida fuera del código.
 - La contraseña no se guarda en GitHub.
 
 ## Archivos principales
@@ -40,6 +40,16 @@ Especialista de DoingLio para estaciones de servicio. Tablero Vivo con estética
 - `mapa-vivo.html`: mapa operativo.
 - `assets/`: recursos visuales.
 - `bridge/`: conector local.
+
+
+## C97 — Conexión SQL realmente única (29/09/2026)
+
+- `conexion.json` es la única fuente persistente de servidor, autenticación, usuario y base activa.
+- Inicio, Cargas, Cobros, Circuito, Núcleo y DoingLio reutilizan la misma sesión del conector local.
+- Ningún endpoint operativo ni instalador decide el nombre de la base por su cuenta; usa la base activa del perfil.
+- El conector Node legado queda retirado y no puede abrir un segundo pool SQL.
+- Los scripts de instalación del circuito trabajan sobre la base que ya está seleccionada en SQL y bloquean bases de sistema.
+- Los utilitarios de estado/reinicio resuelven el conector activo en vez de asumir un puerto fijo.
 
 ## Voz con OpenAI (revisión 48)
 

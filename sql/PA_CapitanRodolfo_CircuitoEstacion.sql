@@ -1,6 +1,6 @@
 /*
  CAPITAN RODOLFO - CIRCUITO DE ESTACION
- Archivo de despliegue. Ejecutar en SSMS sobre la base SiSRL.
+ Archivo de despliegue. Ejecutar en SSMS sobre la misma base seleccionada en Núcleo → Datos.
  Compatible con SQL Server 2008+ y bases de compatibilidad anterior a 110.
  El script usa creacion condicional y ALTER PROCEDURE.
  NO borra ni modifica datos de negocio.
@@ -17,7 +17,11 @@
  NOTA: Isla=(Cara+1)/2 presupone numeracion de caras 1-2, 3-4, etc.
 */
 
-USE [SiSRL];
+IF DB_NAME() IN ('master','model','msdb','tempdb')
+BEGIN
+    RAISERROR('Seleccioná la base operativa de Capitán antes de instalar el circuito.',16,1);
+    RETURN;
+END;
 GO
 
 -- Crear firma vacia unicamente si es la primera instalacion.

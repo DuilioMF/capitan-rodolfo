@@ -3,12 +3,12 @@ CAPITAN RODOLFO v84 - INSTALADOR PARA ADMINISTRADOR SQL
 Incluye los ajustes de Tanques, Surtidores, Carga y comprobantes.
 Requiere privilegios para ALTER PROCEDURE y GRANT EXECUTE sobre el SP.
 No modifica movimientos comerciales.
-Verificá USER_NAME() de la conexión DUI antes de ejecutar el GRANT.
+El instalador trabaja sobre la base actualmente seleccionada; no fija nombre de base ni usuario.
 */
 
 /*
  CAPITAN RODOLFO - CIRCUITO DE ESTACION
- Archivo de despliegue. Ejecutar en SSMS sobre la base SiSRL.
+ Archivo de despliegue. Ejecutar en SSMS sobre la misma base seleccionada en Núcleo → Datos.
  Compatible con SQL Server 2008+ y bases de compatibilidad anterior a 110.
  El script usa creacion condicional y ALTER PROCEDURE.
  NO borra ni modifica datos de negocio.
@@ -25,7 +25,11 @@ Verificá USER_NAME() de la conexión DUI antes de ejecutar el GRANT.
  NOTA: Isla=(Cara+1)/2 presupone numeracion de caras 1-2, 3-4, etc.
 */
 
-USE [SiSRL];
+IF DB_NAME() IN ('master','model','msdb','tempdb')
+BEGIN
+    RAISERROR('Seleccioná la base operativa de Capitán antes de instalar el circuito.',16,1);
+    RETURN;
+END;
 GO
 
 -- Crear firma vacia unicamente si es la primera instalacion.
@@ -572,14 +576,23 @@ GO
  ORDER BY t.name,c.column_id;
 */
 
--- Habilitar al usuario de la aplicación para ejecutar SOLAMENTE este SP.
--- Un administrador debe verificar el nombre del usuario de BASE, no del login.
-USE [SiSRL];
-GO
-DECLARE @UsuarioBD SYSNAME = N'dui';
-IF USER_ID(@UsuarioBD) IS NULL
+-- Habilitación opcional para ejecución manual desde SSMS.
+-- C97 obtiene el usuario real desde la conexión habitual cuando se usa el instalador de la aplicación.
+-- Si se ejecuta este archivo manualmente, completar explícitamente el usuario de BASE.
+IF DB_NAME() IN ('master','model','msdb','tempdb')
 BEGIN
-    RAISERROR('El usuario dui no existe como principal en SiSRL. Revisá USER_NAME() con su conexión y cambiá @UsuarioBD.',10,1);
+    RAISERROR('Seleccioná la base operativa de Capitán antes de instalar el circuito.',16,1);
+    RETURN;
+END;
+GO
+DECLARE @UsuarioBD SYSNAME = NULL;
+IF @UsuarioBD IS NULL
+BEGIN
+    PRINT 'SP instalado. Para habilitar un usuario manualmente, asigná @UsuarioBD al valor USER_NAME() de su conexión y ejecutá GRANT EXECUTE sólo sobre este SP.';
+END
+ELSE IF USER_ID(@UsuarioBD) IS NULL
+BEGIN
+    RAISERROR('El usuario indicado no existe en la base activa. Revisá USER_NAME() desde la conexión habitual.',10,1);
 END
 ELSE
 BEGIN

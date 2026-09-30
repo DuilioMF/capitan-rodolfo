@@ -57,7 +57,7 @@ function portRank(base){
 }
 async function resolve(options={}){
   const requireConnected=options.requireConnected!==false;
-  const requiredDatabase=options.requiredDatabase===undefined?'SiSRL':options.requiredDatabase;
+  const requiredDatabase=options.requiredDatabase===undefined?null:options.requiredDatabase;
   const expected=expectedVersion();
   const all=await probeAll();
   const exact=all.filter(item=>item.version===expected);
@@ -83,7 +83,7 @@ async function resolve(options={}){
     }
     if(requiredDatabase){
       const dbs=[...new Set(exact.filter(item=>item.connected).map(item=>item.database||'sin base'))].join(', ');
-      throw new Error('Capitán C'+expected+' requiere '+requiredDatabase+' para operar. Base activa: '+(dbs||'sin base')+'.');
+      throw new Error('La operación pidió la base '+requiredDatabase+', pero la conexión única está en '+(dbs||'sin base')+'.');
     }
     throw new Error('El conector C'+expected+' no está listo para esta operación.');
   }

@@ -1,16 +1,16 @@
 @echo off
 setlocal
 chcp 65001 >nul
-title Capitán Rodolfo - Prueba REAL de Cobros en SiSRL
+title Capitán Rodolfo - Prueba REAL de Cobros sobre la conexión activa
 echo.
 echo =========================================================
-echo       PRUEBA REAL DE COBROS - SISRL - ESTACION 1
+echo       PRUEBA REAL DE COBROS - CONEXION ACTIVA - ESTACION 1
 echo =========================================================
 echo.
 echo Este diagnóstico NO modifica SQL ni comparte los cobros.
 echo Utiliza el servicio local instalado en esta computadora.
 echo.
-set "FILE=%TEMP%\verificar_cobros_sisrl.ps1"
+set "FILE=%TEMP%\verificar_cobros_conexion_activa.ps1"
 set "RAW=https://raw.githubusercontent.com/DuilioMF/capitan-rodolfo/main/diagnostico/verificar_cobros_sisrl.ps1"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%?v=%RANDOM%' -OutFile '%FILE%'" 
 if errorlevel 1 (

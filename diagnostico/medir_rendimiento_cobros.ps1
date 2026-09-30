@@ -12,7 +12,7 @@ function Say([string]$message){
 }
 function Query([string]$sql,[string]$filename) {
   try {
-    $request=@{sessionId=$script:state.sessionId;database='SiSRL';sql=$sql}|ConvertTo-Json -Compress -Depth 6
+    $request=@{sessionId=$script:state.sessionId;database=[string]$script:state.database;sql=$sql}|ConvertTo-Json -Compress -Depth 6
     $result=Invoke-RestMethod -Method POST -Uri ($script:base+'/api/ai/sql-read') -Body $request -ContentType 'application/json' -TimeoutSec 24
     # Resultados de diagnóstico, no tablas de ventas ni contraseñas.
     $target=Join-Path $script:root $filename
@@ -43,13 +43,13 @@ try {
   Say ('Conector v'+$selected.version+' ('+$base+')')
   if(!$selected.connected){throw 'El conector responde pero SQL está desconectado.'}
   $script:state=Invoke-RestMethod ($base+'/api/state') -TimeoutSec 5
-  if($state.connected -ne $true -or $state.database -ine 'SiSRL' -or !$state.sessionId) {
-    throw 'La sesión activa no está conectada a SiSRL.'
+  if($state.connected -ne $true -or [string]::IsNullOrWhiteSpace([string]$state.database) -or !$state.sessionId) {
+    throw 'La sesión activa no tiene una base seleccionada.'
   }
-  Say 'PASS: reutilizando la MISMA sesión activa SiSRL de Capitán.'
+  Say ('PASS: reutilizando la MISMA sesión activa de Capitán. Base: '+[string]$state.database)
   $proc="dbo.PA_VentasFormasPago"
   $perm=@(Query "SELECT DB_NAME() AS base,OBJECT_ID(N'dbo.PA_VentasFormasPago',N'P') AS objeto,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'EXE'+N'CUTE') AS puedeEjecutar,HAS_PERMS_BY_NAME(N'dbo.PA_VentasFormasPago',N'OBJECT',N'VIEW DEFINITION') AS puedeVerCodigo" '01_PERMISOS.json')
-  if(!$perm.Count -or !$perm[0].objeto){throw 'El procedimiento no es visible en SiSRL con esta conexión. Confirmá su existencia.'}
+  if(!$perm.Count -or !$perm[0].objeto){throw 'El procedimiento no es visible en la base activa con esta conexión. Confirmá su existencia.'}
   $access=if($null -eq $perm[0].puedeEjecutar){'sin informacion'}else{[string]$perm[0].puedeEjecutar}
   Say ('SP encontrado: '+$proc+'. EXECUTE='+$access)
   if($perm[0].puedeEjecutar -eq 0){Say 'ATENCION: falta permiso EXECUTE; esto es independiente del error de lentitud.'}

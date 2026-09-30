@@ -1,4 +1,4 @@
-/* Capitán Rodolfo · medios de pago exclusivamente desde SiSRL autorizado. */
+/* Capitán Rodolfo · medios de pago desde la única base SQL activa autorizada. */
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
@@ -48,7 +48,7 @@ let data=null,rows=[],columnNames=[],method='all',visible=50,paramsKey='',workin
 let latestRequest=0;
 const connectionManager=window.CapitanConnectionManager;
 async function resolveBridge(){
- const selected=await connectionManager.resolve({requireConnected:true,requiredDatabase:'SiSRL'});
+ const selected=await connectionManager.resolve({requireConnected:true,requiredDatabase:null});
  return selected.base;
 }
 $('paymentsFrom').value=today();$('paymentsTo').value=today();
@@ -277,7 +277,7 @@ async function search(){
  if(!p.idEstacion){notice('Elegí la estación en el tablero antes de consultar cobros.','error');return}
  const request=++latestRequest;
  working=true;$('paymentsSearch').disabled=true;
- notice('Consultando SiSRL.dbo.PA_VentasFormasPago mediante la conexión SQL local…');
+ notice('Consultando dbo.PA_VentasFormasPago mediante la conexión SQL activa…');
  $('paymentsEvidence').hidden=true;
  try{
    const response=await api('/api/station/payments',p);
@@ -287,7 +287,7 @@ async function search(){
    data=response;rows=s&&Array.isArray(s.rows)?s.rows:[];columnNames=s?s.columns:[];
    paramsKey=JSON.stringify(p);visible=50;method='all';
    const incomplete=!!(response.truncated||s?.truncated);
-   if(!s){const columns=sets.flatMap(x=>Array.isArray(x.columns)?x.columns:[]).slice(0,32);notice('SiSRL.PA_VentasFormasPago respondió, pero no reconozco los medios de pago. Columnas SQL recibidas: '+(columns.join(', ')||'ninguna')+'. Revisá el SP de la base SiSRL.','warn')}
+   if(!s){const columns=sets.flatMap(x=>Array.isArray(x.columns)?x.columns:[]).slice(0,32);notice('PA_VentasFormasPago respondió en la base activa, pero no reconozco los medios de pago. Columnas SQL recibidas: '+(columns.join(', ')||'ninguna')+'. Revisá el SP de la base activa.','warn')}
    else if(incomplete)notice('ATENCIÓN: se alcanzó el límite de 5.000 filas. Los totales son PARCIALES; acotá las fechas.','error');
    else if(saleFilter&&!rows.some(matchesSale))notice('El comprobante '+saleFilter.letra+' '+saleFilter.sucursal+'-'+saleFilter.numero+' no apareció en el SP para las fechas y turnos seleccionados. No se atribuyen otros cobros.','warn');
    else if(sets.length>1)notice('Se muestra un único resultado del SP para evitar duplicar importes de otros conjuntos.','warn');

@@ -88,7 +88,7 @@ jobs:
             $expectedVersion=(Get-Content VERSION -Raw).Trim()
             if([string]$h.version -ne $expectedVersion -or $h.apiSqlObject -ne $true){throw "Health incompatible: versión=$($h.version), esperado=$expectedVersion, Explorador=$($h.apiSqlObject)"}
             $uri="http://127.0.0.1:$port/api/sql/object"
-            $body=@{sessionId='sesion-inexistente';database='SiSRL';name='dbo.Tanque';type='tabla';action='read'}|ConvertTo-Json
+            $body=@{sessionId='sesion-inexistente';database='BASE_CI';name='dbo.Tanque';type='tabla';action='read'}|ConvertTo-Json
             $code=0
             try {
               $null=Invoke-WebRequest -UseBasicParsing -Uri $uri -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 5
@@ -102,7 +102,7 @@ jobs:
             foreach($endpoint in @('/api/circuit/install','/api/circuit/admin-install')){
               $code=0
               try{
-                $payload=@{sessionId='inexistente';database='SiSRL';confirm='INSTALAR SP'}|ConvertTo-Json
+                $payload=@{sessionId='inexistente';database='BASE_CI';confirm='INSTALAR SP'}|ConvertTo-Json
                 Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:"+$port+$endpoint) -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 5|Out-Null
                 throw "Ruta sin sesión fue aceptada: $endpoint"
               } catch [System.Net.WebException]{
@@ -118,7 +118,7 @@ jobs:
           } finally {
             if($proc){Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue}
           }
-      - name: Regresión Ver medios y conexión SiSRL
+      - name: Regresión Ver medios y conexión activa
         shell: powershell
         run: node --test tests/ver-medios-navigation.test.js
       - name: Verificar versiones en todas las ventanas
@@ -228,15 +228,17 @@ jobs:
           }
           const paymentRoute=bridgeCode.slice(bridgeCode.indexOf("'/api/station/payments'"),
             bridgeCode.indexOf("'/api/station/circuit'",bridgeCode.indexOf("'/api/station/payments'")));
-          for(const expected of ["-Database 'SiSRL' -Procedure 'dbo.PA_VentasFormasPago'",
+          for(const expected of ["-Database ([string]$state.database) -Procedure 'dbo.PA_VentasFormasPago'",
             'VendedorDesde=0','VendedorHasta=99999']){
-            if(!paymentRoute.includes(expected))throw Error('Regresion: Cobros debe usar SiSRL y 7 parametros: '+expected);
-          if(paymentRoute.includes('Ma'+'estros'))throw Error('Cobros usa una base distinta de SiSRL');
-          if(paymentRoute.includes('state.databases) -notcontains'))throw Error('Cobros exige un catálogo extra pese a tener sesión activa SiSRL');
+            if(!paymentRoute.includes(expected))throw Error('Regresión: Cobros debe reutilizar la base activa y 7 parámetros: '+expected);
           }
+          if(paymentRoute.includes('Ma'+'estros'))throw Error('Cobros intenta usar otra base.');
+          if(paymentRoute.includes('state.databases) -notcontains'))throw Error('Cobros exige un catálogo extra pese a tener sesión activa.');
           const evidenceFn=bridgeCode.slice(bridgeCode.indexOf('function Get-VerifiedPaymentEvidence'),
             bridgeCode.indexOf('function Invoke-AllowedStoredProcedure'));
-          if(!evidenceFn.includes("ChangeDatabase('SiSRL')"))throw Error('Regresion: detalle MP/YPF no usa SiSRL');
+          if(!evidenceFn.includes('ChangeDatabase($Database)'))throw Error('Regresión: detalle MP/YPF no usa la base activa.');
+          const forbiddenDatabase=['Si','SRL'].join('');
+          if(bridgeCode.toLowerCase().includes(forbiddenDatabase.toLowerCase()))throw Error('Regresión: el conector volvió a fijar un nombre de base.');
           const ui=fs.readFileSync('index.html','utf8');
           for(const marker of ['id="paymentsModal"','id="paymentsFrom"','id="paymentsTo"',
               'id="paymentsMethods"',

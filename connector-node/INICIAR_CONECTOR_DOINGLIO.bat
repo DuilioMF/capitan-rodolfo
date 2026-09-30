@@ -1,25 +1,14 @@
 @echo off
-title Conector SQL de DoingLio
-cd /d "%~dp0"
-where node >nul 2>nul
-if errorlevel 1 (
-  echo Falta Node.js. Instala Node.js 20 o superior y volve a abrir este archivo.
-  pause
-  exit /b 1
-)
-if not exist node_modules (
-  echo Preparando el conector por unica vez...
-  call npm install --omit=dev
-  if errorlevel 1 (
-    echo No se pudo preparar el conector.
-    pause
-    exit /b 1
-  )
-)
+title Capitán Rodolfo - Conexión SQL única
 echo.
-echo Conector SQL de DoingLio iniciado.
-echo Deja esta ventana abierta mientras uses Capitan Rodolfo.
+echo Este conector Node fue retirado en C97.
+echo Capitán usa una sola conexión SQL guardada por CAPITAN_RODOLFO.bat.
 echo.
-call npm start
+if exist "%~dp0..\CAPITAN_RODOLFO.bat" (
+  call "%~dp0..\CAPITAN_RODOLFO.bat"
+  exit /b %errorlevel%
+)
+echo No se encontro CAPITAN_RODOLFO.bat en la carpeta superior.
+echo Descargalo desde Nucleo - Datos.
 pause
-
+exit /b 1

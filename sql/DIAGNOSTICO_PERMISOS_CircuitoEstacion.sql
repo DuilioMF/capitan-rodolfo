@@ -1,7 +1,11 @@
 /* Capitán Rodolfo v74 - Diagnóstico de permisos (lectura, sin cambiar nada).
    EJECUTAR conectado como el mismo usuario SQL que usa Núcleo -> Datos.
 */
-USE [SiSRL];
+IF DB_NAME() IN ('master','model','msdb','tempdb')
+BEGIN
+    RAISERROR('Seleccioná la base operativa de Capitán antes del diagnóstico.',16,1);
+    RETURN;
+END;
 GO
 SELECT DB_NAME() AS BaseDatos,
        USER_NAME() AS UsuarioBase,

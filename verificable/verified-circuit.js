@@ -16,7 +16,7 @@
     if (!data || data.source !== 'sp' || data.verified !== true) {
       fail('se necesita una ejecución correcta del procedimiento SQL; lectura_tablas no está autorizada para Carga');
     }
-    if (data.connected !== true || data.database !== 'SiSRL' ||
+    if (data.connected !== true || !String(data.database || '').trim() ||
         Number(data.station) !== station ||
         !/^\d{4}-\d{2}-\d{2}$/.test(String(data.fecha || ''))) {
       fail('base, estación o fecha SQL no confirmadas');

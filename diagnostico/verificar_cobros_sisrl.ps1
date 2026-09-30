@@ -57,7 +57,7 @@ try {
     throw 'Fecha invalida. Usar YYYY-MM-DD.'
   }
   if($Estacion -lt 1){throw 'Estacion invalida.'}
-  Log ('INICIO: prueba REAL local, SiSRL, estacion '+$Estacion+', fecha '+$Fecha)
+  Log ('INICIO: prueba REAL local sobre la base activa, estacion '+$Estacion+', fecha '+$Fecha)
   Log 'No se escriben tablas ni se envian importes a Internet.'
   $ports=@(8787,8797,18787,27877,37877,48787,57877)
   $found=@()
@@ -74,21 +74,21 @@ try {
   $current=@($found|Sort-Object @{Expression='connected';Descending=$true},@{Expression='version';Descending=$true})[0]
   Log ('Conector detectado: v'+$current.version+' en '+$current.base+', conectado='+$current.connected)
   if($current.version -lt 94){throw 'CONECTOR ANTIGUO. Actualizar a V94 antes de probar Cobros.'}
-  if(!$current.connected){throw 'SQL NO CONECTADO. Abrir Nucleo > Datos y restaurar SiSRL.'}
+  if(!$current.connected){throw 'SQL NO CONECTADO. Abrir Nucleo > Datos y restaurar la conexion guardada.'}
   $state=CallLocal $current.base '/api/state'
-  if(-not $state.connected -or [string]$state.database -ine 'SiSRL'){
-    throw ('BASE INCORRECTA O DESCONECTADA: '+[string]$state.database+'. Se requiere SiSRL.')
+  if(-not $state.connected -or [string]::IsNullOrWhiteSpace([string]$state.database)){
+    throw 'BASE ACTIVA AUSENTE O DESCONECTADA.'
   }
-  Log 'PASS: misma conexion SQL activa de SiSRL.'
+  Log ('PASS: misma conexion SQL activa. Base: '+[string]$state.database)
   $stations=CallLocal $current.base '/api/station/ids'
   if(-not (@($stations.stations) -contains $Estacion)){
     throw ('La estacion '+$Estacion+' no esta autorizada en la conexion actual.')
   }
   Log 'PASS: estacion autorizada.'
   $params=@{idEstacion=$Estacion;fechaDesde=$Fecha;fechaHasta=$Fecha;turnoDesde=0;turnoHasta=99999}
-  Log ('Consultando dbo.PA_VentasFormasPago en SiSRL para '+$Fecha+'...')
+  Log ('Consultando dbo.PA_VentasFormasPago en '+[string]$state.database+' para '+$Fecha+'...')
   $payments=CallLocal $current.base '/api/station/payments' $params
-  if($payments.database -ine 'SiSRL' -or $payments.source -ne 'dbo.PA_VentasFormasPago' -or
+  if([string]$payments.database -ine [string]$state.database -or $payments.source -ne 'dbo.PA_VentasFormasPago' -or
       $payments.fechaDesde -ne $Fecha -or $payments.fechaHasta -ne $Fecha){
     throw 'El servicio devolvio una base, un SP o una fecha diferente: prueba NO valida.'
   }
@@ -179,7 +179,7 @@ try {
 }catch{
   Log ('RESULTADO: BLOQUEADO - '+$_.Exception.Message)
 }finally{
-  $path=Join-Path $env:TEMP ('diagnostico_cobros_sisrl_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.txt')
+  $path=Join-Path $env:TEMP ('diagnostico_cobros_conexion_activa_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'.txt')
   [IO.File]::WriteAllLines($path,$report,[Text.Encoding]::UTF8)
   Write-Host ('REPORTE LOCAL: '+$path)
   Write-Host 'Enviame una captura de esta ventana o pega el reporte para completar la validacion.'
