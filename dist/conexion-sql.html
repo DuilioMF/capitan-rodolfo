@@ -12,8 +12,8 @@
 .wrap{width:min(1120px,94vw);margin:26px auto 60px}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.top a{color:#ffb57b;text-decoration:none;border:1px solid var(--line);padding:10px 13px;border-radius:10px}
 .card{padding:22px;border:1px solid var(--line);border-radius:18px;background:#12100de8;margin-bottom:16px}.ey{font-size:9px;letter-spacing:.22em;color:var(--orange);font-weight:900}h1,h2{margin:8px 0 10px}h2{font-size:20px}.muted{color:var(--muted);line-height:1.55;font-size:13px}.status{margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:10px}.ok{color:var(--green)}.bad{color:var(--bad)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.full{grid-column:1/-1}label{display:block;font-size:11px;color:var(--muted);margin:0 0 6px}input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #6e584a66;background:#0b0a08;color:var(--ink);font:inherit}button{cursor:pointer;background:linear-gradient(135deg,#dc8623,#f0a14c);color:#160d07;font-weight:900;border:0}.ghost{background:transparent;color:#ffb57b;border:1px solid #b76c358f}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions>*{flex:1;min-width:180px}.summary{display:flex;gap:10px;flex-wrap:wrap}.pill{border:1px solid var(--line);padding:8px 10px;border-radius:999px;font-size:12px;color:#cfc5b5}.pill strong{color:var(--green)}.hidden{display:none!important}.params{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:14px 0}.tableWrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:12px;margin-top:14px}table{border-collapse:collapse;width:100%;min-width:680px;font-size:12px}th,td{padding:9px 10px;border-bottom:1px solid #342a1d;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:#1b140d;color:#ffbd82}.install{padding:16px;border:1px dashed #b76c3576;border-radius:12px}.small{font-size:11px;color:var(--muted)}.diag{background:#070604;border:1px solid #6e584a66;border-radius:12px;padding:12px;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto;font:12px/1.45 Consolas,monospace;color:#d8cfbf}.diagpaths{font-size:11px;color:var(--muted);line-height:1.6}@media(max-width:760px){.grid,.params{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
 </style>
-<link rel="stylesheet" href="../theme.css?v=91">
-<script src="../theme.js?v=91" defer></script>
+<link rel="stylesheet" href="theme.css?v=97">
+<script src="theme.js?v=97" defer></script>
 <style>
 /* La conexión SQL utiliza los mismos temas claro/oscuro y estilos que Núcleo. */
 .download-btn{display:inline-flex;justify-content:center;align-items:center;min-height:46px;
@@ -24,10 +24,10 @@ html[data-style="chaty"] .download-btn{background:linear-gradient(135deg,#ff8a3d
 html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7138,#2dd9ff)}
 </style>
 </head>
-<body>
+<body data-capitan-build="97">
 <main class="wrap">
   <div class="top">
-    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v91</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
+    <div><div class="ey">CAPITÁN RODOLFO · NÚCLEO · DATOS · v97</div><h1>Conexión SQL</h1><div class="muted">La página está en la nube. La contraseña y la base quedan guardadas solamente en C:\Sistemas.</div></div>
     <a href="nucleo.html">← Volver a Núcleo</a>
   </div>
 
@@ -36,17 +36,17 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
     <div id="bridgeStatus" class="status">Buscando conector en este equipo…</div>
     <div class="install" id="conector">
       <p class="muted">¿Se desconectó el servicio? Podés volver a ejecutar el instalador local sin borrar el perfil SQL guardado, y después comprobar la conexión.</p>
-      <div class="actions"><a class="download-btn" href="../CAPITAN_RODOLFO.bat?v=91" download="CAPITAN_RODOLFO.bat">Descargar / volver a iniciar conector</a><button class="ghost" id="retryBridgeVisible" type="button">Comprobar conexión</button></div>
+      <div class="actions"><a class="download-btn" href="CAPITAN_RODOLFO.bat?v=97" download="CAPITAN_RODOLFO.bat">Descargar / volver a iniciar conector</a><button class="ghost" id="retryBridgeVisible" type="button">Comprobar conexión</button></div>
       <p class="small">Por seguridad, ejecutá el archivo descargado desde Windows. La página web no puede iniciar procesos locales directamente.</p>
     </div>
     <div id="installBox" class="install hidden">
       <p class="muted">No encuentro el conector. Descargalo o actualizalo una vez: se instala en <strong>C:\Sistemas\DoingLioConnector</strong>, queda oculto y se inicia con Windows.</p>
-      <div class="actions"><a class="download-btn" href="../CAPITAN_RODOLFO.bat?v=91" download="CAPITAN_RODOLFO.bat">Descargar / actualizar conector</a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
+      <div class="actions"><a class="download-btn" href="CAPITAN_RODOLFO.bat?v=97" download="CAPITAN_RODOLFO.bat">Descargar / actualizar conector</a><button class="ghost" id="retryBridge" type="button">Ya lo ejecuté · comprobar</button></div>
     </div>
   </section>
 
   <section class="card">
-    <h2>Diagnóstico · v91</h2>
+    <h2>Diagnóstico · v97</h2>
     <div class="diagpaths">Si algo falla, leeme las últimas líneas de abajo. También quedan archivos en:<br><strong>C:\Sistemas\DoingLioConnector\install.log</strong><br><strong>C:\Sistemas\DoingLioLauncher\launcher.log</strong></div>
     <pre id="diagLog" class="diag">Iniciando diagnóstico…</pre>
     <div class="actions"><button class="ghost" id="copyDiag" type="button">Copiar diagnóstico</button><button class="ghost" id="clearDiag" type="button">Limpiar</button></div>
@@ -79,7 +79,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
   </section>
 
   <section class="card hidden" id="circuitCard">
-    <h2>Circuito de estación · SiSRL</h2>
+    <h2>Circuito de estación · base activa</h2>
     <p class="muted">Desde esta página podés instalar o actualizar el SP del circuito con tu conexión SQL actual, si el usuario tiene permiso. También podés ejecutarlo para ver tanques, surtidores y despachos.</p>
     <div class="actions">
       <button id="installCircuit" type="button">Instalar / actualizar SP desde aquí</button>
@@ -99,8 +99,8 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
 
     <p class="small">Descargas de SQL Server para conservar o ejecutar desde SSMS:</p>
     <div class="actions">
-      <a href="../sql/PA_CapitanRodolfo_CircuitoEstacion.sql" download="PA_CapitanRodolfo_CircuitoEstacion.sql">Descargar SP del circuito</a>
-      <a href="../sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql" download="INSTALAR_Y_HABILITAR_CIRCUITO.sql">Descargar instalador para administrador</a>
+      <a href="sql/PA_CapitanRodolfo_CircuitoEstacion.sql" download="PA_CapitanRodolfo_CircuitoEstacion.sql">Descargar SP del circuito</a>
+      <a href="sql/INSTALAR_Y_HABILITAR_CIRCUITO.sql" download="INSTALAR_Y_HABILITAR_CIRCUITO.sql">Descargar instalador para administrador</a>
     </div>
     <p class="muted">Si faltan permisos, el conector no los saltea: un administrador debe ejecutar el segundo archivo una sola vez. Nunca pegues su contraseña aquí.</p>
     <div class="grid">
@@ -133,16 +133,17 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
   </section>
 </main>
 
+<script src="connection-manager.js?v=97"></script>
 <script>
 (()=>{
  const $=id=>document.getElementById(id);
  const logDiag=msg=>{const el=$('diagLog');if(!el)return;const ts=new Date().toLocaleTimeString('es-AR',{hour12:false});if(el.textContent==='Iniciando diagnóstico…')el.textContent='';el.textContent+='['+ts+'] '+msg+'\n';el.scrollTop=el.scrollHeight};
- logDiag('Página v91 · '+location.href);
+ logDiag('Página v97 · '+location.href);
  logDiag('Origen: '+location.origin);
- const desktop=['127.0.0.1','localhost'].includes(location.hostname);const candidates=[...(desktop?[location.origin+'/_doinglio_sql']:[]),...[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p)];
- let bridge=null,profile=null,state=null,sessionId=null,currentDb=''; const preferredDb='SISRL';
+ const connectionManager=window.CapitanConnectionManager;const desktop=['127.0.0.1','localhost'].includes(location.hostname);
+ let bridge=null,profile=null,state=null,sessionId=null,currentDb='';
 
- const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:((url.endsWith('/api/circuit/install')||url.endsWith('/api/circuit/admin-install'))?120000:25000));try{return await fetch(url,{cache:'no-store',...options,...(desktop?{}:{targetAddressSpace:'local'}),signal:ac.signal})}finally{clearTimeout(timer)}};
+ const localFetch=async(url,options={})=>{const ac=new AbortController();const timer=setTimeout(()=>ac.abort(),url.endsWith('/health')?2500:((url.endsWith('/api/circuit/install')||url.endsWith('/api/circuit/admin-install'))?120000:25000));try{return await connectionManager.localFetch(url,{...options,signal:ac.signal})}finally{clearTimeout(timer)}};
  async function get(path){const r=await localFetch(bridge+path);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  async function post(path,body){const r=await localFetch(bridge+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('HTTP '+r.status));return d}
  function setStatus(el,msg,kind=''){el.className='status '+kind;el.textContent=msg}
@@ -157,36 +158,24 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  async function findBridge(){
    bridge=null;
    $('installBox').classList.add('hidden');
-   setStatus($('bridgeStatus'),'Buscando conectores SQL locales…');
-   logDiag('Detección de todos los puertos, preferencia: conexión SQL + versión más reciente.');
-   const probes=await Promise.all(candidates.map(async base=>{
-     try{
-       const r=await localFetch(base+'/health');
-       if(!r.ok)return null;
-       const d=await r.json();
-       if(!d.ok||d.apiSqlObject!==true)return null;
-       const version=Number.parseInt(String(d.version),10)||0;
-       if(version<86)return null;
-       return {base,d,version};
-     }catch(e){logDiag('No responde '+base+': '+(e.message||String(e)));return null}
-   }));
-   const alive=probes.filter(Boolean).sort((a,b)=>
-     Number(b.d.connected)-Number(a.d.connected)||b.version-a.version);
-   if(alive.length){
-     const selected=alive[0];bridge=selected.base;
+   setStatus($('bridgeStatus'),'Buscando conector SQL C97 en este equipo…');
+   logDiag('Resolvedor único: exige la misma versión de pantalla y conector.');
+   try{
+     const selected=await connectionManager.resolve({requireConnected:false,requiredDatabase:null});
+     bridge=selected.base;
      const port=new URL(bridge).port||'local';
-     setStatus($('bridgeStatus'),'Conector v'+selected.version+
-       (selected.d.connected?' · SQL conectado':' · SQL aún sin conectar')+
+     setStatus($('bridgeStatus'),'Conector C'+selected.version+
+       (selected.connected?' · SQL conectado':' · SQL aún sin conectar')+
        ' · puerto '+port,'ok');
-     logDiag('Seleccionado '+bridge+' v'+selected.version+' connected='+selected.d.connected);
-     if(selected.version<91)logDiag('Para la consulta WhatsApp por fecha se requiere v91; Datos SQL es compatible desde v86.');
+     logDiag('Seleccionado '+bridge+' C'+selected.version+' connected='+selected.connected);
      return true;
+   }catch(e){
+     const why=e.message||'No hay un conector C97 compatible respondiendo.';
+     setStatus($('bridgeStatus'),why,'bad');
+     $('installBox').classList.remove('hidden');
+     logDiag(why);
+     return false;
    }
-   const why='No hay un conector compatible respondiendo. Los datos SQL guardados no se borraron. Descargá e iniciá el conector actual si es necesario.';
-   setStatus($('bridgeStatus'),why,'bad');
-   $('installBox').classList.remove('hidden');
-   logDiag(why);
-   return false;
  }
 
  async function discoverServers(network=false){
@@ -245,7 +234,6 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
    $('databaseCard').classList.remove('hidden');const sel=$('database');sel.innerHTML='<option value="">Elegir base…</option>';
    list.forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;if(name===selected)o.selected=true;sel.appendChild(o)});
    if(selected){currentDb=selected;setStatus($('databaseStatus'),'Base '+selected+' guardada y activa.','ok');activateExplorer()}
-   else if(list.includes(preferredDb)){ sel.value=preferredDb; chooseDatabase(preferredDb); }
    else setStatus($('databaseStatus'),'Elegí una base una sola vez.');
  }
 
@@ -265,7 +253,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
    $('executeSp').classList.add('hidden');$('objectParams').replaceChildren();$('results').replaceChildren();
    inspected=null;
    status('Base '+currentDb+' lista. Escribí tabla, vista o SP y presioná Buscar y mostrar.');
-   const circuitAvailable=currentDb.toLowerCase()==='sisrl';
+   const circuitAvailable=Boolean(currentDb);
    $('circuitCard').classList.toggle('hidden',!circuitAvailable);
    if(circuitAvailable){refreshCircuitState();loadCircuitStations()}
    else $('circuitResults').replaceChildren();
@@ -352,7 +340,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  }
 
  async function refreshCircuitState(){
-   if(!bridge||currentDb.toLowerCase()!=='sisrl')return;
+   if(!bridge||!currentDb)return;
    try {
      const state=await get('/api/circuit/install-state');
      const code=state.state||'pending';
@@ -365,7 +353,7 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  async function loadCircuitStations(){
    const sel=$('circuitStation');sel.replaceChildren();
    const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Elegí una estación';sel.appendChild(placeholder);
-   if(!bridge||currentDb.toLowerCase()!=='sisrl')return;
+   if(!bridge||!currentDb)return;
    try{
      const d=await get('/api/station/ids');
      const ids=Array.isArray(d.stations)?d.stations:[];
@@ -376,8 +364,8 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
    }catch(e){setStatus($('runCircuitStatus'),'No pude listar las estaciones: '+e.message,'bad')}
  }
  $('installCircuit').addEventListener('click',async()=>{
-   if(!bridge||!sessionId||currentDb.toLowerCase()!=='sisrl')return;
-   if(!window.confirm('¿Instalar o actualizar dbo.PA_CapitanRodolfo_CircuitoEstacion en SiSRL con tu usuario SQL actual? Esta acción modifica la definición del procedimiento, NO los datos comerciales.'))return;
+   if(!bridge||!sessionId||!currentDb)return;
+   if(!window.confirm('¿Instalar o actualizar dbo.PA_CapitanRodolfo_CircuitoEstacion en la base activa '+currentDb+' con tu usuario SQL actual? Esta acción modifica la definición del procedimiento, NO los datos comerciales.'))return;
    $('installCircuit').disabled=true;
    setStatus($('circuitStatus'),'Instalando SP desde el archivo verificado de Capitán…');
    logDiag('Instalación de SP solicitada desde Núcleo → Datos');
@@ -394,11 +382,11 @@ html[data-style="estacion"] .download-btn{background:linear-gradient(135deg,#ff7
  });
  $('refreshCircuit').addEventListener('click',refreshCircuitState);
  $('adminInstallCircuit').addEventListener('click',async()=>{
-   if(!bridge||!sessionId||currentDb.toLowerCase()!=='sisrl')return;
+   if(!bridge||!sessionId||!currentDb)return;
    const user=$('circuitAdminUser').value.trim();
    const pass=$('circuitAdminPass').value;
    if(!user||!pass){setStatus($('adminCircuitStatus'),'Ingresá usuario y contraseña de un administrador SQL.','bad');return}
-   if(!window.confirm('Vas a instalar/actualizar el SP en SiSRL con permisos de administrador y otorgar EXECUTE únicamente a tu usuario SQL habitual. ¿Continuar?'))return;
+   if(!window.confirm('Vas a instalar/actualizar el SP en la base activa '+currentDb+' con permisos de administrador y otorgar EXECUTE únicamente a tu usuario SQL habitual. ¿Continuar?'))return;
    $('adminInstallCircuit').disabled=true;
    setStatus($('adminCircuitStatus'),'Instalando y autorizando el circuito con credenciales temporales…');
    try{

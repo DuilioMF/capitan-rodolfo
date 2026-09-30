@@ -34,6 +34,9 @@ echo.
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/capitan_rodolfo_local.ps1?v=%CACHEBUST%' -OutFile '%BRIDGE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/doinglio_sql_queue_worker.ps1?v=%CACHEBUST%' -OutFile '%SQL_WORKER%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/doinglio_core_link.ps1?v=%CACHEBUST%' -OutFile '%CORE_LINK%'; Invoke-WebRequest -UseBasicParsing '%RAW%/bridge/stop_stale_capitan.ps1?v=%CACHEBUST%' -OutFile '%STOPPER%'; Invoke-WebRequest -UseBasicParsing '%RAW%/VERSION?v=%CACHEBUST%' -OutFile '%VERSION_FILE%'; Invoke-WebRequest -UseBasicParsing '%RAW%/sp_allowlist.json?v=%CACHEBUST%' -OutFile '%ALLOWLIST%'" >>"%LOG%" 2>&1
 if errorlevel 1 goto :error
+echo [%date% %time%] Verificando sintaxis PowerShell antes de reiniciar servicios >>"%LOG%"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; foreach($f in @('%BRIDGE%','%SQL_WORKER%','%CORE_LINK%','%STOPPER%')){$tok=$null;$errs=$null;$null=[System.Management.Automation.Language.Parser]::ParseFile($f,[ref]$tok,[ref]$errs);if($errs.Count -gt 0){foreach($e in $errs){Write-Output ($f+': '+$e.Message)};exit 1}}" >>"%LOG%" 2>&1
+if errorlevel 1 goto :error
 for /f "usebackq delims=" %%V in ("%VERSION_FILE%") do if not defined EXPECTED_VERSION set "EXPECTED_VERSION=%%V"
 if not defined EXPECTED_VERSION goto :error
 

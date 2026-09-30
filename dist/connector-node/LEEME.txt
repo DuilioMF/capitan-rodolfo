@@ -1,0 +1,12 @@
+CONECTOR SQL DE CAPITÁN RODOLFO - C97
+
+Esta carpeta queda únicamente por compatibilidad con instalaciones anteriores.
+El conector Node que pedía servidor, usuario, contraseña y base por separado fue retirado.
+
+Capitán tiene UNA sola conexión SQL:
+- se configura desde Núcleo > Datos;
+- se guarda fuera del código en la PC;
+- servidor, autenticación, usuario y base activa pertenecen al mismo perfil;
+- Principal, Cargas, Cobros, Circuito y DoingLio reutilizan esa misma sesión.
+
+Para iniciar o reparar la conexión use CAPITAN_RODOLFO.bat.
