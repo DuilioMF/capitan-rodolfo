@@ -46,18 +46,10 @@ const today=()=>{
 const modal=$('paymentsModal');
 let data=null,rows=[],columnNames=[],method='all',visible=50,paramsKey='',working=false,saleFilter=null;
 let latestRequest=0;
-const localDesktop=['127.0.0.1','localhost'].includes(location.hostname);
-const bridgeCandidates=localDesktop?[location.origin+'/_doinglio_sql']:[8787,8797,18787,27877,37877,48787,57877].map(p=>'http://127.0.0.1:'+p);
+const connectionManager=window.CapitanConnectionManager;
 async function resolveBridge(){
- if(window.capitanSqlBridge)return window.capitanSqlBridge;
- for(const base of bridgeCandidates){
-  try{const res=await fetch(base+'/health',{cache:'no-store',...(localDesktop?{}:{targetAddressSpace:'local'}),signal:AbortSignal.timeout(2500)});
-   if(!res.ok)continue;
-   const h=await res.json();
-   if(h.ok&&h.service==='Capitan Rodolfo Local')return base;
-  }catch(_){}
- }
- throw Error('No responde el conector SQL local. Abrí Núcleo → Datos, descargá/levantá el conector y comprobá la conexión.');
+ const selected=await connectionManager.resolve({requireConnected:true,requiredDatabase:'SiSRL'});
+ return selected.base;
 }
 $('paymentsFrom').value=today();$('paymentsTo').value=today();
 function notice(message,type=''){
@@ -114,10 +106,9 @@ function range(){
 }
 async function api(path,body){
  const base=await resolveBridge();
- const r=await fetch(base+path,{
+ const r=await connectionManager.localFetch(base+path,{
    method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify(body),
-   ...(['127.0.0.1','localhost'].includes(location.hostname)?{}:{targetAddressSpace:'local'})
+   body:JSON.stringify(body)
  });
  const d=await r.json().catch(()=>({}));
  if(!r.ok)throw Error(d.error||'HTTP '+r.status);
