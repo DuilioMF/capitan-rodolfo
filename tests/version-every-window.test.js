@@ -1,4 +1,4 @@
-// Contrato v94: cada ventana muestra la versión exacta del HTML y el bridge.
+// Contrato de versión canónica: cada ventana muestra la versión exacta del HTML y el bridge.
 // Pruebas estáticas: no reemplazan la comprobación con SiSRL real.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
